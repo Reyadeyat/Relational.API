@@ -6,7 +6,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * https://reyadeyat.net/RELATIONAL.API.LICENSE
+ * https://reyadeyat.net/LICENSE/RELATIONAL.API.LICENSE
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,12 +22,16 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
+import com.google.gson.stream.JsonWriter;
+import java.io.Writer;
 import java.lang.reflect.Modifier;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Map;
+import java.util.Set;
 import net.reyadeyat.relational.api.util.BooleanParser;
 
 /**
@@ -138,6 +142,99 @@ public class JsonResultset {
             }
         }
         return json_resultset;
+    }
+    
+    public static void jsonElementStreaming(JsonElement json_element, JsonWriter json_writer) throws Exception {
+        JsonResultset.jsonElementStreaming(null, json_element, json_writer);
+    }
+    
+    public static void jsonElementStreaming(String json_property_name, JsonElement json_element, JsonWriter json_writer) throws Exception {
+        if (json_element.isJsonObject()) {
+            JsonObject json_object = json_element.getAsJsonObject();
+            if (json_property_name != null) {
+                json_writer.name(json_property_name);
+            }
+            json_writer.beginObject();
+            Set<Map.Entry<String, JsonElement>> entrySet = json_object.entrySet();
+            for(Map.Entry<String,JsonElement> entry : entrySet){
+                String json_element_name = entry.getKey();
+                JsonElement json_element_value = entry.getValue();
+                if (json_element_value.isJsonNull()) {
+                    json_writer.name(json_element_name).value((String)null);
+                } else if (json_element_value.isJsonPrimitive()) {
+                    JsonPrimitive json_primitive = json_element_value.getAsJsonPrimitive();
+                    if (json_primitive.isString()) {
+                        json_writer.name(json_element_name).value(json_primitive.getAsString());
+                    } else if (json_primitive.isNumber()) {
+                        json_writer.name(json_element_name).value(json_primitive.getAsNumber());
+                    } else if (json_primitive.isBoolean()) {
+                        json_writer.name(json_element_name).value(json_primitive.getAsBoolean());
+                    }
+                } else if (json_element_value.isJsonArray() || json_element_value.isJsonObject()) {
+                    jsonElementStreaming(json_element_name, json_element_value, json_writer);
+                } else {
+                    throw new Exception("jsonObjectStreaming undefined Json structure");
+                }
+            }
+            json_writer.endObject();
+        } else if (json_element.isJsonArray()) {
+            JsonArray json_array = json_element.getAsJsonArray();
+            if (json_property_name == null) {
+                json_writer.name(json_property_name);
+            }
+            json_writer.beginArray();
+            for(int i = 0; i < json_array.size(); i++) {
+                JsonElement json_element_value = json_array.get(i);
+                if (json_element_value.isJsonNull()) {
+                    json_writer.value((String)null);
+                } else if (json_element_value.isJsonPrimitive()) {
+                    JsonPrimitive json_primitive = json_element_value.getAsJsonPrimitive();
+                    if (json_primitive.isString()) {
+                        json_writer.value(json_primitive.getAsString());
+                    } else if (json_primitive.isNumber()) {
+                        json_writer.value(json_primitive.getAsNumber());
+                    } else if (json_primitive.isBoolean()) {
+                        json_writer.value(json_primitive.getAsBoolean());
+                    }
+                } else if (json_element_value.isJsonArray() || json_element_value.isJsonObject()) {
+                    jsonElementStreaming(json_element_value, json_writer);
+                } else {
+                    throw new Exception("jsonObjectStreaming undefined Json structure");
+                }
+            }
+            json_writer.endArray();
+        } else {
+            throw new Exception("jsonObjectStreaming undefined Json seymantic");
+        }
+    }
+    
+    public static void resultsetStreaming(JsonObject response, Writer writer, ResultSet jdbc_resultset) throws Exception {
+        Gson gson = JsonUtil.gson();
+        try (JsonWriter json_writer = new JsonWriter(writer)) {
+            //{
+            json_writer.beginObject();
+            //"response": {}
+            JsonResultset.jsonElementStreaming("response", response, json_writer);
+            //"resultset": []
+            json_writer.name("resultset");
+            json_writer.beginArray();
+            ResultSetMetaData resultset_metadata = jdbc_resultset.getMetaData();
+            int count = resultset_metadata.getColumnCount();
+            while (jdbc_resultset.next()) {
+                JsonObject record = new JsonObject();
+                for (int c = 1; c <= count; c++) {
+                    int field_type = resultset_metadata.getColumnType(c);
+                    String field_label = resultset_metadata.getColumnLabel(c);
+                    Object field_value = jdbc_resultset.getObject(c);
+                    addRecordField(field_type, field_label, field_value, record);
+                }
+                gson.toJson(record, JsonObject.class, json_writer);
+            }
+            json_writer.endArray();
+            json_writer.endObject();
+        } catch (Exception ex) {
+            throw ex;
+        }
     }
     
     static public void addRecordField(int field_type, String field_label, Object field_value, JsonObject record) throws Exception {
