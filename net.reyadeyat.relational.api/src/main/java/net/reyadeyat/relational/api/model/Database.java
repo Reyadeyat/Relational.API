@@ -176,7 +176,7 @@ public class Database {
         StringBuilder from = new StringBuilder();
         select.append("SELECT ");
         from.append("FROM ");
-        if (databaseSchem.isEmpty() == false) {
+        if (databaseSchem == null || databaseSchem.isEmpty() == false) {
             databaseSchem = "." + databaseFieldOpenQuote + databaseSchem + databaseFieldCloseQuote;
         }
         for (int i = 0; i < tablePath.size(); i++) {

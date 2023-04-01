@@ -17,6 +17,7 @@
 
 package net.reyadeyat.relational.api.model;
 
+import net.reyadeyat.relational.api.data.ModelDefinition;
 import net.reyadeyat.relational.api.data.DataModel;
 
 /**
@@ -33,28 +34,14 @@ public class EnterpriseModel<Model extends Enterprise> implements DataModel<Mode
 
     private Model enterprise;
 
-    public String modelVersion;
-    public String modelName;
-    public String modelDescription;
+    public ModelDefinition model_definition;
 
     private EnterpriseModel() {
     }
 
-    public EnterpriseModel(Model enterprise, String modelVersion, String modelName, String modelDescription) {
+    public EnterpriseModel(Model enterprise, ModelDefinition model_definition) {
         this.enterprise = enterprise;
-        this.modelVersion = modelVersion;
-        this.modelName = modelName;
-        this.modelDescription = modelDescription;
-    }
-
-    @Override
-    public String getVersion() {
-        return this.modelVersion;
-    }
-    
-    @Override
-    public String getName() {
-        return this.modelName;
+        this.model_definition = model_definition;
     }
 
     @Override
@@ -63,8 +50,8 @@ public class EnterpriseModel<Model extends Enterprise> implements DataModel<Mode
     }
 
     @Override
-    public String getDescription() {
-        return this.modelDescription;
+    public ModelDefinition getModelDefinition() {
+        return this.model_definition;
     }
 
     @Override

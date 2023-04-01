@@ -461,7 +461,7 @@ public class DataInstance {
         StringBuilder sql = new StringBuilder();
         String instanceObjectJSON = gson.toJson(instanceObject).replaceAll("\"", "\"\"");
         sql.append("INSERT INTO `").append(databaseName).append("`.`").append(dataInstance.dataClass.nameLower).append("`");
-        sql.append("(`data_model_id`,`instance_id`,`child_id`,`parent_id`,`declared_field_name`,`class_name`,`json_object`,");
+        sql.append("(`model_id`,`model_instance_id`,`child_id`,`parent_id`,`declared_field_name`,`class_name`,`json_object`,");
         for (DataInstance fieldDataInstance : dataInstance.fieldsMapList.get(instanceObject)) {
             sql.append(databaseFieldOpenQuote).append(fieldDataInstance.dataClass.nameLower).append(databaseFieldCloseQuote).append(",");
         }
