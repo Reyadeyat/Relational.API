@@ -14,9 +14,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package net.reyadeyat.relational.api.jdbc;
 
-import java.sql.Connection;
+package net.reyadeyat.relational.api.database;
+
+import java.util.ArrayList;
 
 /**
  * 
@@ -28,15 +29,24 @@ import java.sql.Connection;
  * 
  * @since 2023.01.01
  */
-public interface JDBCSource {
-    Connection getConnection(Boolean auto_commit) throws Exception;
-    String getUserName() throws Exception;
-    String getUserPassword() throws Exception;
-    String getDatabaseEngine() throws Exception;
-    String getURL() throws Exception;
-    String getDatabaseServer() throws Exception;
-    String getDatabaseName() throws Exception;
-    String getDatabaseSchem() throws Exception;
-    String getDatabaseOpenQuote() throws Exception;
-    String getDatabaseCloseQuote() throws Exception;
+public class Argument {
+    Field field;
+    ArrayList<String> values;
+    
+    public Argument(Field field) {
+        this.field = field;
+        values = new ArrayList<String>();
+    }
+    
+    public void addValue(String value) {
+        values.add(value);
+    }
+    
+    public String getValue(Integer index) {
+        return values.get(index);
+    }
+    
+    public ArrayList<String> getValues() {
+        return values;
+    }
 }

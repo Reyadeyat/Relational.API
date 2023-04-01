@@ -14,9 +14,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package net.reyadeyat.relational.api.jdbc;
 
-import java.sql.Connection;
+package net.reyadeyat.relational.api.database;
 
 /**
  * 
@@ -28,15 +27,28 @@ import java.sql.Connection;
  * 
  * @since 2023.01.01
  */
-public interface JDBCSource {
-    Connection getConnection(Boolean auto_commit) throws Exception;
-    String getUserName() throws Exception;
-    String getUserPassword() throws Exception;
-    String getDatabaseEngine() throws Exception;
-    String getURL() throws Exception;
-    String getDatabaseServer() throws Exception;
-    String getDatabaseName() throws Exception;
-    String getDatabaseSchem() throws Exception;
-    String getDatabaseOpenQuote() throws Exception;
-    String getDatabaseCloseQuote() throws Exception;
+public enum PrimartKeyType {
+    PrimaryKey("Primary Key"), 
+    PrimaryKeyAI("Primary Key Auto Increment"), 
+    PrimaryKeyMI("Primary Key Max Increment"),
+    NotPrimaryKey("Not Primary Key");
+    
+    private String name;
+    
+    private PrimartKeyType(String name) {
+        this.name = name;
+    }
+    
+    public Boolean isPrimary() {
+        return this == PrimartKeyType.PrimaryKey || this == PrimaryKeyAI || this == PrimaryKeyMI;
+    }
+    
+    public Boolean isNotPrimary() {
+        return isPrimary() == false;
+    }
+    
+    @Override
+    public String toString() {
+        return this.name;
+    }
 }

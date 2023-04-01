@@ -353,8 +353,8 @@ public class DataClass {
         StringBuilder sql = new StringBuilder();
         //Create dataClass table with member fields 
         sql.append("CREATE TABLE IF NOT EXISTS `").append(databaseName).append("`.`").append(dataClass.nameLower).append("` (\n");
-        sql.append(" ").append("`data_model_id` SMALLINT UNSIGNED NOT NULL,\n");
-        sql.append(" ").append("`instance_id` BIGINT UNSIGNED NOT NULL,\n");
+        sql.append(" ").append("`model_id` SMALLINT UNSIGNED NOT NULL,\n");
+        sql.append(" ").append("`model_instance_id` BIGINT UNSIGNED NOT NULL,\n");
         sql.append(" ").append("`child_id` SMALLINT UNSIGNED NOT NULL,\n");
         sql.append(" ").append("`parent_id` SMALLINT UNSIGNED").append(dataClass.hasParent() ? " NOT" : "").append(" NULL,\n");
         sql.append(" ").append("`declared_field_name` VARCHAR(256) NOT NULL,\n");
@@ -378,11 +378,11 @@ public class DataClass {
         //indexes = indexes.length() > 2 ? indexes.delete(indexes.length()-2, indexes.length()): indexes;
         sql.append(indexes);
         /** no need to make parent a primary since child is unique, but parent key is primary to be reference in foreign keys*/
-        sql.append("  PRIMARY KEY (`data_model_id`,`instance_id`,`child_id`").append(dataClass.hasParent() ? ",`parent_id`" : "").append(")");
+        sql.append("  PRIMARY KEY (`model_id`,`model_instance_id`,`child_id`").append(dataClass.hasParent() ? ",`parent_id`" : "").append(")");
         sql.append(dataClass.hasParent() ? "," : "").append("\n");
         if (dataClass.hasParent() == true) {
-            sql.append("  FOREIGN KEY `fk_").append(dataClass.parentDataClass.nameLower).append("` (`data_model_id`,`instance_id`,`parent_id`)\n");
-            sql.append("    REFERENCES `").append(dataClass.parentDataClass.nameLower).append("` (`data_model_id`,`instance_id`,`child_id`)\n");
+            sql.append("  FOREIGN KEY `fk_").append(dataClass.parentDataClass.nameLower).append("` (`model_id`,`model_instance_id`,`parent_id`)\n");
+            sql.append("    REFERENCES `").append(dataClass.parentDataClass.nameLower).append("` (`model_id`,`model_instance_id`,`child_id`)\n");
             sql.append("    ON UPDATE CASCADE\n");
             sql.append("    ON DELETE RESTRICT\n");
         }
@@ -395,26 +395,26 @@ public class DataClass {
         }
     }
     
-    public Object loadFromDatabase(Connection modelConnection, Integer modelID, String databaseName, DataLookup dataLookup, Object instanceID, LoadMethod loadMethod, SequenceNumber<Integer> sequence, ArrayList<String> selects) throws Exception {
+    public Object loadFromDatabase(Connection modelConnection, Integer model_id, String databaseName, DataLookup dataLookup, Object model_instance_id, LoadMethod loadMethod, SequenceNumber<Integer> sequence, ArrayList<String> selects) throws Exception {
         Object instanceObject = null;//this.clas.getConstructor().newInstance();
         DataInstance dataInstance = null;//new DataInstance(this, null, null, instanceObject, false);
         //Handle Saved Sequences
-        dataInstance = loadFromDatabase(modelConnection, modelID, databaseName, dataLookup, instanceID, loadMethod, selects, dataInstance, instanceObject, 1, sequence);
+        dataInstance = loadFromDatabase(modelConnection, model_id, databaseName, dataLookup, model_instance_id, loadMethod, selects, dataInstance, instanceObject, 1, sequence);
         return dataInstance.instances.get(0);
     }
 
-    private DataInstance loadFromDatabase(Connection connection, Integer modelID, String databaseName, DataLookup dataLookup, Object instanceID, LoadMethod loadMethod, ArrayList<String> selects, DataInstance parentDataInstance, Object parentInstanceObject, Integer parentID, SequenceNumber<Integer> sequence) throws Exception {
+    private DataInstance loadFromDatabase(Connection connection, Integer model_id, String databaseName, DataLookup dataLookup, Object model_instance_id, LoadMethod loadMethod, ArrayList<String> selects, DataInstance parentDataInstance, Object parentInstanceObject, Integer parentID, SequenceNumber<Integer> sequence) throws Exception {
         if (loadMethod != LoadMethod.JSON && loadMethod != LoadMethod.REFLECTION) {
             throw new Exception("Load Method '" + loadMethod + "' is not implemented");
         }
         if (isTable == false) {
             throw new Exception("Can't Load DataClass Field '~F-[" + name + "]', load only DataClass Table");
         }
-        String sql = loadFromDatabase(modelID, databaseName, dataLookup, instanceID, loadMethod, parentID);
+        String sql = loadFromDatabase(model_id, databaseName, dataLookup, model_instance_id, loadMethod, parentID);
         selects.add(sql);
         ////System.out.println(sql);
         /*for (int i = 0; i < tablesList.size(); i++) {
-            tablesList.get(i).loadFromDatabase(lookup, instanceID, databaseName, loadMethod, selects);
+            tablesList.get(i).loadFromDatabase(lookup, model_instance_id, databaseName, loadMethod, selects);
         }*/
         ArrayList<HashMap<String, Object>> dataset = new ArrayList<HashMap<String, Object>>();
         //Model modelInstance = null;
@@ -423,12 +423,12 @@ public class DataClass {
                 while (rs.next()) {
                     HashMap<String, Object> record = new HashMap<String, Object>();
                     if (loadMethod == LoadMethod.JSON) {
-                        record.put("instance_id", rs.getLong("instance_id"));
+                        record.put("model_instance_id", rs.getLong("model_instance_id"));
                         record.put("child_id", rs.getInt("child_id"));
                         record.put("parent_id", rs.getInt("parent_id"));
                         record.put("json_object", rs.getString("json_object").replaceAll("\"\"", "\""));
                     } else if (loadMethod == LoadMethod.REFLECTION) {
-                        record.put("instance_id", rs.getLong("instance_id"));
+                        record.put("model_instance_id", rs.getLong("model_instance_id"));
                         record.put("child_id", rs.getInt("child_id"));
                         record.put("parent_id", rs.getInt("parent_id"));
                         record.put("declared_field_name", rs.getString("declared_field_name"));
@@ -455,7 +455,7 @@ public class DataClass {
         if (loadMethod == LoadMethod.JSON) {
             for (int i = 0; i < dataset.size(); i++) {
                 HashMap<String, Object> record = dataset.get(i);
-                Long instance_id = (Long) record.get("instance_id");
+                Long instance_id = (Long) record.get("model_instance_id");
                 Integer child_id = (Integer) record.get("child_id");
                 Integer parent_id = (Integer) record.get("parent_id");
                 String json_object = (String) record.get("json_object");
@@ -484,7 +484,7 @@ public class DataClass {
             //Load Instances into list
             for (int i = 0; i < dataset.size(); i++) {
                 HashMap<String, Object> record = dataset.get(i);
-                Long instance_id = (Long) record.get("instance_id");
+                Long instance_id = (Long) record.get("model_instance_id");
                 Integer child_id = (Integer) record.get("child_id");
                 Integer parent_id = (Integer) record.get("parent_id");
                 String declared_field_name = (String) record.get("declared_field_name");
@@ -516,7 +516,7 @@ public class DataClass {
                 }
                 for (int x = 0; x < tablesList.size(); x++) {
                     DataClass subRecordDataClass = tablesList.get(x);
-                    subRecordDataClass.loadFromDatabase(connection, modelID, databaseName, dataLookup, instanceID, loadMethod, selects, recordDataInstance, recordInstanceObject, child_id, sequence);
+                    subRecordDataClass.loadFromDatabase(connection, model_id, databaseName, dataLookup, model_instance_id, loadMethod, selects, recordDataInstance, recordInstanceObject, child_id, sequence);
                 }
             }
             newDataInstance = recordDataInstance;
@@ -529,7 +529,7 @@ public class DataClass {
         return newDataInstance;
     }
 
-    private String loadFromDatabase(Integer modelID, String databaseName, DataLookup dataLookup, Object instanceID, LoadMethod loadMethod, Integer parentID) throws Exception {
+    private String loadFromDatabase(Integer model_id, String databaseName, DataLookup dataLookup, Object model_instance_id, LoadMethod loadMethod, Integer parentID) throws Exception {
 
         if (isTable == false) {
             throw new Exception("toSQL takes table element only");
@@ -538,9 +538,9 @@ public class DataClass {
         StringBuilder sql = new StringBuilder();
         sql.append("SELECT");
         if (loadMethod == LoadMethod.JSON) {
-            sql.append(" `").append(nameLower).append("`.`instance_id`,`").append(nameLower).append("`.`child_id`,`").append(nameLower).append("`.`parent_id`,`").append(nameLower).append("`.`declared_field_name`,`").append(nameLower).append("`.`class_name`,`").append(nameLower).append("`.`json_object`");
+            sql.append(" `").append(nameLower).append("`.`model_instance_id`,`").append(nameLower).append("`.`child_id`,`").append(nameLower).append("`.`parent_id`,`").append(nameLower).append("`.`declared_field_name`,`").append(nameLower).append("`.`class_name`,`").append(nameLower).append("`.`json_object`");
         } else if (loadMethod == LoadMethod.REFLECTION) {
-            sql.append(" `").append(nameLower).append("`.`instance_id`,`").append(nameLower).append("`.`child_id`,`").append(nameLower).append("`.`parent_id`,`").append(nameLower).append("`.`declared_field_name`,`").append(nameLower).append("`.`class_name`,");//,`json_object`");
+            sql.append(" `").append(nameLower).append("`.`model_instance_id`,`").append(nameLower).append("`.`child_id`,`").append(nameLower).append("`.`parent_id`,`").append(nameLower).append("`.`declared_field_name`,`").append(nameLower).append("`.`class_name`,");//,`json_object`");
             for (int i = 0; i < fieldsList.size(); i++) {
                 DataClass fieldDataClass = fieldsList.get(i);
                 sql.append("`").append(nameLower).append("`.`").append(fieldDataClass.nameLower).append("`,");
@@ -550,16 +550,16 @@ public class DataClass {
         sql.append(" FROM `").append(databaseName).append("`.`").append(nameLower).append("`");
         if (parentDataClass != null) {
             sql.append(" INNER JOIN `").append(databaseName).append("`.`").append(parentDataClass.nameLower).append("`");
-            sql.append(" ON `").append(nameLower).append("`.`data_model_id`=`").append(parentDataClass.nameLower).append("`.`data_model_id`");
-            sql.append(" AND `").append(nameLower).append("`.`instance_id`=`").append(parentDataClass.nameLower).append("`.`instance_id`");
+            sql.append(" ON `").append(nameLower).append("`.`model_id`=`").append(parentDataClass.nameLower).append("`.`model_id`");
+            sql.append(" AND `").append(nameLower).append("`.`model_instance_id`=`").append(parentDataClass.nameLower).append("`.`model_instance_id`");
             sql.append(" AND `").append(nameLower).append("`.`parent_id`=`").append(parentDataClass.nameLower).append("`.`child_id`");
         }
-        sql.append(" WHERE `").append(nameLower).append("`.`data_model_id`=").append(modelID);
-        sql.append(" AND `").append(nameLower).append("`.`instance_id`=");
-        if (instanceID instanceof Number) {
-            sql.append(instanceID);
-        } else if (instanceID instanceof String) {
-            sql.append("'").append(instanceID).append("'");
+        sql.append(" WHERE `").append(nameLower).append("`.`model_id`=").append(model_id);
+        sql.append(" AND `").append(nameLower).append("`.`model_instance_id`=");
+        if (model_instance_id instanceof Number) {
+            sql.append(model_instance_id);
+        } else if (model_instance_id instanceof String) {
+            sql.append("'").append(model_instance_id).append("'");
         }
         if (parentDataClass != null) {
             sql.append(" AND `").append(nameLower).append("`.`parent_id`=").append(parentID);

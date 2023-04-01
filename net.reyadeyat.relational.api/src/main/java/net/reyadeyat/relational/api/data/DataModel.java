@@ -33,10 +33,8 @@ import java.lang.reflect.Field;
  * @since 2023.01.01
  */
 public interface DataModel<Model> {
-    public String getVersion();
-    public String getName();
     public Field getDeclaredField() throws NoSuchFieldException;
     public Model getInstance();
-    public String getDescription();
     public void prepareInstance() throws Exception;
+    public ModelDefinition getModelDefinition();
 }

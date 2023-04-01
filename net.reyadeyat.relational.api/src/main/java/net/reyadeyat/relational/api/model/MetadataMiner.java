@@ -28,13 +28,12 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
 import com.google.gson.stream.JsonWriter;
+import net.reyadeyat.relational.api.data.ModelDefinition;
 import java.io.PrintWriter;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
-import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
-import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -58,52 +57,43 @@ import java.util.concurrent.TimeUnit;
  */
 public class MetadataMiner {
     private Integer model_id;
-    private String secret_key;
     private String model_name;
     private String model_description;
     private DataLookup data_lookup;
     private String java_package_name;
-    private JDBCSource data_model_source;
-    private JDBCSource model_database_source;
+    private JDBCSource model_jdbc_source;
+    private JDBCSource data_jdbc_source;
+    private ModelDefinition model_definition;
+    private String secret_key;
     private ArrayList<String> table_list;
-    private String data_lookup_category;
-    private String model_version;
-    private String model_database_schem;
-    private String model_database_field_open_quote;
-    private String model_database_field_close_quote;
     
     private static String nl = "\n";
     private static String section_separator = "\n-------------------------------------------------------------------------------\n";
     private static String data_separator = "  -------------------------  ";
 
-    public MetadataMiner(Integer model_id, String java_package_name, JDBCSource data_model_source, JDBCSource model_database_source, ArrayList<String> table_list, String data_lookup_category, String model_version, String model_database_schem, String model_database_field_open_quote, String model_database_field_close_quote, String secret_key) throws Exception {
+    public MetadataMiner(Integer model_id, String java_package_name, JDBCSource model_jdbc_source, JDBCSource data_jdbc_source, ArrayList<String> table_list, ModelDefinition model_definition, String secret_key) throws Exception {
         this.model_id = model_id == null ? -1 : model_id;
         this.java_package_name = java_package_name;
-        this.data_model_source = data_model_source;
-        this.model_database_source = model_database_source;
+        this.model_jdbc_source = model_jdbc_source;
+        this.data_jdbc_source = data_jdbc_source;
         this.table_list = table_list;
-        this.data_lookup_category = data_lookup_category;
-        this.model_version = model_version;
-        this.model_database_schem = model_database_schem;
-        this.model_database_field_open_quote = model_database_field_open_quote;
-        this.model_database_field_close_quote = model_database_field_close_quote;
+        this.model_definition = model_definition;
         this.secret_key = secret_key;
     }
     
     public Integer generateModel(PrintWriter writer, JsonArray generating_time_elements) throws Exception {
-        String model_database = model_database_source.getDatabaseName();
-        ArrayList<String> models = new ArrayList<String>(Arrays.asList(new String[]{model_database}));
+        ArrayList<String> models = new ArrayList<String>(Arrays.asList(new String[]{data_jdbc_source.getDatabaseName()}));
         long t1, t2;
         Boolean write_output = true;
         if (writer == null) {
             writer = new PrintWriter(PrintWriter.nullWriter());
             write_output = false;
         }
-        try (Connection data_model_connection = data_model_source.getConnection(false)) {
-            try (Statement st = data_model_connection.createStatement()) {
-                String sql = "SELECT `enum_name`, `enum_element_id`, `enum_element_code`, `enum_element_java_datatype`, `enum_element_typescript_datatype` FROM `data`.`lookup_enum` INNER JOIN `data`.`lookup_enum_element` ON `lookup_enum`.`enum_id` = `lookup_enum_element`.`enum_id` WHERE `lookup_enum`.`enum_name`='"+data_lookup_category+"' ORDER BY `enum_name`, `enum_element_code`";
+        try (Connection model_connection = model_jdbc_source.getConnection(false)) {
+            try (Statement st = model_connection.createStatement()) {
+                String sql = "SELECT `enum_name`, `enum_element_id`, `enum_element_code`, `enum_element_java_datatype`, `enum_element_typescript_datatype` FROM `model`.`lookup_enum` INNER JOIN `model`.`lookup_enum_element` ON `lookup_enum`.`enum_id` = `lookup_enum_element`.`enum_id` WHERE `lookup_enum`.`enum_name`='"+model_definition.model_data_lookup_category+"' ORDER BY `enum_name`, `enum_element_code`";
                 try (ResultSet rs = st.executeQuery(sql)) {
-                    data_lookup = new DataLookup(rs, data_lookup_category, "enum_name", "enum_element_id", "enum_element_code", "enum_element_java_datatype", "enum_element_typescript_datatype");
+                    data_lookup = new DataLookup(rs, model_definition.model_data_lookup_category, "enum_name", "enum_element_id", "enum_element_code", "enum_element_java_datatype", "enum_element_typescript_datatype");
                     rs.close();
                 } catch (Exception ex) {
                     throw ex;
@@ -123,7 +113,7 @@ public class MetadataMiner {
         String source_url = null;
         String model_url = null;
         Enterprise model_enterprise = null;
-        try (Connection model_database_connection = model_database_source.getConnection(false)) {
+        try (Connection model_database_connection = data_jdbc_source.getConnection(false)) {
             t1 = System.nanoTime();
             databaseMetaData = model_database_connection.getMetaData();
             databaseEngine = databaseMetaData.getDatabaseProductName();
@@ -131,19 +121,19 @@ public class MetadataMiner {
             source_url = databaseMetaData.getURL();
             model_url = databaseMetaData.getURL();
             if (databaseEngine.toLowerCase().contains("mysql")) {
-                model_database_connection.createStatement().execute("USE " + this.model_database_field_open_quote + model_database + this.model_database_field_close_quote);
+                model_database_connection.createStatement().execute("USE " + data_jdbc_source.getDatabaseOpenQuote() + data_jdbc_source.getDatabaseName() + data_jdbc_source.getDatabaseCloseQuote());
                 databaseEngine = "mysql";
             } else if (databaseEngine.toLowerCase().contains("sql server")) {
-                model_database_connection.createStatement().execute("USE " + this.model_database_field_open_quote + model_database + this.model_database_field_close_quote);
+                model_database_connection.createStatement().execute("USE " + data_jdbc_source.getDatabaseOpenQuote() + data_jdbc_source.getDatabaseName() + data_jdbc_source.getDatabaseCloseQuote());
                 databaseEngine = "sql server";
             } else if (databaseEngine.toLowerCase().contains("informix")) {
-                model_database_connection.createStatement().execute("DATABASE " + this.model_database_field_open_quote + model_database + this.model_database_field_close_quote);
+                model_database_connection.createStatement().execute("DATABASE " + data_jdbc_source.getDatabaseOpenQuote() + data_jdbc_source.getDatabaseName() + data_jdbc_source.getDatabaseCloseQuote());
                 databaseEngine = "informix";
             } else {
                 throw new Exception("Database '"+databaseEngine+"' is not implemented yet");
             }
         
-            model_enterprise = new Enterprise(model_database, databaseEngine, databaseURL, case_sensitive_sql);
+            model_enterprise = new Enterprise(data_jdbc_source.getDatabaseName(), databaseEngine, databaseURL, case_sensitive_sql);
 
             ResultSet dbrs = databaseMetaData.getCatalogs();
             ResultSetMetaData dbrsmd = dbrs.getMetaData();
@@ -186,7 +176,7 @@ public class MetadataMiner {
                         continue;//ignore
                     }
                     
-                    if (model_database_schem != null && tableSchem != null && model_database_schem.length() > 0 && tableSchem.equalsIgnoreCase(model_database_schem) == false) {
+                    if (data_jdbc_source.getDatabaseSchem() != null && tableSchem != null && data_jdbc_source.getDatabaseSchem().length() > 0 && tableSchem.equalsIgnoreCase(data_jdbc_source.getDatabaseSchem()) == false) {
                         continue;
                     }
                     /*if (tableName.equalsIgnoreCase("sysdiagrams")) {
@@ -456,7 +446,7 @@ public class MetadataMiner {
                         String foundTablesPathString = database.pathToString(foundTablesPath);
                         writer.append(foundTablesPathString);
                         writer.append("\n");
-                        String datasetJSON = database.getInnerJoinedSelect(foundTablesPathString, model_database_schem, model_database_field_open_quote, model_database_field_close_quote).toString();
+                        String datasetJSON = database.getInnerJoinedSelect(foundTablesPathString, data_jdbc_source.getDatabaseSchem(), data_jdbc_source.getDatabaseOpenQuote(), data_jdbc_source.getDatabaseCloseQuote()).toString();
                         /*create the path
                         search tables for this path
                         if path not found throw exception
@@ -521,11 +511,11 @@ public class MetadataMiner {
         //Analysing Database model
         Integer instance_sequence_type_id = 1;
         String instance_sequence_last_value = "0";
-        String model_name = model_database + " - Enterprise Model";
-        String model_description = model_database + " - Database Enterprise Model";
+        String model_name = data_jdbc_source.getDatabaseName() + " - Enterprise Model";
+        String model_description = data_jdbc_source.getDatabaseName() + " - Database Enterprise Model";
         
         t1 = System.nanoTime();
-        DataProcessor<Enterprise> dataProcessor = new DataProcessor<Enterprise>(EnterpriseModel.class, Enterprise.class, data_model_source.getDatabaseName(), model_database, model_version, model_name, model_description, data_lookup_category, data_lookup);
+        DataProcessor<Enterprise> dataProcessor = new DataProcessor<Enterprise>(EnterpriseModel.class, Enterprise.class, model_jdbc_source, model_definition, data_lookup);
         //SchemaClass dataClass = dataProcessor.getSchemaClass();
         //t2 = System.nanoTime();
         //generating_time_elements.add("Schema Class Walk = " + TimeUnit.MILLISECONDS.convert(t2 - t1, TimeUnit.NANOSECONDS) + " ms");
@@ -539,11 +529,11 @@ public class MetadataMiner {
         
         t1 = System.nanoTime();
         
-        model_id = dataProcessor.createDatabase(data_model_source, this.model_id, source_url, model_database_source.getUserName(), model_database_source.getUserPassword(), model_url, instance_sequence_type_id, instance_sequence_last_value, model_database_schem, model_database_field_open_quote, model_database_field_close_quote, secret_key);
+        model_id = dataProcessor.generateModel(data_jdbc_source, model_id, instance_sequence_type_id, instance_sequence_last_value, secret_key);
         t2 = System.nanoTime();
         generating_time_elements.add("04- Create Model ID [" + model_id + "] Data Class in Database = " + TimeUnit.MILLISECONDS.convert(t2 - t1, TimeUnit.NANOSECONDS) + " ms");
         
-        EnterpriseModel<Enterprise> enterprise_model = new EnterpriseModel<Enterprise>(model_enterprise, model_version, model_name, model_description);
+        EnterpriseModel<Enterprise> enterprise_model = new EnterpriseModel<Enterprise>(model_enterprise, model_definition);
         
         /*t1 = System.nanoTime();
         dataProcessor.addDataModel(enterprise_model);
@@ -559,7 +549,7 @@ public class MetadataMiner {
         String data_mysql_database_field_close_quote = "`";
         //String DataSqlServerDatabaseFieldOpenQuote = "[";
         //String DataSqlServerDatabaseFieldCloseQuote = "]";
-        DataModel<Enterprise> savedModel = dataProcessor.saveNewDataModelToDatabase(writer, data_model_source, enterprise_model, data_mysql_database_field_open_quote, data_mysql_database_field_close_quote);
+        DataModel<Enterprise> savedModel = dataProcessor.saveModelToDatabase(writer, data_jdbc_source, enterprise_model, data_mysql_database_field_open_quote, data_mysql_database_field_close_quote);
         t2 = System.nanoTime();
         generating_time_elements.add("05- Save Schema To Database = " + TimeUnit.MILLISECONDS.convert(t2 - t1, TimeUnit.NANOSECONDS) + " ms");
         t1 = System.nanoTime();
@@ -573,28 +563,28 @@ public class MetadataMiner {
         return model_id;
     }
     
-    public void loadModel(JDBCSource data_model_source, PrintWriter writer) throws Exception {
+    public void loadModel(JDBCSource model_jdbc_source, PrintWriter writer) throws Exception {
         long t1, t2;
         String timeText = "";
         writer.append("Loaded Models").append("\n");
         t1 = System.nanoTime();
-        DataProcessor<Enterprise> dataProcessor = new DataProcessor<Enterprise>(EnterpriseModel.class, Enterprise.class, data_model_source.getDatabaseName(), model_database_source.getDatabaseName(), model_version, model_name, model_description, data_lookup_category, data_lookup);
-        ArrayList<Integer> modelInstanceIDs = dataProcessor.selectModelInstanceIDsFromDatabase(data_model_source);
+        DataProcessor<Enterprise> dataProcessor = new DataProcessor<Enterprise>(EnterpriseModel.class, Enterprise.class, model_jdbc_source, model_definition, data_lookup);
+        ArrayList<Integer> model_instance_ids = dataProcessor.selectModelInstanceIDsFromDatabase(model_definition.modeled_database_name);
         t2 = System.nanoTime();
         StringBuilder ids = new StringBuilder();
-        for (Integer id : modelInstanceIDs) {
+        for (Integer id : model_instance_ids) {
             ids.append(id).append(",");
         }
         ids = ids.length() == 0 ? ids : ids.delete(ids.length()-1, ids.length());
         timeText += "Select Model Instance IDs [" + ids.toString() + "] From Database = " + TimeUnit.MILLISECONDS.convert(t2 - t1, TimeUnit.NANOSECONDS) + " ms" + "\n";
-        for (Integer modelInstanceID : modelInstanceIDs) {
+        for (Integer model_instance_id : model_instance_ids) {
             t1 = System.nanoTime();
             //SchemaClass.LoadMethod loadMethod = SchemaClass.LoadMethod.JSON;
             DataClass.LoadMethod loadMethod = DataClass.LoadMethod.REFLECTION;
-            EnterpriseModel<Enterprise> newEnterpriseModel = (EnterpriseModel<Enterprise>) dataProcessor.loadDataModelFromDatabase(data_model_source, modelInstanceID, loadMethod);
+            EnterpriseModel<Enterprise> newEnterpriseModel = (EnterpriseModel<Enterprise>) dataProcessor.loadModelFromDatabase(model_id, model_instance_id, loadMethod);
             Enterprise loadedEnterprise = newEnterpriseModel.getInstance();
             t2 = System.nanoTime();
-            timeText += "Load [" + model_name + "-" + model_version + "-" + model_database_source.getDatabaseName() + "] DataInstance [" + modelInstanceID + "] From Database = " + ((t2 - t1)/1000000d) + "\n";
+            timeText += "Load [" + model_name + "-" + model_definition.model_version + "-" + data_jdbc_source.getDatabaseName() + "] DataInstance [" + model_instance_id + "] From Database = " + ((t2 - t1)/1000000d) + "\n";
             t1 = System.nanoTime();
             
             writer.append("Loaded Model [");
@@ -622,24 +612,24 @@ public class MetadataMiner {
         declaredField.set(object, value);
     }
     
-    public static void deleteDataModel(JDBCSource data_model_source, Integer data_model_id, Integer data_model_instance_id) throws Exception {
-            try (Connection data_model_database_connection = data_model_source.getConnection(false)) {
-                HashMap<Integer, ArrayList<Integer>> data_model_instance_map = new HashMap<>();
-                String select_data_model_instance = "SELECT instance_id, data_model_id FROM data_model_instance WHERE data_model_id=?";
-                try ( PreparedStatement select_data_model_instance_stmt = data_model_database_connection.prepareStatement(select_data_model_instance)) {
-                    select_data_model_instance_stmt.setInt(1, data_model_id);
-                    ResultSet rs = select_data_model_instance_stmt.executeQuery();
+    public static void deleteDataModel(JDBCSource model_jdbc_source, Integer model_id, Integer model_instance_id) throws Exception {
+            try (Connection model_database_connection = model_jdbc_source.getConnection(false)) {
+                HashMap<Integer, ArrayList<Integer>> model_instance_map = new HashMap<>();
+                String select_model_instance = "SELECT `model_instance_id`, `model_id` FROM `model_instance` WHERE `model_id`=?";
+                try ( PreparedStatement select_model_instance_stmt = model_database_connection.prepareStatement(select_model_instance)) {
+                    select_model_instance_stmt.setInt(1, model_id);
+                    ResultSet rs = select_model_instance_stmt.executeQuery();
                     if (rs.next()) {
-                        Integer _data_model_id = rs.getInt("data_model_id");
-                        Integer _data_model_instance_id = rs.getInt("instance_id");
-                        if (data_model_instance_map.containsKey(_data_model_id) == false) {
-                            data_model_instance_map.put(_data_model_id, new ArrayList<Integer>());
+                        Integer _model_id = rs.getInt("model_id");
+                        Integer _model_instance_id = rs.getInt("model_instance_id");
+                        if (model_instance_map.containsKey(_model_id) == false) {
+                            model_instance_map.put(_model_id, new ArrayList<Integer>());
                         }
-                        data_model_instance_map.get(_data_model_id).add(_data_model_instance_id);
+                        model_instance_map.get(_model_id).add(_model_instance_id);
                     } else {
-                        data_model_instance_map.put(data_model_id, new ArrayList<Integer>());
-                        data_model_instance_map.get(data_model_id).add(0);
-                        data_model_instance_id = 0;
+                        model_instance_map.put(model_id, new ArrayList<Integer>());
+                        model_instance_map.get(model_id).add(0);
+                        model_instance_id = 0;
                     }
                 } catch (Exception ex) {
                     throw ex;
@@ -647,93 +637,93 @@ public class MetadataMiner {
 
                 String delete_sql;
                 ArrayList<Integer> deleted_instance_list = new ArrayList<Integer>();
-                for (Map.Entry<Integer, ArrayList<Integer>> data_model_instance_entry : data_model_instance_map.entrySet()) {
-                    Integer model_id = data_model_instance_entry.getKey();
-                    ArrayList<Integer> instance_id_list = (ArrayList<Integer>) data_model_instance_entry.getValue();
+                for (Map.Entry<Integer, ArrayList<Integer>> model_instance_entry : model_instance_map.entrySet()) {
+                    Integer selected_model_id = model_instance_entry.getKey();
+                    ArrayList<Integer> instance_id_list = (ArrayList<Integer>) model_instance_entry.getValue();
                     for (Integer instance_id : instance_id_list) {
-                        if (data_model_id.equals(model_id) == false) {
+                        if (model_id.equals(selected_model_id) == false) {
                             continue;
                         }
-                        if (data_model_instance_id.equals(0) == false && data_model_instance_id.equals(instance_id) == false) {
+                        if (model_instance_id.equals(0) == false && model_instance_id.equals(instance_id) == false) {
                             continue;
                         }
-                        delete_sql = "DELETE FROM `data`.`referencedkeyfield` WHERE data_model_id=? AND instance_id=?";
-                        deleteDataModelInstance(data_model_database_connection, delete_sql, model_id, instance_id);
-                        delete_sql = "DELETE FROM `data`.`foreignkeyfield` WHERE data_model_id=? AND instance_id=?";
-                        deleteDataModelInstance(data_model_database_connection, delete_sql, model_id, instance_id);
-                        delete_sql = "DELETE FROM `data`.`foreignkey` WHERE data_model_id=? AND instance_id=?";
-                        deleteDataModelInstance(data_model_database_connection, delete_sql, model_id, instance_id);
-                        delete_sql = "DELETE FROM `data`.`primarykeyfield` WHERE data_model_id=? AND instance_id=?";
-                        deleteDataModelInstance(data_model_database_connection, delete_sql, model_id, instance_id);
-                        delete_sql = "DELETE FROM `data`.`primarykey` WHERE data_model_id=? AND instance_id=?";
-                        deleteDataModelInstance(data_model_database_connection, delete_sql, model_id, instance_id);
-                        delete_sql = "DELETE FROM `data`.`field` WHERE data_model_id=? AND instance_id=?";
-                        deleteDataModelInstance(data_model_database_connection, delete_sql, model_id, instance_id);
-                        delete_sql = "DELETE FROM `data`.`childtable` WHERE data_model_id=? AND instance_id=?";
-                        deleteDataModelInstance(data_model_database_connection, delete_sql, model_id, instance_id);
-                        delete_sql = "DELETE FROM `data`.`table` WHERE data_model_id=? AND instance_id=?";
-                        deleteDataModelInstance(data_model_database_connection, delete_sql, model_id, instance_id);
-                        delete_sql = "DELETE FROM `data`.`database` WHERE data_model_id=? AND instance_id=?";
-                        deleteDataModelInstance(data_model_database_connection, delete_sql, model_id, instance_id);
-                        delete_sql = "DELETE FROM `data`.`enterprise` WHERE data_model_id=? AND instance_id=?";
-                        deleteDataModelInstance(data_model_database_connection, delete_sql, model_id, instance_id);
+                        delete_sql = "DELETE FROM `model`.`referencedkeyfield` WHERE `model_id`=? AND `model_instance_id`=?";
+                        deleteDataModelInstance(model_database_connection, delete_sql, selected_model_id, instance_id);
+                        delete_sql = "DELETE FROM `model`.`foreignkeyfield` WHERE `model_id`=? AND `model_instance_id`=?";
+                        deleteDataModelInstance(model_database_connection, delete_sql, selected_model_id, instance_id);
+                        delete_sql = "DELETE FROM `model`.`foreignkey` WHERE `model_id`=? AND `model_instance_id`=?";
+                        deleteDataModelInstance(model_database_connection, delete_sql, selected_model_id, instance_id);
+                        delete_sql = "DELETE FROM `model`.`primarykeyfield` WHERE `model_id`=? AND `model_instance_id`=?";
+                        deleteDataModelInstance(model_database_connection, delete_sql, selected_model_id, instance_id);
+                        delete_sql = "DELETE FROM `model`.`primarykey` WHERE `model_id`=? AND `model_instance_id`=?";
+                        deleteDataModelInstance(model_database_connection, delete_sql, selected_model_id, instance_id);
+                        delete_sql = "DELETE FROM `model`.`field` WHERE `model_id`=? AND `model_instance_id`=?";
+                        deleteDataModelInstance(model_database_connection, delete_sql, selected_model_id, instance_id);
+                        delete_sql = "DELETE FROM `model`.`childtable` WHERE `model_id`=? AND `model_instance_id`=?";
+                        deleteDataModelInstance(model_database_connection, delete_sql, selected_model_id, instance_id);
+                        delete_sql = "DELETE FROM `model`.`table` WHERE `model_id`=? AND `model_instance_id`=?";
+                        deleteDataModelInstance(model_database_connection, delete_sql, selected_model_id, instance_id);
+                        delete_sql = "DELETE FROM `model`.`database` WHERE `model_id`=? AND `model_instance_id`=?";
+                        deleteDataModelInstance(model_database_connection, delete_sql, selected_model_id, instance_id);
+                        delete_sql = "DELETE FROM `model`.`enterprise` WHERE `model_id`=? AND `model_instance_id`=?";
+                        deleteDataModelInstance(model_database_connection, delete_sql, selected_model_id, instance_id);
 
-                        delete_sql = "DELETE FROM `data`.data_model_sequence WHERE data_model_id=? AND instance_id=?";
-                        deleteDataModel(data_model_database_connection, delete_sql, data_model_id, instance_id);
-                        delete_sql = "DELETE FROM `data`.data_model_instance WHERE data_model_id=? AND instance_id=?";
-                        deleteDataModel(data_model_database_connection, delete_sql, data_model_id, instance_id);
+                        delete_sql = "DELETE FROM `model`.model_sequence WHERE `model_id`=? AND `model_instance_id`=?";
+                        deleteDataModel(model_database_connection, delete_sql, model_id, instance_id);
+                        delete_sql = "DELETE FROM `model`.model_instance WHERE `model_id`=? AND `model_instance_id`=?";
+                        deleteDataModel(model_database_connection, delete_sql, model_id, instance_id);
 
                         deleted_instance_list.add(instance_id);
                     }
                 }
-                if (data_model_instance_map.size() > 0 && data_model_instance_map.get(data_model_id).size() == deleted_instance_list.size()) {
-                    delete_sql = "DELETE FROM `data`.data_model WHERE id=?";
-                    deleteDataModel(data_model_database_connection, delete_sql, data_model_id);
+                if (model_instance_map.size() > 0 && model_instance_map.get(model_id).size() == deleted_instance_list.size()) {
+                    delete_sql = "DELETE FROM `model`.`model` WHERE `model_id`=?";
+                    deleteDataModel(model_database_connection, delete_sql, model_id);
                 }
 
-                data_model_database_connection.commit();
+                model_database_connection.commit();
             } catch (Exception ex) {
                 throw ex;
             }
     }
     
-    public static void deleteDataModelInstance(Connection data_model_source, String delete_sql, Integer data_model_id, Integer data_model_instance_id) throws Exception {
-        try ( PreparedStatement delete_stmt = data_model_source.prepareStatement(delete_sql)) {
-            delete_stmt.setInt(1, data_model_id);
-            delete_stmt.setInt(2, data_model_instance_id);
+    public static void deleteDataModelInstance(Connection model_jdbc_source_connection, String delete_sql, Integer model_id, Integer model_instance_id) throws Exception {
+        try ( PreparedStatement delete_stmt = model_jdbc_source_connection.prepareStatement(delete_sql)) {
+            delete_stmt.setInt(1, model_id);
+            delete_stmt.setInt(2, model_instance_id);
             delete_stmt.executeUpdate();
         } catch (Exception ex) {
             throw ex;
         }
     }
     
-    public static void deleteDataModel(Connection data_source, String delete_sql, Integer data_model_id, Integer data_model_instance_id) throws Exception {
-        try ( PreparedStatement delete_stmt = data_source.prepareStatement(delete_sql)) {
-            delete_stmt.setInt(1, data_model_id);
-            delete_stmt.setInt(2, data_model_instance_id);
+    public static void deleteDataModel(Connection model_jdbc_source_connection, String delete_sql, Integer model_id, Integer model_instance_id) throws Exception {
+        try ( PreparedStatement delete_stmt = model_jdbc_source_connection.prepareStatement(delete_sql)) {
+            delete_stmt.setInt(1, model_id);
+            delete_stmt.setInt(2, model_instance_id);
             delete_stmt.executeUpdate();
         } catch (Exception ex) {
             throw ex;
         }
     }
     
-    public static void deleteDataModel(Connection data_source, String delete_sql, Integer data_model_id) throws Exception {
-        try ( PreparedStatement delete_stmt = data_source.prepareStatement(delete_sql)) {
-            delete_stmt.setInt(1, data_model_id);
+    public static void deleteDataModel(Connection model_jdbc_source_connection, String delete_sql, Integer model_id) throws Exception {
+        try ( PreparedStatement delete_stmt = model_jdbc_source_connection.prepareStatement(delete_sql)) {
+            delete_stmt.setInt(1, model_id);
             delete_stmt.executeUpdate();
         } catch (Exception ex) {
             throw ex;
         }
     }
     
-    public static void printModelDataStructures(JDBCSource data_model_source, Integer data_model_id, Integer data_model_instance_id, PrintWriter writer, Integer print_styel) throws Exception {
-        String select_data_model_instance = "SELECT `name`, `database_servlet_uri`, `java_data_structure_class`, `database_servlet_class`, `typescript_data_structure_class`, `typescript_request_send_response`, `typescript_form_component_ts`, `typescript_form_component_html`, `typescript_table_component_ts`, `typescript_table_component_html`, `http_requests` FROM `data`.`table` WHERE `data_model_id` = ? AND `instance_id` = ?";
+    public static void printModelDataStructures(JDBCSource model_jdbc_source, Integer model_id, Integer model_instance_id, PrintWriter writer, Integer print_styel) throws Exception {
+        String select_model_instance = "SELECT `name`, `database_servlet_uri`, `java_data_structure_class`, `database_servlet_class`, `typescript_data_structure_class`, `typescript_request_send_response`, `typescript_form_component_ts`, `typescript_form_component_html`, `typescript_table_component_ts`, `typescript_table_component_html`, `http_requests` FROM `model`.`table` WHERE `model_id` = ? AND `model_instance_id` = ?";
         ArrayList<DataStructure> data_structure_list = null;
-        try ( Connection data_model_database_connection = data_model_source.getConnection(false)) {
-            try ( PreparedStatement select_data_model_instance_stmt = data_model_database_connection.prepareStatement(select_data_model_instance)) {
-                select_data_model_instance_stmt.setInt(1, data_model_id);
-                select_data_model_instance_stmt.setInt(2, data_model_instance_id);
-                ResultSet rs = select_data_model_instance_stmt.executeQuery();
+        try ( Connection model_database_connection = model_jdbc_source.getConnection(false)) {
+            try ( PreparedStatement select_model_instance_stmt = model_database_connection.prepareStatement(select_model_instance)) {
+                select_model_instance_stmt.setInt(1, model_id);
+                select_model_instance_stmt.setInt(2, model_instance_id);
+                ResultSet rs = select_model_instance_stmt.executeQuery();
                 data_structure_list =  JsonResultset.resultset(rs, DataStructure.class);
             } catch (Exception ex) {
                 throw ex;
@@ -742,7 +732,7 @@ public class MetadataMiner {
             throw ex;
         }
         if (data_structure_list == null) {
-            throw new Exception("Data Model id '"+data_model_id+"' instance '"+data_model_instance_id+"' is not exist!");
+            throw new Exception("Data Model id '"+model_id+"' instance '"+model_instance_id+"' is not exist!");
         }
         if (print_styel == 1) {
             StringBuilder database_servlet_uri = new StringBuilder();

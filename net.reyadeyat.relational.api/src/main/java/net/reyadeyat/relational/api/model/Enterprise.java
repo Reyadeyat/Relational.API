@@ -45,7 +45,7 @@ public class Enterprise {
     public ArrayList<Database> databases;
     transient public TreeMap<String, Database> database_map;
     
-    /**no-arg default constructor for jaxb marshalling*/
+    /**no-arg default constructor for json jaxb marshalling*/
     public Enterprise() {
         databases = new ArrayList<Database>();
         database_map = new TreeMap<String, Database>();

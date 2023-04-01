@@ -14,9 +14,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package net.reyadeyat.relational.api.jdbc;
 
-import java.sql.Connection;
+package net.reyadeyat.relational.api.database;
+
+import com.google.gson.JsonArray;
 
 /**
  * 
@@ -28,15 +29,7 @@ import java.sql.Connection;
  * 
  * @since 2023.01.01
  */
-public interface JDBCSource {
-    Connection getConnection(Boolean auto_commit) throws Exception;
-    String getUserName() throws Exception;
-    String getUserPassword() throws Exception;
-    String getDatabaseEngine() throws Exception;
-    String getURL() throws Exception;
-    String getDatabaseServer() throws Exception;
-    String getDatabaseName() throws Exception;
-    String getDatabaseSchem() throws Exception;
-    String getDatabaseOpenQuote() throws Exception;
-    String getDatabaseCloseQuote() throws Exception;
+public interface FieldProcessor {
+    public String preProcessedValue(Field field, Integer operation, String value, JsonArray errorList) throws Exception;
+    public Object postProcessedValue(Field field, Integer operation, Object value, JsonArray errorList) throws Exception;
 }
