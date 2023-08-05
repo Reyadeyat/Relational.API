@@ -30,6 +30,8 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.io.OutputStream;
 import java.sql.Connection;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.sql.DataSource;
@@ -48,6 +50,33 @@ public abstract class RelationalRequest implements RecordHandler {
     
     private Table table;
     
+    //Security
+    private Integer security_flag;
+    static final public Integer SECURITY_FLAG_ASSERT_VALID_FIELD_NAMES = 1;
+    static final public Integer SECURITY_FLAG_DONT_RETURN_RESPONSE_MESSAGE = 2;
+    static final public Integer SECURITY_FLAG_RETURN_TECHNICAL_RESPONSE_MESSAGE = 4;
+    static final public Integer SECURITY_FLAG_RETURN_DESCRIPTIVE_RESPONSE_MESSAGE = 8;
+    static final public Integer SECURITY_FLAG_DONT_RETURN_GENERATED_ID = 16;
+    static final public Integer SECURITY_FLAG_RETURN_GENERATED_ID = 32;
+    static final public Integer SECURITY_FLAG_RETURN_GENERATED_ID_ENCRYPTED = 64;
+    static final public Integer SECURITY_FLAG_RETURN_RESPONSE_ENCRYPTED = 128;
+    
+    private ArrayList<String> transaction_type;
+    private String valid_transaction_type;
+    
+    public RelationalRequest() {
+        
+    }
+    
+    public Boolean isSecurityFlagSwitched(int SECURITY_FLAG) {
+        return (security_flag & SECURITY_FLAG) != 0;
+    }
+    
+    protected void defineTransactions(String... operations) {
+        transaction_type = new ArrayList<String>(Arrays.<String>asList(operations));
+        valid_transaction_type = String.join(",", transaction_type);
+    }
+    
     protected JsonElement serviceContent(InputStream json_request_stream, OutputStream response_output_stream) throws Exception {
         Gson gson = JsonUtil.gson();
         
@@ -62,12 +91,13 @@ public abstract class RelationalRequest implements RecordHandler {
         return json_request;
     }
 
-    public void serviceTransaction(Integer security_flag, Connection jdbc_connection, InputStream json_request_stream, OutputStream response_output_stream, String valid_transaction_type, JsonArray log_list, JsonArray error_list) throws Exception {
+    public void serviceTransaction(Integer security_flag, InputStream json_request_stream, OutputStream response_output_stream, Connection jdbc_connection, JsonArray log_list, JsonArray error_list) throws Exception {
         JsonElement json_request = serviceContent(json_request_stream, response_output_stream);
-        serviceTransaction(security_flag, json_request, response_output_stream, jdbc_connection, valid_transaction_type, log_list, error_list);
+        serviceTransaction(security_flag, json_request, response_output_stream, jdbc_connection, log_list, error_list);
     }
     
-    public void serviceTransaction(Integer security_flag, JsonElement json_request, OutputStream response_output_stream, Connection jdbc_connection, String valid_transaction_type, JsonArray log_list, JsonArray error_list) throws Exception {
+    public void serviceTransaction(Integer security_flag, JsonElement json_request, OutputStream response_output_stream, Connection jdbc_connection, JsonArray log_list, JsonArray error_list) throws Exception {
+        this.security_flag = security_flag;
         if (json_request == null) {
             error_list.add("Bad Request, Non JSON received => " + json_request.toString());
             return;

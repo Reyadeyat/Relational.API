@@ -36,4 +36,13 @@ public class BooleanParser {
         }
         throw new Exception("Boolean string '" + booleanString + "' is invalid use {0,1,true,false,yes,no,on,off}");
     }
+    
+    static public Boolean isParsable(String booleanString) throws Exception {
+        if ("on,1,true,yes".indexOf(booleanString.toLowerCase()) > -1) {
+            return true;
+        } else if ("off,0,false,no".indexOf(booleanString.toLowerCase()) > -1) {
+            return false;
+        }
+        throw new Exception("Boolean string '" + booleanString + "' is invalid use {0,1,true,false,yes,no,on,off}");
+    }
 }
