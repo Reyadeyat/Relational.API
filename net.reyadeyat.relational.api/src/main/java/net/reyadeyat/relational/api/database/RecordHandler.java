@@ -22,6 +22,7 @@ import com.google.gson.JsonObject;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import javax.sql.DataSource;
+import net.reyadeyat.relational.api.jdbc.JDBCSource;
 
 /**
  * 
@@ -35,7 +36,10 @@ import javax.sql.DataSource;
  */
 public interface RecordHandler {
     public String getDefaultDatasourceName();
-    public DataSource getDataSource(String datasource_name);
+    public DataSource getDataSource(String datasource_name) throws Exception;
+    public JDBCSource getJDBCSource(String datasource_name) throws Exception;
+    public Connection getDataSourceConnection(String datasource_name) throws Exception;
+    public Connection getJDBCSourceConnection(String datasource_name) throws Exception;
     public Connection getDatabaseConnection(String datasurce_name) throws Exception;
     public Boolean insertPreLogic(RecordProcessor record_processor, Connection con) throws Exception;
     public Boolean insertPostLogic(RecordProcessor record_processor, Connection con) throws Exception;

@@ -32,9 +32,12 @@ import java.io.OutputStream;
 import java.sql.Connection;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Map;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.sql.DataSource;
+import net.reyadeyat.relational.api.jdbc.JDBCSource;
 
 /**
  * 
@@ -103,45 +106,41 @@ public abstract class RelationalRequest implements RecordHandler {
             return;
         }
         JsonObject jsonObject = json_request.getAsJsonObject();
-        String transactionType = (jsonObject.get("transaction") == null ? null : jsonObject.get("transaction").getAsString());
-        if (transactionType == null || valid_transaction_type.contains(transactionType) == false) {
-            error_list.add("Bad Request, invalid transaction [" + transactionType + "] - valid transactions are [" + valid_transaction_type + "]");
-            return;
-        }
-        if (table == null) {
-            error_list.add("Internal System Error, Contact Adminstrator, uninitialized 'transaction_type' is null");
-            return;
-        }        
         JsonObject database_request = json_request.getAsJsonObject();
         log_list.add("Start-Process");
-        RecordProcessor record_processor = new RecordProcessor(database_request, response_output_stream);
-        //table.process(record_processor, this);
+        Set<Map.Entry<String, JsonElement>> table_set = database_request.entrySet();
+        for (Map.Entry<String, JsonElement> table_entry : table_set) {
+            String table_name = table_entry.getKey();
+            JsonObject table_request = table_entry.getValue().getAsJsonObject();
+            RecordHandler record_handler= this;
+            table.process(table_name, table_request, response_output_stream, record_handler);
+        }
         log_list.add("End-Process");
     }
     
-    protected void defineService(String servlet_name, String default_datasource_name, String database_name, String table_tree_string) throws Exception {
-        JsonObject table_tree = JsonUtil.jsonStringToJsonElelement(table_tree_string).getAsJsonObject();
-        defineService(servlet_name, default_datasource_name, database_name, table_tree);
-    }
- 
-    protected void defineService(String servlet_name, String default_datasource_name, String database_name, JsonObject table_tree) throws Exception {
+    protected void defineService(JsonObject service) throws Exception {
+        String service_name = JsonUtil.getJsonString(service, "service_name", false);
         try {
+            String database_name = JsonUtil.getJsonString(service, "database_name", false);
+            String default_datasource_name = JsonUtil.getJsonString(service, "default_datasource_name", false);
             if (default_datasource_name == null || default_datasource_name.length() == 0) {
                 throw new Exception("Default Source Name can not be null");
             }
             //this.database_name = database_name;
-            String model_data_source_name = JsonUtil.getJsonString(table_tree, "model_data_source_name", false);
-            String model_data_database_name = JsonUtil.getJsonString(table_tree, "model_data_database_name", false);
-            Integer model_id = JsonUtil.getJsonInteger(table_tree, "model_id", false);
-            DataSource model_data_source = getDataSource(model_data_source_name);
+            String model_datasource_name = JsonUtil.getJsonString(service, "model_datasource_name", false);
+            String data_datasource_name = JsonUtil.getJsonString(service, "data_datasource_name", false);
+            Integer model_id = JsonUtil.getJsonInteger(service, "model_id", false);
+            JDBCSource model_jdbc_source = getJDBCSource(model_datasource_name);
+            JDBCSource data_jdbc_source = getJDBCSource(data_datasource_name);
             JsonArray error_list = new JsonArray();
-            //Table.loadModel(model_data_source, model_data_database_name, model_id, error_list);
+            Table.loadDataModel(model_jdbc_source, data_jdbc_source, model_id, error_list);
             if (error_list.size() > 0) {
                 //error;
             }
+            JsonObject table_tree = JsonUtil.getJsonObject(service, "table_tree", false);
             table = new Table(model_id, null, database_name, table_tree);
         } catch (Exception ex) {
-            Logger.getLogger(this.getClass().getName()).log(Level.SEVERE, "Error: defineServlet '"+servlet_name+"'", ex);
+            Logger.getLogger(this.getClass().getName()).log(Level.SEVERE, "Error: defineServlet '"+service_name+"'", ex);
             throw ex;
         }
         
