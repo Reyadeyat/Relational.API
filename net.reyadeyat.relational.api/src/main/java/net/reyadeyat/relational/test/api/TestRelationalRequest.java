@@ -17,12 +17,9 @@
 package net.reyadeyat.relational.test.api;
 
 import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import java.io.ByteArrayOutputStream;
-import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -36,13 +33,13 @@ import net.reyadeyat.relational.api.json.JsonUtil;
 import net.reyadeyat.relational.api.request.RelationalRequest;
 
 /**
- * 
+ *
  * Description
- * 
+ *
  *
  * @author Mohammad Nabil Mostafa
  * <a href="mailto:code@reyadeyat.net">code@reyadeyat.net</a>
- * 
+ *
  * @since 2023.07.01
  */
 public class TestRelationalRequest extends RelationalRequest {
@@ -52,181 +49,9 @@ public class TestRelationalRequest extends RelationalRequest {
      */
     public static void main(String[] args) {
         try {
-            String json_request_text = "{\n" +
-"    \"table_a\": {\n" +
-"        \"select\": [\n" +
-"            \"id\",\n" +
-"            \"name_ar\",\n" +
-"            \"name_en\",\n" +
-"            \"date\",\n" +
-"            \"time\",\n" +
-"            \"timestamp\",\n" +
-"            \"boolean\"\n" +
-"        ],\n" +
-"        \"where\": {\n" +
-"            \"clause\": \"id>?\",\n" +
-"            \"values\": [\n" +
-"                0\n" +
-"            ]\n" +
-"        },\n" +
-"        \"orderby\": [\n" +
-"            \"id\"\n" +
-"        ],\n" +
-"        \"table_a_a\": {\n" +
-"            \"select\": [\n" +
-"                \"id\",\n" +
-"                \"name_ar\",\n" +
-"                \"name_en\",\n" +
-"                \"date\",\n" +
-"                \"time\",\n" +
-"                \"timestamp\",\n" +
-"                \"boolean\"\n" +
-"            ],\n" +
-"            \"where\": {\n" +
-"                \"clause\": \"id>?\",\n" +
-"                \"values\": [\n" +
-"                    0\n" +
-"                ]\n" +
-"            },\n" +
-"            \"orderby\": [\n" +
-"                \"id\"\n" +
-"            ]\n" +
-"        },\n" +
-"        \"table_a_b\": {\n" +
-"            \"select\": [\n" +
-"                \"id\",\n" +
-"                \"name_ar\",\n" +
-"                \"name_en\",\n" +
-"                \"date\",\n" +
-"                \"time\",\n" +
-"                \"timestamp\",\n" +
-"                \"boolean\"\n" +
-"            ],\n" +
-"            \"where\": {\n" +
-"                \"clause\": \"id>?\",\n" +
-"                \"values\": [\n" +
-"                    0\n" +
-"                ]\n" +
-"            },\n" +
-"            \"orderby\": [\n" +
-"                \"id\"\n" +
-"            ],\n" +
-"            \"table_a_b_a\": {\n" +
-"                \"select\": [\n" +
-"                    \"id\",\n" +
-"                    \"name_ar\",\n" +
-"                    \"name_en\",\n" +
-"                    \"date\",\n" +
-"                    \"time\",\n" +
-"                    \"timestamp\",\n" +
-"                    \"boolean\"\n" +
-"                ],\n" +
-"                \"where\": {\n" +
-"                    \"clause\": \"id>?\",\n" +
-"                    \"values\": [\n" +
-"                        0\n" +
-"                    ]\n" +
-"                },\n" +
-"                \"orderby\": [\n" +
-"                    \"id\"\n" +
-"                ]\n" +
-"            }\n" +
-"        },\n" +
-"        \"table_a_c\": {\n" +
-"            \"select\": [\n" +
-"                \"id\",\n" +
-"                \"name_ar\",\n" +
-"                \"name_en\",\n" +
-"                \"date\",\n" +
-"                \"time\",\n" +
-"                \"timestamp\",\n" +
-"                \"boolean\"\n" +
-"            ],\n" +
-"            \"where\": {\n" +
-"                \"clause\": \"id>?\",\n" +
-"                \"values\": [\n" +
-"                    0\n" +
-"                ]\n" +
-"            },\n" +
-"            \"orderby\": [\n" +
-"                \"id\"\n" +
-"            ]\n" +
-"        }\n" +
-"    }\n" +
-"}";
-            String model_version = "0.0.0.0001";
-            
-            String database_server = ":";
-            String user_name = "";
-            String password = "";
-            String data_database = "model";
-            String data_model_database = "model";
 
-            String model_database_server = "reydeyat.net:";
-            String model_database_user_name = user_name;
-            String model_database_password = password;
-            String model_database = "DATABASE_SCHEMA";
-
-            String model_database_schem = "";
-            String model_database_field_open_quote = "`";
-            String model_database_field_close_quote = "`";
-            
-            JDBCSource data_source = new JDBCSource () {
-                @Override
-                public Connection getConnection(Boolean auto_commit) throws Exception {
-                    //CREATE DATABASE `data` CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
-                    Connection database_connection = DriverManager.getConnection("jdbc:mysql://"+database_server+"/"+data_database, user_name, password);
-                    database_connection.setAutoCommit(auto_commit);
-                    return database_connection;
-                }
-
-                @Override
-                public String getUserName() throws Exception {
-                    return user_name;
-                }
-
-                @Override
-                public String getUserPassword() throws Exception {
-                    return password;
-                }
-
-                @Override
-                public String getDatabaseEngine() throws Exception {
-                    return "mysql";
-                }
-
-                @Override
-                public String getURL() throws Exception {
-                    return "jdbc:mysql://"+database_server+"/"+data_database;
-                }
-                
-                @Override
-                public String getDatabaseName() throws Exception {
-                    return data_database;
-                }
-
-                @Override
-                public String getDatabaseServer() throws Exception {
-                    return model_database_server;
-                }
-
-                @Override
-                public String getDatabaseSchem() throws Exception {
-                    return "";
-                }
-
-                @Override
-                public String getDatabaseOpenQuote() throws Exception {
-                    return model_database_field_open_quote;
-                }
-
-                @Override
-                public String getDatabaseCloseQuote() throws Exception {
-                    return model_database_field_close_quote;
-                }
-            };
             Connection jdbc_connection = data_source.getConnection(true);
-            
+
             TestRelationalRequest relational_request = new TestRelationalRequest();
             Integer security_flag = SECURITY_FLAG_ASSERT_VALID_FIELD_NAMES | SECURITY_FLAG_RETURN_DESCRIPTIVE_RESPONSE_MESSAGE | SECURITY_FLAG_RETURN_GENERATED_ID;
             Gson gson = JsonUtil.gson();
@@ -235,11 +60,13 @@ public class TestRelationalRequest extends RelationalRequest {
             JsonArray log_list = new JsonArray();
             JsonArray error_list = new JsonArray();
 
+            JsonObject service_json = gson.fromJson(service, JsonObject.class);
+            relational_request.defineService(service_json);
             relational_request.defineTransactions("insert", "select", "update", "delete");
             relational_request.serviceTransaction(security_flag, json_request, response_output_stream, jdbc_connection, log_list, error_list);
             String reposnse_string = new String(response_output_stream.toByteArray(), StandardCharsets.UTF_8);
             Logger.getLogger(TestRelationalRequest.class.getName()).log(Level.INFO, reposnse_string);
-        } catch(Exception ex) {
+        } catch (Exception ex) {
             Logger.getLogger(TestRelationalRequest.class.getName()).log(Level.SEVERE, ex.getMessage(), ex);
         }
     }
@@ -250,8 +77,31 @@ public class TestRelationalRequest extends RelationalRequest {
     }
 
     @Override
-    public DataSource getDataSource(String datasource_name) {
+    public DataSource getDataSource(String datasource_name) throws Exception {
         throw new UnsupportedOperationException("Not implemented yet.");
+    }
+    
+    @Override
+    public JDBCSource getJDBCSource(String datasource_name) throws Exception {
+        if (datasource_name.equalsIgnoreCase("model") == true
+                || datasource_name.equalsIgnoreCase("parental") == true) {
+            return data_source;
+        }
+        throw new Exception("JDBC Source '"+datasource_name+"' is not defined in this service container!!");
+    }
+    
+    @Override
+    public Connection getDataSourceConnection(String datasource_name) throws Exception {
+        throw new UnsupportedOperationException("Not implemented yet.");
+    }
+
+    @Override
+    public Connection getJDBCSourceConnection(String datasource_name) throws Exception {
+        if (datasource_name.equalsIgnoreCase("parental") == true
+                || datasource_name.equalsIgnoreCase("parental") == true) {
+            return data_source.getConnection(false);
+        }
+        throw new Exception("JDBC Source '"+datasource_name+"' is not defined in this service container!!");
     }
 
     @Override
@@ -348,5 +198,216 @@ public class TestRelationalRequest extends RelationalRequest {
     public Boolean deleteEject(RecordProcessor record_processor) throws Exception {
         throw new UnsupportedOperationException("Not implemented yet.");
     }
-    
+
+    private static String json_request_text = """
+            {
+              "table_a": {
+                "select": [
+                  "id",
+                  "name_ar",
+                  "name_en",
+                  "date",
+                  "time",
+                  "timestamp",
+                  "boolean"
+                ],
+                "where": {
+                  "clause": "id>?",
+                  "values": [
+                    0
+                  ]
+                },
+                "orderby": [
+                  "id"
+                ],
+                "table_a_a": {
+                  "select": [
+                    "id",
+                    "name_ar",
+                    "name_en",
+                    "date",
+                    "time",
+                    "timestamp",
+                    "boolean"
+                  ],
+                  "where": {
+                    "clause": "id>?",
+                    "values": [
+                      0
+                    ]
+                  },
+                  "orderby": [
+                    "id"
+                  ]
+                },
+                "table_a_b": {
+                  "select": [
+                    "id",
+                    "name_ar",
+                    "name_en",
+                    "date",
+                    "time",
+                    "timestamp",
+                    "boolean"
+                  ],
+                  "where": {
+                    "clause": "id>?",
+                    "values": [
+                      0
+                    ]
+                  },
+                  "orderby": [
+                    "id"
+                  ],
+                  "table_a_b_a": {
+                    "select": [
+                      "id",
+                      "name_ar",
+                      "name_en",
+                      "date",
+                      "time",
+                      "timestamp",
+                      "boolean"
+                    ],
+                    "where": {
+                      "clause": "id>?",
+                      "values": [
+                        0
+                      ]
+                    },
+                    "orderby": [
+                      "id"
+                    ]
+                  }
+                },
+                "table_a_c": {
+                  "select": [
+                    "id",
+                    "name_ar",
+                    "name_en",
+                    "date",
+                    "time",
+                    "timestamp",
+                    "boolean"
+                  ],
+                  "where": {
+                    "clause": "id>?",
+                    "values": [
+                      0
+                    ]
+                  },
+                  "orderby": [
+                    "id"
+                  ]
+                }
+              }
+            }
+            """;
+
+    private static String service = """
+            {
+              "service_name": "parental_service",
+              "default_datasource_name": "parental",
+              "database_name": "parental",
+              "model_id": "500",
+              "model_datasource_name": "model",
+              "data_datasource_name": "parental",
+              "table_tree": [
+                {
+                  "table_name": "table_a",
+                  "children": [
+                    {
+                      "table_name": "table_a_a",
+                      "children": []
+                    },
+                    {
+                      "table_name": "table_a_b",
+                      "children": [
+                        {
+                          "table_name": "table_a_b_a",
+                          "children": []
+                        }
+                      ]
+                    },
+                    {
+                      "table_name": "table_a_c",
+                      "children": []
+                    }
+                  ]
+                }
+              ]
+            }
+            """;
+    private static String model_version = "0.0.0.0001";
+
+    private static String database_server = "reyadeyat.net:57391";
+    private static String user_name = "parental";
+    private static String password = "Parental@123#@!";
+    private static String data_database = "model";
+    private static String data_model_database = "model";
+
+    private static String model_database_server = "reydeyat.net:";
+    private static String model_database_user_name = user_name;
+    private static String model_database_password = password;
+    private static String model_database = "DATABASE_SCHEMA";
+
+    private static String model_database_schem = "";
+    private static String model_database_field_open_quote = "`";
+    private static String model_database_field_close_quote = "`";
+
+    private static JDBCSource data_source = new JDBCSource() {
+        @Override
+        public Connection getConnection(Boolean auto_commit) throws Exception {
+            //CREATE DATABASE `data` CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+            Connection database_connection = DriverManager.getConnection("jdbc:mysql://" + database_server + "/" + data_database, user_name, password);
+            database_connection.setAutoCommit(auto_commit);
+            return database_connection;
+        }
+
+        @Override
+        public String getUserName() throws Exception {
+            return user_name;
+        }
+
+        @Override
+        public String getUserPassword() throws Exception {
+            return password;
+        }
+
+        @Override
+        public String getDatabaseEngine() throws Exception {
+            return "mysql";
+        }
+
+        @Override
+        public String getURL() throws Exception {
+            return "jdbc:mysql://" + database_server + "/" + data_database;
+        }
+
+        @Override
+        public String getDatabaseName() throws Exception {
+            return data_database;
+        }
+
+        @Override
+        public String getDatabaseServer() throws Exception {
+            return model_database_server;
+        }
+
+        @Override
+        public String getDatabaseSchem() throws Exception {
+            return "";
+        }
+
+        @Override
+        public String getDatabaseOpenQuote() throws Exception {
+            return model_database_field_open_quote;
+        }
+
+        @Override
+        public String getDatabaseCloseQuote() throws Exception {
+            return model_database_field_close_quote;
+        }
+    };
+
 }

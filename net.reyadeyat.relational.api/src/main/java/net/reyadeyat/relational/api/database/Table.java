@@ -21,6 +21,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
+import java.io.OutputStream;
 import net.reyadeyat.relational.api.data.ModelDefinition;
 import net.reyadeyat.relational.api.data.DataClass;
 import net.reyadeyat.relational.api.data.DataLookup;
@@ -38,7 +39,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Set;
 import net.reyadeyat.relational.api.jdbc.JDBCSource;
 import net.reyadeyat.relational.api.model.Enterprise;
@@ -2130,7 +2130,7 @@ public class Table {
         if (record_processor.getErrors().size() > 0) {
             return;
         }
-        JsonObject database_request = record_processor.getDatabaseRequest();
+        JsonObject database_request = record_processor.getTableRequest();
         
         if (record_handler.selectInject(record_processor) == false) {
             /*JsonObject response = createJsonResponseObject(false, 400, "Invalid Update PreLogic");
@@ -2145,7 +2145,7 @@ public class Table {
     public void selectGson(RecordProcessor record_processor, RecordHandler record_handler) throws Exception {
         long t1, t2, t3, t4;
         t1 = System.nanoTime();
-        JsonObject json = record_processor.getDatabaseRequest();
+        JsonObject json = record_processor.getTableRequest();
         JsonArray errors = record_processor.getErrors();
         ArrayList<Field> wf = new ArrayList<Field>();
         ArrayList<ServiceField> ss = new ArrayList<ServiceField>();
@@ -2257,7 +2257,7 @@ public class Table {
                     table_view.add("children", child_view_list);
                     for (int i = 0; i < child_table_list.size(); i++) {
                         Table child_table = child_table_list.get(i);
-                        child_table.selectGson(record_processor.getRecordProcessor(child_table.table_name), record_handler);
+                        child_table.selectGson(record_processor.getChildTableRecordProcessor(child_table.table_name), record_handler);
                         JsonObject child_view = record_processor.getDatabaseView();
                         child_view_list.add(child_view);
                     }
@@ -2834,7 +2834,7 @@ public class Table {
     }
     
     private void validateSelectCommand(RecordProcessor record_processor, RecordHandler record_handler) throws Exception {
-        JsonObject database_request = record_processor.getDatabaseRequest();
+        JsonObject database_request = record_processor.getTableRequest();
         if (database_request.get("engine") == null || database_request.get("engine").isJsonNull()) {
             record_processor.addError("Select command misses 'engin' property");
         } else if (database_request.get("view") == null || database_request.get("view").isJsonNull()) {
@@ -2882,7 +2882,7 @@ public class Table {
     }
 
     private void validateDeleteCommand(RecordProcessor record_processor) throws Exception {
-        JsonObject database_request = record_processor.getDatabaseRequest();
+        JsonObject database_request = record_processor.getTableRequest();
         if (database_request.get("values") == null || database_request.get("values").isJsonNull()) {
             record_processor.addError("Delete command misses 'values' array");
         } else if (database_request.get("values").isJsonArray() == false) {
@@ -2897,5 +2897,15 @@ public class Table {
                 && (database_request.get("where").getAsJsonObject().get("fields") == null || database_request.get("where").getAsJsonObject().get("fields").isJsonNull())) {
             record_processor.addError("Delete command misses but shall have either 'where.values' or 'where.fields' compound object");
         }
+    }
+    
+    public void process(String table_name, JsonObject table_request, OutputStream response_output_stream, RecordHandler record_handler) throws Exception {
+        RecordProcessor record_processor = new RecordProcessor(table_name, table_request, response_output_stream);
+        String transactionType = (table_request.get("transaction") == null ? null : table_request.get("transaction").getAsString());
+        if (transactionType == null || valid_transaction_type.contains(transactionType) == false) {
+            record_processor.addError("Bad Request, invalid transaction [" + transactionType + "] - valid transactions are [" + valid_transaction_type + "]");
+            return;
+        }
+        validateDeleteCommand(record_processor);
     }
 }

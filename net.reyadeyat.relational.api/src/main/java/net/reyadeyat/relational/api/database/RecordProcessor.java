@@ -22,6 +22,8 @@ import com.google.gson.JsonObject;
 import net.reyadeyat.relational.api.request.Response;
 import net.reyadeyat.relational.api.util.Returns;
 import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.TreeMap;
 
 /**
  * 
@@ -34,35 +36,49 @@ import java.io.OutputStream;
  * @since 2023.01.01
  */
 public class RecordProcessor {
+    public String table_name;
+    public JsonObject table_request;
     public OutputStream response_output_stream;
-    public JsonObject database_request;
     public JsonArray errors;
     public int affected_rows;
     public Boolean is_empty_view;
     public JsonObject view;
     public Response response;
     public Returns returns;
+    public TreeMap<String, RecordProcessor> children;
     
-    public RecordProcessor(JsonObject database_request, OutputStream response_output_stream) {
+    public RecordProcessor(String key, JsonObject table_request, OutputStream response_output_stream) {
+        this.table_name = table_name;
+        this.table_request = table_request;
         this.response_output_stream = response_output_stream;
-        this.database_request = database_request;
         this.errors = new JsonArray();
         this.is_empty_view = true;
         this.affected_rows = 0;
-        this.returns = new Returns();        
+        this.returns = new Returns();
+        children = new TreeMap<String, RecordProcessor>();
     }
     
-    public RecordProcessor getRecordProcessor(String table_name) {
-        JsonObject table_database_request = database_request.get(table_name).getAsJsonObject();
-        return new RecordProcessor(table_database_request, response_output_stream);
+    public JsonObject getTableRequest() {
+        return table_request;
+    }
+    
+    public RecordProcessor getChildTableRecordProcessor(String table_name) {
+        return children.get(table_name);
+    }
+    
+    public void addChildRecordProcessor(RecordProcessor child_record_processor) throws Exception {
+        if (this.children.containsKey(table_name) == true) {
+            throw new Exception("RecordProcessor Key '"+child_record_processor.table_name+"' already exists!!");
+        }
+        this.children.put(child_record_processor.table_name, child_record_processor);
+    }
+    
+    public void deleteChildRecordProcessor(RecordProcessor child_record_processor) {
+        children.remove(child_record_processor.table_name);
     }
     
     public OutputStream getResponseOutputStream() {
         return response_output_stream;
-    }
-    
-    public JsonObject getDatabaseRequest() {
-        return database_request;
     }
     
     public JsonArray addError(String error) {
@@ -73,14 +89,6 @@ public class RecordProcessor {
     public JsonArray getErrors() {
         return errors;
     }
-    
-    /*public void setDatabaseResponse(Response response) {
-        this.response = response;
-    }
-    
-    public Response getDatabaseResponse() {
-        return response;
-    }*/
     
     public void setDatabaseView(JsonObject view) {
         this.view = view;
