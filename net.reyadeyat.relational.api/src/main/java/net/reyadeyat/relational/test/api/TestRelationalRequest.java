@@ -83,8 +83,8 @@ public class TestRelationalRequest extends RelationalRequest {
     
     @Override
     public JDBCSource getJDBCSource(String datasource_name) throws Exception {
-        if (datasource_name.equalsIgnoreCase("model") == true
-                || datasource_name.equalsIgnoreCase("parental") == true) {
+        if (datasource_name.equalsIgnoreCase("XYZ_MODEL") == true
+                || datasource_name.equalsIgnoreCase("XYZ_DATA") == true) {
             return data_source;
         }
         throw new Exception("JDBC Source '"+datasource_name+"' is not defined in this service container!!");
@@ -97,8 +97,8 @@ public class TestRelationalRequest extends RelationalRequest {
 
     @Override
     public Connection getJDBCSourceConnection(String datasource_name) throws Exception {
-        if (datasource_name.equalsIgnoreCase("parental") == true
-                || datasource_name.equalsIgnoreCase("parental") == true) {
+        if (datasource_name.equalsIgnoreCase("XYZ_MODEL") == true
+                || datasource_name.equalsIgnoreCase("XYZ_DATA") == true) {
             return data_source.getConnection(false);
         }
         throw new Exception("JDBC Source '"+datasource_name+"' is not defined in this service container!!");
@@ -340,9 +340,9 @@ public class TestRelationalRequest extends RelationalRequest {
             """;
     private static String model_version = "0.0.0.0001";
 
-    private static String database_server = "reyadeyat.net:57391";
-    private static String user_name = "parental";
-    private static String password = "Parental@123#@!";
+    private static String database_server = "XYZ:XYZ";
+    private static String user_name = "XYZ";
+    private static String password = "XYZ";
     private static String data_database = "model";
     private static String data_model_database = "model";
 
