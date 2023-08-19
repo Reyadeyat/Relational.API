@@ -15,7 +15,14 @@
  * limitations under the License.
  */
 
-package net.reyadeyat.relational.api.model;
+package net.reyadeyat.relational.api.database;
+
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import java.sql.Connection;
+import java.sql.ResultSet;
+import javax.sql.DataSource;
+import net.reyadeyat.relational.api.jdbc.JDBCSource;
 
 /**
  * 
@@ -27,17 +34,11 @@ package net.reyadeyat.relational.api.model;
  * 
  * @since 2023.01.01
  */
-public class PrimaryKeyField {
-    public String name;
-    
-    transient public Boolean case_sensitive_sql;
-    transient public PrimaryKey parentPrimaryKey;
-    
-    /**no-arg default constructor for jaxb marshalling*/
-    public PrimaryKeyField() {}
-    
-    public PrimaryKeyField(String name, Boolean case_sensitive_sql) {
-        this.name = name;
-        this.case_sensitive_sql = case_sensitive_sql;
-    }
+public interface ModelHandler {
+    public String getDefaultDatasourceName();
+    public DataSource getDataSource(String datasource_name) throws Exception;
+    public JDBCSource getJDBCSource(String datasource_name) throws Exception;
+    public Connection getDataSourceConnection(String datasource_name) throws Exception;
+    public Connection getJDBCSourceConnection(String datasource_name) throws Exception;
+    public Connection getDatabaseConnection(String datasurce_name) throws Exception;
 }

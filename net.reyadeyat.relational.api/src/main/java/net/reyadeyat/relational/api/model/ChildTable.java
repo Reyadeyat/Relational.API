@@ -32,7 +32,7 @@ public class ChildTable {
     public String parentTableName;
     public String foreigKeyName;
     
-    transient public Boolean caseSensitiveSql;
+    transient public Boolean case_sensitive_sql;
     transient public Table parentTable;
     transient public Table table;
     transient public ForeignKey foreignKey;
@@ -40,14 +40,14 @@ public class ChildTable {
     /**no-arg default constructor for jaxb marshalling*/
     public ChildTable() {}
 
-    public ChildTable(Table parentTable, Table table, ForeignKey foreignKey, String parentTableName, String tableName, String foreigKeyName, Boolean caseSensitiveSql) {
+    public ChildTable(Table parentTable, Table table, ForeignKey foreignKey, String parentTableName, String tableName, String foreigKeyName, Boolean case_sensitive_sql) {
         this.parentTable = parentTable;
         this.table = table;
         this.foreignKey = foreignKey;
         this.parentTableName = parentTableName;
         this.tableName = tableName;
         this.foreigKeyName = foreigKeyName;
-        this.caseSensitiveSql = caseSensitiveSql;
+        this.case_sensitive_sql = case_sensitive_sql;
     }
     
     public String toString(Integer level, Integer shift) {

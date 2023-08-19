@@ -114,22 +114,23 @@ public class Table {
     //Delete
     protected String delete_statement;
     
-    protected String valid_transaction_type;
-    
     private transient Table parent_table;
     private ArrayList<Table> child_table_list;
     
     private static HashMap<Integer, EnterpriseModel<Enterprise>> data_model_map = new HashMap<Integer, EnterpriseModel<Enterprise>>();
     
-    public Table(String database_name, String table_name) throws Exception {
-        this(database_name, JsonUtil.jsonStringToJsonElelement("\"table_name\":\""+table_name+"\"}").getAsJsonObject());
+    private ArrayList<String> valid_transaction_type_list;
+    private String transaction_type_list;
+    
+    public Table(String database_name, String table_name, JsonArray error_list) throws Exception {
+        this(database_name, JsonUtil.jsonStringToJsonElelement("\"table_name\":\""+table_name+"\"}").getAsJsonObject(), error_list);
     }
     
-    public Table(String database_name, JsonObject table_tree) throws Exception {
-        this(null, null, database_name, table_tree);
+    public Table(String database_name, JsonObject table_tree, JsonArray error_list) throws Exception {
+        this(null, null, database_name, table_tree, error_list);
     }
     
-    public Table(Integer model_id, Table parent_table, String database_name, JsonObject table_tree) throws Exception {
+    public Table(Integer model_id, Table parent_table, String database_name, JsonObject table_tree, JsonArray error_list) throws Exception {
         this.parent_table = parent_table;
         this.database_name = database_name;
         this.table_tree = table_tree;
@@ -141,7 +142,17 @@ public class Table {
         join_sql_list = new ArrayList<String>();
         joinKeys = new HashMap<String, JoinKey>();
         
+        
+        transaction_type_list = JsonUtil.getJsonString(table_tree, "transaction_type_list", false);
+        valid_transaction_type_list = new ArrayList<String>(Arrays.<String>asList(transaction_type_list.trim().split("\\s*,\\s*")));
+        
         safe_update = true;
+        
+        init(error_list);
+        
+        if (error_list.size() > 0) {
+            return;
+        }
         
         this.table_name = this.table_tree.get("table_name").getAsString();
         initializeTable(model_id);
@@ -150,35 +161,28 @@ public class Table {
         if (table_children_list != null && table_children_list.size() > 0) {
             for (int i = 0; i < table_children_list.size(); i++) {
                 JsonObject child_table_json = table_children_list.get(i).getAsJsonObject();
-                Table child_table = new Table(model_id, this, database_name, child_table_json);
+                Table child_table = new Table(model_id, this, database_name, child_table_json, error_list);
                 child_table_list.add(child_table);
             }
         }
     }
     
-    public Boolean init(ArrayList<String> transaction_type, ArrayList<String> initerrormsg) throws Exception {
-        Boolean initerror = false;
-        
+    public Boolean init(JsonArray error_list) throws Exception {
         StringBuilder sb = new StringBuilder();
-        valid_transaction_type = String.join(",", transaction_type);
-
         if (database_name == null) {
-            initerror = true;
-            initerrormsg.add("Database name is not defined");
+            error_list.add("Database name is not defined");
         }
 
         if (table_name == null) {
-            initerror = true;
-            initerrormsg.add("Table name is not defined");
+            error_list.add("Table name is not defined");
         }
 
         postInit();
 
         if (hasErrors() == true) {
-            initerror = true;
             ArrayList<String> tableErrors = getErrors();
             for (String error : tableErrors) {
-                initerrormsg.add(error);
+                error_list.add(error);
             }
         }
 
@@ -237,11 +241,10 @@ public class Table {
         }
 
         if (primary_keys == null) {
-            initerror = true;
-            initerrormsg.add("Primary Keys are not defined fields tableFields");
+            error_list.add("Primary Keys are not defined fields tableFields");
         }
 
-        if (transaction_type.contains("insert") == true) {
+        if (transaction_type_list.contains("insert") == true) {
             for (Field f : insert_fields) {
                 if (f.isUniqueAll()) {
                     uniqueness_fields_all.add(f);
@@ -254,10 +257,9 @@ public class Table {
                 }
             }
             sb.setLength(0);
-            if (transaction_type.contains("insert") == true && insert_fields.size() == 0) {
-                initerror = true;
-                initerrormsg.add("no valid insert fields defined");
-            } else if (/*insert_fields != null && */transaction_type.contains("insert") == false) {
+            if (transaction_type_list.contains("insert") == true && insert_fields.size() == 0) {
+                error_list.add("no valid insert fields defined");
+            } else if (/*insert_fields != null && */transaction_type_list.contains("insert") == false) {
                 //ignore
             } else {
                 sb.setLength(0);
@@ -346,8 +348,7 @@ public class Table {
                 }
                 if (primary_keys.size() > 0 || uniqueness_fields_all.size() > 0 || uniqueness_fields_any.size() > 0) {
                     if (hasVariable == true) {
-                        initerror = true;
-                        initerrormsg.add("Uniqueness Statement can't contain variable field");
+                        error_list.add("Uniqueness Statement can't contain variable field");
                     }
                     Boolean hasUniqueness = false;
                     sb.setLength(0);
@@ -391,12 +392,11 @@ public class Table {
                 }
             }
         }
-        if (transaction_type.contains("select") == true) {
+        if (transaction_type_list.contains("select") == true) {
             sb.setLength(0);
-            if (transaction_type.contains("select") == true && select_fields.size() == 0) {
-                initerror = true;
-                initerrormsg.add("no valid select fields defined");
-            } else if (/*select_fields != null && */transaction_type.contains("select") == false) {
+            if (transaction_type_list.contains("select") == true && select_fields.size() == 0) {
+                error_list.add("no valid select fields defined");
+            } else if (/*select_fields != null && */transaction_type_list.contains("select") == false) {
                 //ignore
             } else {
                 sb.setLength(0);
@@ -414,19 +414,18 @@ public class Table {
                 select_statement = sb.toString();
             }
         }
-        if (transaction_type.contains("update") == true) {
+        if (transaction_type_list.contains("update") == true) {
             sb.setLength(0);
-            if (update_fields == null && transaction_type.contains("update") == true) {
-                initerror = true;
-                initerrormsg.add("no valid update fields defined");
-            } else if (/*update_fields != null && */transaction_type.contains("update") == false) {
+            if (update_fields == null && transaction_type_list.contains("update") == true) {
+                error_list.add("no valid update fields defined");
+            } else if (/*update_fields != null && */transaction_type_list.contains("update") == false) {
                 //ignore
             } else {
                 /*valid_update_fields = String.join(",", update_fields);
                 for (String fieldName : update_fields) {
                     if (tableFields.get(fieldName) == null) {
                         initerror = true;
-                        initerrormsg.add("Update Field '" + fieldName + "' is not defined in fields tableFields");
+                        error_list.add("Update Field '" + fieldName + "' is not defined in fields tableFields");
                     }
                 }*/
                 //StringBuilder sb = new StringBuilder();
@@ -479,7 +478,7 @@ public class Table {
                 }
             }
         }
-        if (transaction_type.contains("delete") == true) {
+        if (transaction_type_list.contains("delete") == true) {
             sb.setLength(0);
             sb.append("DELETE FROM `").append(database_name).append("`.`").append(table_name).append("` $WHERE$");
             delete_statement = sb.toString();
@@ -487,15 +486,14 @@ public class Table {
         ArrayList<Field> fields = getFields();
         for (Field field : fields) {
             if (field.hasErrors()) {
-                initerror = true;
                 ArrayList<String> errors = field.getErrors();
                 for (String error : errors) {
-                    initerrormsg.add(error);
+                    error_list.add(error);
                 }
             }
         }
         
-        return initerror;
+        return error_list.size() > 0;//errors
     }
     
     public void postInit() {
@@ -2721,15 +2719,16 @@ public class Table {
      * @throws java.lang.Exception
      */
     
-    public static void loadDataModel(JDBCSource model_jdbc_source, JDBCSource data_jdbc_source, Integer model_id, JsonArray errors) throws Exception {
+    public static void loadDataModel(String secret_key, JDBCSource model_jdbc_source, JDBCSource data_jdbc_source, Integer model_id, JsonArray errors) throws Exception {
         Integer model_instance_id = 1;
         DataClass.LoadMethod loadMethod = DataClass.LoadMethod.REFLECTION;
         DataLookup data_lookup = null;
         ModelDefinition data_model_definition = null;
         try (Connection data_connection = model_jdbc_source.getConnection(false)) {
-            String select_model = "SELECT `id`, `name`, `version`, `description`, `database_name`, `data_lookup_category`, `source_url`, `source_url_user_name`, CAST(AES_DECRYPT(FROM_BASE64(`source_url_user_password`), 'SystemHesabatSecretKey') AS CHAR) AS `source_url_user_password`, `model_url`, `instance_sequence_type_id`, `instance_sequence_last_value`, `root_class_path`, `model_database_schem`, `model_database_field_open_quote`, `model_database_field_close_quote` FROM `"+model_jdbc_source.getDatabaseName()+"`.`model` WHERE `id`=?";
+            String select_model = "SELECT `model_id`, `model_instance_sequence_type_id`, `model_instance_sequence_last_value`, `model_name`, `model_version`, `model_class_path`, `model_data_lookup_category`, `modeled_database_url`, `modeled_database_url_user_name`, CAST(AES_DECRYPT(FROM_BASE64(`modeled_database_url_user_password`), ?) AS CHAR) AS `modeled_database_url_user_password`, `modeled_database_schem`, `modeled_database_name`, `modeled_database_field_open_quote`, `modeled_database_field_close_quote` FROM `"+model_jdbc_source.getDatabaseName()+"`.`model` WHERE `model_id`=?";
             try (PreparedStatement stmt = data_connection.prepareStatement(select_model)) {
-                stmt.setInt(1, model_id);
+                stmt.setString(1, secret_key);
+                stmt.setInt(2, model_id);
                 try (ResultSet rs = stmt.executeQuery()) {
                     ArrayList<ModelDefinition> data_model_definition_list = JsonResultset.resultset(rs, ModelDefinition.class);
                     if (data_model_definition_list == null || data_model_definition_list.size() == 0) {
@@ -2902,8 +2901,8 @@ public class Table {
     public void process(String table_name, JsonObject table_request, OutputStream response_output_stream, RecordHandler record_handler) throws Exception {
         RecordProcessor record_processor = new RecordProcessor(table_name, table_request, response_output_stream);
         String transactionType = (table_request.get("transaction") == null ? null : table_request.get("transaction").getAsString());
-        if (transactionType == null || valid_transaction_type.contains(transactionType) == false) {
-            record_processor.addError("Bad Request, invalid transaction [" + transactionType + "] - valid transactions are [" + valid_transaction_type + "]");
+        if (transactionType == null || transaction_type_list.contains(transactionType) == false) {
+            record_processor.addError("Bad Request, invalid transaction [" + transactionType + "] - valid transactions are [" + transaction_type_list + "]");
             return;
         }
         validateDeleteCommand(record_processor);

@@ -30,14 +30,16 @@ package net.reyadeyat.relational.api.model;
 public class ReferencedKeyField {
     public String name;
     
-    transient public Boolean caseSensitiveSql;
-    transient public ForeignKey foreignKey;
+    transient public Boolean is_primary_key_field;
+    transient public Boolean case_sensitive_sql;
+    transient public ForeignKey foreign_key;
     
     /**no-arg default constructor for jaxb marshalling*/
     public ReferencedKeyField() {}
     
-    public ReferencedKeyField(String name, Boolean caseSensitiveSql) {
+    public ReferencedKeyField(String name, Boolean case_sensitive_sql, Boolean is_primary_key_field) {
         this.name = name;
-        this.caseSensitiveSql = caseSensitiveSql;
+        this.case_sensitive_sql = case_sensitive_sql;
+        this.is_primary_key_field = is_primary_key_field;
     }
 }

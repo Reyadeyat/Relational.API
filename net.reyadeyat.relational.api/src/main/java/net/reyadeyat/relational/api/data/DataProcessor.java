@@ -207,7 +207,7 @@ public class DataProcessor<Model> {
                     data_stmt.setObject(8, data_jdbc_source.getURL());
                     data_stmt.setObject(9, data_jdbc_source.getUserName());
                     data_stmt.setObject(10, data_jdbc_source.getUserPassword());
-                    data_stmt.setObject(11, data_jdbc_source.getDatabaseSchem() == null ? "" : data_jdbc_source.getDatabaseSchem());
+                    data_stmt.setObject(11, data_jdbc_source.getDatabaseSchema() == null ? "" : data_jdbc_source.getDatabaseSchema());
                     data_stmt.setObject(12, data_jdbc_source.getDatabaseName());
                     data_stmt.setObject(13, data_jdbc_source.getDatabaseOpenQuote());
                     data_stmt.setObject(14, data_jdbc_source.getDatabaseCloseQuote());
@@ -355,29 +355,23 @@ public class DataProcessor<Model> {
                                     //Save ModelInstance
                                     ArrayList<String> modelInserts = new ArrayList<String>();
                                     dataInstance.saveToDatabase(dataModelId, this.data_lookup, instanceID, dataInstance, modelInserts, database_field_open_quote, database_field_close_quote);
-                                    //StringBuilder bbb = new StringBuilder();
                                     int modelRows = 0;
                                     try (Connection unlocked_data_model_connection = model_jdbc_source.getConnection(false)) {
                                         try (Statement modelStatement = unlocked_data_model_connection.createStatement()) {
                                             for (int i = 0; i < modelInserts.size(); i++) {
-                                                //bbb.append(modelInserts.get(i)).append(";\n");
-                                                appendable.append(modelInserts.get(i)).append("\n");
-                                                modelStatement.addBatch(modelInserts.get(i));
-                                                ////System.out.println(modelInserts.get(i) + ";");
-                                                /*int rows = modelStatement.executeUpdate(modelInserts.get(i));
-                                                if (rows == 0) {
-                                                    System.out.println("Error === " + modelInserts.get(i) + ";");
-                                                }*/
+                                                appendable.append("\n*sql*\n").append(modelInserts.get(i)).append("\n");
                                                 //debug never delete
-                                                /*try {
+                                                try {
                                                     modelRows++;
                                                     modelStatement.executeUpdate(modelInserts.get(i));
+                                                    /*modelStatement.addBatch(modelInserts.get(i));
+                                                    if (i % 100 == 0) {
+                                                        modelRows += modelStatement.executeBatch().length;
+                                                    }*/
                                                 } catch (Exception ex) {
                                                     throw new Exception("Crashed on Insert Statement \n" + modelInserts.get(i), ex);
-                                                }*/
-                                                if (i % 100 == 0) {
-                                                    modelRows += modelStatement.executeBatch().length;
                                                 }
+                                                
                                             }
                                             if (modelRows != modelInserts.size()) {
                                                 modelRows += modelStatement.executeBatch().length;
@@ -392,9 +386,7 @@ public class DataProcessor<Model> {
                                             }
                                             modelStatement.close();
                                         } catch (Exception sqlx) {
-                                            //bbb.insert(0, "insert instance data sql statments crashed:\n");
                                             appendable.append("----------- insert instance data sql statments crashed -----------").append("\n");
-                                            //System.out.println(bbb.toString());
                                             if (unlocked_data_model_connection.isClosed() == false && unlocked_data_model_connection.getAutoCommit() == false) {
                                                 unlocked_data_model_connection.rollback();
                                             }

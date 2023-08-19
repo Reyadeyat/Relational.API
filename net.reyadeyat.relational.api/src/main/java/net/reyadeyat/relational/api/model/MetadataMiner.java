@@ -113,21 +113,21 @@ public class MetadataMiner {
         String source_url = null;
         String model_url = null;
         Enterprise model_enterprise = null;
-        try (Connection model_database_connection = data_jdbc_source.getConnection(false)) {
+        try (Connection data_database_connection = data_jdbc_source.getConnection(false)) {
             t1 = System.nanoTime();
-            databaseMetaData = model_database_connection.getMetaData();
+            databaseMetaData = data_database_connection.getMetaData();
             databaseEngine = databaseMetaData.getDatabaseProductName();
             databaseURL = databaseMetaData.getURL();
             source_url = databaseMetaData.getURL();
             model_url = databaseMetaData.getURL();
             if (databaseEngine.toLowerCase().contains("mysql")) {
-                model_database_connection.createStatement().execute("USE " + data_jdbc_source.getDatabaseOpenQuote() + data_jdbc_source.getDatabaseName() + data_jdbc_source.getDatabaseCloseQuote());
+                data_database_connection.createStatement().execute("USE " + data_jdbc_source.getDatabaseOpenQuote() + data_jdbc_source.getDatabaseName() + data_jdbc_source.getDatabaseCloseQuote());
                 databaseEngine = "mysql";
             } else if (databaseEngine.toLowerCase().contains("sql server")) {
-                model_database_connection.createStatement().execute("USE " + data_jdbc_source.getDatabaseOpenQuote() + data_jdbc_source.getDatabaseName() + data_jdbc_source.getDatabaseCloseQuote());
+                data_database_connection.createStatement().execute("USE " + data_jdbc_source.getDatabaseOpenQuote() + data_jdbc_source.getDatabaseName() + data_jdbc_source.getDatabaseCloseQuote());
                 databaseEngine = "sql server";
             } else if (databaseEngine.toLowerCase().contains("informix")) {
-                model_database_connection.createStatement().execute("DATABASE " + data_jdbc_source.getDatabaseOpenQuote() + data_jdbc_source.getDatabaseName() + data_jdbc_source.getDatabaseCloseQuote());
+                data_database_connection.createStatement().execute("DATABASE " + data_jdbc_source.getDatabaseOpenQuote() + data_jdbc_source.getDatabaseName() + data_jdbc_source.getDatabaseCloseQuote());
                 databaseEngine = "informix";
             } else {
                 throw new Exception("Database '"+databaseEngine+"' is not implemented yet");
@@ -176,7 +176,7 @@ public class MetadataMiner {
                         continue;//ignore
                     }
                     
-                    if (data_jdbc_source.getDatabaseSchem() != null && tableSchem != null && data_jdbc_source.getDatabaseSchem().length() > 0 && tableSchem.equalsIgnoreCase(data_jdbc_source.getDatabaseSchem()) == false) {
+                    if (data_jdbc_source.getDatabaseSchema() != null && tableSchem != null && data_jdbc_source.getDatabaseSchema().length() > 0 && tableSchem.equalsIgnoreCase(data_jdbc_source.getDatabaseSchema()) == false) {
                         continue;
                     }
                     /*if (tableName.equalsIgnoreCase("sysdiagrams")) {
@@ -325,7 +325,9 @@ public class MetadataMiner {
                                         case_sensitive_sql);
                                 table.addForeignKey(modelForeignKey);
                             }
-                            ReferencedKeyField referencedKeyField = new ReferencedKeyField(rs.getString("FKCOLUMN_NAME"), case_sensitive_sql);
+                            String foreign_key_referenced_field_name = rs.getString("FKCOLUMN_NAME");
+                            Boolean is_primary_key_field = parentTable.isFieldPrimaryKey(foreign_key_referenced_field_name);
+                            ReferencedKeyField referencedKeyField = new ReferencedKeyField(foreign_key_referenced_field_name, case_sensitive_sql, is_primary_key_field);
                             ForeignKeyField foreignKeyField = new ForeignKeyField(rs.getString("PKCOLUMN_NAME"), case_sensitive_sql);
                             if (foreignKeyName.equalsIgnoreCase("pur_tender_analysis_fin_items_spec_pur_tender_items_financial_fk")) {
                                 foreignKeyName = foreignKeyName;
@@ -446,7 +448,7 @@ public class MetadataMiner {
                         String foundTablesPathString = database.pathToString(foundTablesPath);
                         writer.append(foundTablesPathString);
                         writer.append("\n");
-                        String datasetJSON = database.getInnerJoinedSelect(foundTablesPathString, data_jdbc_source.getDatabaseSchem(), data_jdbc_source.getDatabaseOpenQuote(), data_jdbc_source.getDatabaseCloseQuote()).toString();
+                        String datasetJSON = database.getInnerJoinedSelect(foundTablesPathString, data_jdbc_source.getDatabaseSchema(), data_jdbc_source.getDatabaseOpenQuote(), data_jdbc_source.getDatabaseCloseQuote()).toString();
                         /*create the path
                         search tables for this path
                         if path not found throw exception

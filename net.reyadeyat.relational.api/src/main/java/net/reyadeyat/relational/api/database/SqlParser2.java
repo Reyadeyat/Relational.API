@@ -32,7 +32,7 @@ import java.util.HashMap;
  * 
  * @since 2023.01.01
  */
-public class SqlParserZidan {
+public class SqlParser2 {
 
     final static public ArrayList<String> kw = new ArrayList<String>(Arrays
             .asList(new String[]{"select", "insert", "update", "delete",

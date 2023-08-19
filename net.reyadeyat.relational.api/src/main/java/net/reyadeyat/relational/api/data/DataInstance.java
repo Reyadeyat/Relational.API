@@ -110,24 +110,28 @@ public class DataInstance {
                 if (dataClass.field.getName().equalsIgnoreCase("referencedKeyname")) {
                     if (parentInstanceObject instanceof net.reyadeyat.relational.api.model.ForeignKey foreign_key) {
                         StringBuilder foreign_key_field_list_strb = new StringBuilder();
-                        for (ForeignKeyField foreignKeyFieldName : foreign_key.foreignKeyFields) {
-                            foreign_key_field_list_strb.append("`").append(foreignKeyFieldName.name).append("`,");
+                        Boolean is_primary_key = true;
+                        for (ForeignKeyField foreign_key_field : foreign_key.foreignKeyFields) {
+                            foreign_key_field_list_strb.append("`").append(foreign_key_field.name).append("`,");
                         }
                         if (foreign_key.foreignKeyFields.size() > 0) {
                             foreign_key_field_list_strb.delete(foreign_key_field_list_strb.length()-1, foreign_key_field_list_strb.length());
                         }
                         StringBuilder referenced_key_field_list_strb = new StringBuilder();
-                        for (ReferencedKeyField referencedKeyFieldName : foreign_key.referencedKeyFields) {
-                            referenced_key_field_list_strb.append("`").append(referencedKeyFieldName.name).append("`,");
+                        for (ReferencedKeyField referenced_key_field : foreign_key.referencedKeyFields) {
+                            referenced_key_field_list_strb.append("`").append(referenced_key_field.name).append("`,");
+                            is_primary_key = is_primary_key && referenced_key_field.is_primary_key_field;
                         }
                         if (foreign_key.referencedKeyFields.size() > 0) {
                             referenced_key_field_list_strb.delete(referenced_key_field_list_strb.length()-1, referenced_key_field_list_strb.length());
                         }
-                        throw new Exception("Database Foreign Key Constraint sufferes integgrity check failure Table.[Field List} `"+foreign_key.foreignKeyTableName+"`.["+foreign_key_field_list_strb.toString()+"] has Foreing Key '"+foreign_key.name+"' linked to a none Primary Key Table.[Field List] `"+foreign_key.referencedKeyTableName+"`.["+referenced_key_field_list_strb.toString()+"], please fix this issue first !!!");
+                        if (is_primary_key == false) {
+                            throw new Exception("Database Foreign Key Constraint sufferes integgrity check failure Table.[Field List] `"+foreign_key.foreignKeyTableName+"`.["+foreign_key_field_list_strb.toString()+"] has Foreing Key '"+foreign_key.name+"' linked to a none Primary Key Table.[Field List] `"+foreign_key.referencedKeyTableName+"`.["+referenced_key_field_list_strb.toString()+"], please fix this issue first !!!");
+                        }
                     }
                 }
             }
-            throw new Exception("Instance Object is null in '" + this.dataClass.name + "'");
+            //throw new Exception("Instance Object is null in '" + this.dataClass.name + "'");
         }
         if (parentDataInstance == null && this.dataClass.clas.isInstance(this.instanceObject) == false) {
             throw new ClassCastException("DataInstance '" + this.dataClass.clas.getCanonicalName() + "' required class but got instance object of class '" + this.instanceObject.getClass().getCanonicalName() + "'");

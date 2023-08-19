@@ -43,6 +43,10 @@ import net.reyadeyat.relational.api.request.RelationalRequest;
  * @since 2023.07.01
  */
 public class TestRelationalRequest extends RelationalRequest {
+    
+    public TestRelationalRequest(JsonObject request_service_definition_json) throws Exception {
+        super(request_service_definition_json);
+    }
 
     /**
      * @param args the command line arguments
@@ -50,19 +54,17 @@ public class TestRelationalRequest extends RelationalRequest {
     public static void main(String[] args) {
         try {
 
-            Connection jdbc_connection = data_source.getConnection(true);
+            Connection jdbc_connection = data_jdbc_source.getConnection(true);
 
-            TestRelationalRequest relational_request = new TestRelationalRequest();
             Integer security_flag = SECURITY_FLAG_ASSERT_VALID_FIELD_NAMES | SECURITY_FLAG_RETURN_DESCRIPTIVE_RESPONSE_MESSAGE | SECURITY_FLAG_RETURN_GENERATED_ID;
             Gson gson = JsonUtil.gson();
             JsonObject json_request = gson.fromJson(json_request_text, JsonObject.class);
             ByteArrayOutputStream response_output_stream = new ByteArrayOutputStream();
             JsonArray log_list = new JsonArray();
             JsonArray error_list = new JsonArray();
-
-            JsonObject service_json = gson.fromJson(service, JsonObject.class);
-            relational_request.defineService(service_json);
-            relational_request.defineTransactions("insert", "select", "update", "delete");
+            JsonObject request_service_definition_json = gson.fromJson(request_service_definition_json_text, JsonObject.class);
+            
+            TestRelationalRequest relational_request = new TestRelationalRequest(request_service_definition_json);
             relational_request.serviceTransaction(security_flag, json_request, response_output_stream, jdbc_connection, log_list, error_list);
             String reposnse_string = new String(response_output_stream.toByteArray(), StandardCharsets.UTF_8);
             Logger.getLogger(TestRelationalRequest.class.getName()).log(Level.INFO, reposnse_string);
@@ -83,9 +85,10 @@ public class TestRelationalRequest extends RelationalRequest {
     
     @Override
     public JDBCSource getJDBCSource(String datasource_name) throws Exception {
-        if (datasource_name.equalsIgnoreCase("XYZ_MODEL") == true
-                || datasource_name.equalsIgnoreCase("XYZ_DATA") == true) {
-            return data_source;
+        if (datasource_name.equalsIgnoreCase("model") == true) {
+            return model_jdbc_source;
+        } else if (datasource_name.equalsIgnoreCase("parental") == true) {
+            return data_jdbc_source;
         }
         throw new Exception("JDBC Source '"+datasource_name+"' is not defined in this service container!!");
     }
@@ -97,9 +100,10 @@ public class TestRelationalRequest extends RelationalRequest {
 
     @Override
     public Connection getJDBCSourceConnection(String datasource_name) throws Exception {
-        if (datasource_name.equalsIgnoreCase("XYZ_MODEL") == true
-                || datasource_name.equalsIgnoreCase("XYZ_DATA") == true) {
-            return data_source.getConnection(false);
+        if (datasource_name.equalsIgnoreCase("model") == true) {
+            return model_jdbc_source.getConnection(false);
+        } else if (datasource_name.equalsIgnoreCase("data") == true) {
+            return data_jdbc_source.getConnection(false);
         }
         throw new Exception("JDBC Source '"+datasource_name+"' is not defined in this service container!!");
     }
@@ -304,7 +308,7 @@ public class TestRelationalRequest extends RelationalRequest {
             }
             """;
 
-    private static String service = """
+    private static String model_service = """
             {
               "service_name": "parental_service",
               "default_datasource_name": "parental",
@@ -312,6 +316,7 @@ public class TestRelationalRequest extends RelationalRequest {
               "model_id": "500",
               "model_datasource_name": "model",
               "data_datasource_name": "parental",
+              "secret_key": "1234567890",
               "table_tree": [
                 {
                   "table_name": "table_a",
@@ -338,40 +343,79 @@ public class TestRelationalRequest extends RelationalRequest {
               ]
             }
             """;
+    
+    private static String request_service_definition_json_text = """
+        {
+            "service_name": "parental_service",
+            "default_datasource_name": "parental",
+            "database_name": "parental",
+            "model_id": "500",
+            "model_datasource_name": "model",
+            "data_datasource_name": "parental",
+            "secret_key": "1234567890",
+            "table_tree": "table_a",
+            "table_a": {
+                "table_name": "table_a",
+                "transaction_type_list": "insert,select,update,delete",
+                "children": [
+                    {
+                        "table_name": "table_a_a",
+                        "transaction_type_list": "insert,select,update,delete",
+                        "children": []
+                    },
+                    {
+                        "table_name": "table_a_b",
+                        "transaction_type_list": "insert,select,update,delete",
+                        "children": [
+                            {
+                                "table_name": "table_a_b_a",
+                                "transaction_type_list": "insert,select,update,delete",
+                                "children": []
+                            }
+                        ]
+                    },
+                    {
+                        "table_name": "table_a_c",
+                        "transaction_type_list": "insert,select,update,delete",
+                        "children": []
+                    }
+                ]
+            }
+        }
+            """;
     private static String model_version = "0.0.0.0001";
 
-    private static String database_server = "XYZ:XYZ";
-    private static String user_name = "XYZ";
-    private static String password = "XYZ";
-    private static String data_database = "model";
-    private static String data_model_database = "model";
+    private static String data_database_server = "localhost:33060";
+    private static String data_database_user_name = "remote";
+    private static String data_database_password = "123456";
+    private static String data_database_schema = "parental";
 
-    private static String model_database_server = "reydeyat.net:";
-    private static String model_database_user_name = user_name;
-    private static String model_database_password = password;
-    private static String model_database = "DATABASE_SCHEMA";
+    private static String model_database_server = "localhost:33060";
+    private static String model_database_user_name = "remote";
+    private static String model_database_password = "123456";
+    private static String model_database_schema = "model";
 
-    private static String model_database_schem = "";
-    private static String model_database_field_open_quote = "`";
-    private static String model_database_field_close_quote = "`";
+    //private static String database_schema = "";
+    private static String mysql_database_field_open_quote = "`";
+    private static String mysql_database_field_close_quote = "`";
 
-    private static JDBCSource data_source = new JDBCSource() {
+    private static JDBCSource data_jdbc_source = new JDBCSource() {
         @Override
         public Connection getConnection(Boolean auto_commit) throws Exception {
             //CREATE DATABASE `data` CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
-            Connection database_connection = DriverManager.getConnection("jdbc:mysql://" + database_server + "/" + data_database, user_name, password);
+            Connection database_connection = DriverManager.getConnection("jdbc:mysql://" + data_database_server + "/" + data_database_schema, data_database_user_name, data_database_password);
             database_connection.setAutoCommit(auto_commit);
             return database_connection;
         }
 
         @Override
         public String getUserName() throws Exception {
-            return user_name;
+            return data_database_user_name;
         }
 
         @Override
         public String getUserPassword() throws Exception {
-            return password;
+            return data_database_password;
         }
 
         @Override
@@ -381,12 +425,12 @@ public class TestRelationalRequest extends RelationalRequest {
 
         @Override
         public String getURL() throws Exception {
-            return "jdbc:mysql://" + database_server + "/" + data_database;
+            return "jdbc:mysql://" + data_database_server + "/" + data_database_schema;
         }
 
         @Override
         public String getDatabaseName() throws Exception {
-            return data_database;
+            return data_database_schema;
         }
 
         @Override
@@ -395,18 +439,73 @@ public class TestRelationalRequest extends RelationalRequest {
         }
 
         @Override
-        public String getDatabaseSchem() throws Exception {
+        public String getDatabaseSchema() throws Exception {
             return "";
         }
 
         @Override
         public String getDatabaseOpenQuote() throws Exception {
-            return model_database_field_open_quote;
+            return mysql_database_field_open_quote;
         }
 
         @Override
         public String getDatabaseCloseQuote() throws Exception {
-            return model_database_field_close_quote;
+            return mysql_database_field_close_quote;
+        }
+    };
+    
+    private static JDBCSource model_jdbc_source = new JDBCSource() {
+        @Override
+        public Connection getConnection(Boolean auto_commit) throws Exception {
+            //CREATE DATABASE `data` CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+            Connection database_connection = DriverManager.getConnection("jdbc:mysql://" + model_database_server + "/" + model_database_schema, model_database_user_name, model_database_password);
+            database_connection.setAutoCommit(auto_commit);
+            return database_connection;
+        }
+
+        @Override
+        public String getUserName() throws Exception {
+            return model_database_user_name;
+        }
+
+        @Override
+        public String getUserPassword() throws Exception {
+            return model_database_password;
+        }
+
+        @Override
+        public String getDatabaseEngine() throws Exception {
+            return "mysql";
+        }
+
+        @Override
+        public String getURL() throws Exception {
+            return "jdbc:mysql://" + model_database_server + "/" + model_database_schema;
+        }
+
+        @Override
+        public String getDatabaseName() throws Exception {
+            return model_database_schema;
+        }
+
+        @Override
+        public String getDatabaseServer() throws Exception {
+            return model_database_server;
+        }
+
+        @Override
+        public String getDatabaseSchema() throws Exception {
+            return "";
+        }
+
+        @Override
+        public String getDatabaseOpenQuote() throws Exception {
+            return mysql_database_field_open_quote;
+        }
+
+        @Override
+        public String getDatabaseCloseQuote() throws Exception {
+            return mysql_database_field_close_quote;
         }
     };
 
