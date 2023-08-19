@@ -31,26 +31,37 @@ import java.util.ArrayList;
  */
 public class PrimaryKey {
     public String name;
-    public ArrayList<PrimaryKeyField> primaryKeyFields;
+    public ArrayList<PrimaryKeyField> primary_key_field_list;
     //private ArrayList<ModelField> Fields;
     
-    transient public Boolean caseSensitiveSql;
+    transient public Boolean case_sensitive_sql;
     transient public Table table;
     
     /**no-arg default constructor for jaxb marshalling*/
     public PrimaryKey() {
-        primaryKeyFields = new ArrayList<PrimaryKeyField>();
+        primary_key_field_list = new ArrayList<PrimaryKeyField>();
     }
     
-    public PrimaryKey(Table table, String name, Boolean caseSensitiveSql) {
+    public PrimaryKey(Table table, String name, Boolean case_sensitive_sql) {
         this();
         this.table = table;
         this.name = name;
-        this.caseSensitiveSql = caseSensitiveSql;
+        this.case_sensitive_sql = case_sensitive_sql;
     }
     
     public void addField(PrimaryKeyField primaryKeyField) {
-        primaryKeyFields.add(primaryKeyField);
+        primary_key_field_list.add(primaryKeyField);
+    }
+    
+    public boolean isFieldPrimaryKey(String field_name) {
+        for (PrimaryKeyField primary_key_field : this.primary_key_field_list) {
+            if (case_sensitive_sql == true && primary_key_field.name.equals(field_name) == true) {
+                return true;
+            } else if (case_sensitive_sql == false && primary_key_field.name.equalsIgnoreCase(field_name) == true) {
+                return true;
+            }
+        }
+        return false;
     }
     
     public String toString(Integer level, Integer shift) {
@@ -70,10 +81,10 @@ public class PrimaryKey {
             b.append(".");
         }
         b.append("Primary Key: ").append(name).append(" {");
-        for (PrimaryKeyField field : primaryKeyFields) {
+        for (PrimaryKeyField field : primary_key_field_list) {
             b.append("`").append(field.name).append("`,");
         }
-        if (primaryKeyFields.size() > 0) {
+        if (primary_key_field_list.size() > 0) {
             b.delete(b.length()-1, b.length());
         }
         b.append("}");
@@ -84,7 +95,7 @@ public class PrimaryKey {
     public String toString() {
         StringBuilder b = new StringBuilder();
         b.append("Primary Key: ").append(name).append(" {");
-        for (PrimaryKeyField primaryKeyField : primaryKeyFields) {
+        for (PrimaryKeyField primaryKeyField : primary_key_field_list) {
             b.append(primaryKeyField.name).append(",");
         }
         b.delete(b.length()-1, b.length());

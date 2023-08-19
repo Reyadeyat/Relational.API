@@ -45,7 +45,7 @@ public class ForeignKey {
     public String delete_rule;
     public String deferrability;
     
-    transient public Boolean caseSensitiveSql;
+    transient public Boolean case_sensitive_sql;
     transient public Table table;
     transient public PrimaryKey primaryKey;
     
@@ -63,7 +63,7 @@ public class ForeignKey {
     Integer key_sequence,
     String update_rule,
     String delete_rule,
-    String deferrability, Boolean caseSensitiveSql) throws Exception {
+    String deferrability, Boolean case_sensitive_sql) throws Exception {
         this();
         this.table = table;
         this.name = name;
@@ -74,7 +74,7 @@ public class ForeignKey {
         this.update_rule = update_rule;
         this.delete_rule = delete_rule;
         this.deferrability = deferrability;
-        this.caseSensitiveSql = caseSensitiveSql;
+        this.case_sensitive_sql = case_sensitive_sql;
         
         switch(Integer.parseInt(this.update_rule)) {
             case 0: 

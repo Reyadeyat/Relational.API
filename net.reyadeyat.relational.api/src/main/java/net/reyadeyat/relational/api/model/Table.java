@@ -75,7 +75,7 @@ public class Table {
     public ArrayList<ChildTable> childTables;
     
     /**Analyse foreignKeysMap to get child tables and generate possible paths for conceptual model*/
-    transient public Boolean caseSensitiveSql;
+    transient public Boolean case_sensitive_sql;
     transient public Database database;
     transient public ArrayList<ArrayList<Table>> paths;
     transient public ArrayList<ArrayList<Table>> parentPaths;
@@ -97,11 +97,11 @@ public class Table {
         field_map = new TreeMap<String, Field>();
     }
     
-    public Table(String name, Boolean caseSensitiveSql, Integer rows, DataLookup data_lookup) {
+    public Table(String name, Boolean case_sensitive_sql, Integer rows, DataLookup data_lookup) {
         this();
         this.name = name;
         this.rows = rows;
-        this.caseSensitiveSql = caseSensitiveSql;
+        this.case_sensitive_sql = case_sensitive_sql;
         this.data_lookup = data_lookup;
     }
     
@@ -121,7 +121,7 @@ public class Table {
         primaryKey.table = this;
         primaryKeys.add(primaryKey);
         for (Field field : fields) {
-            for (PrimaryKeyField primary_key_field : primaryKey.primaryKeyFields) {
+            for (PrimaryKeyField primary_key_field : primaryKey.primary_key_field_list) {
                 if (field.name.equalsIgnoreCase(primary_key_field.name)) {
                     field.setPrimaryKey();
                 }
@@ -135,7 +135,7 @@ public class Table {
         
         String referencedKeyTableName = new String(foreignKey.referencedKeyTableName);
         Table parentTable = database.tables.stream().filter(o -> o.name.equals(referencedKeyTableName)).findAny().orElse(null);
-        ChildTable childTable = new ChildTable(parentTable, this, foreignKey, parentTable.name, this.name, foreignKey.name, this.caseSensitiveSql);
+        ChildTable childTable = new ChildTable(parentTable, this, foreignKey, parentTable.name, this.name, foreignKey.name, this.case_sensitive_sql);
         parentTable.addChildTable(childTable);
     }
     
@@ -644,13 +644,22 @@ public class Table {
         return typescript_data_structure_class;
     }
     
+    public boolean isFieldPrimaryKey(String field_name) {
+        for (PrimaryKey primary_key : this.primaryKeys) {
+            if (primary_key.isFieldPrimaryKey(field_name) == true) {
+                return true;
+            }
+        }
+        return false;
+    }
+    
     public Boolean hasParent(Table table) throws Exception {
         if (table == null) {
             throw new Exception("table cann not be null");
         }
         for (ChildTable childTable : table.childTables) {
-            if ((caseSensitiveSql == true && name.equals(childTable.tableName))
-                    || (caseSensitiveSql == false && name.equalsIgnoreCase(childTable.tableName))) {
+            if ((case_sensitive_sql == true && name.equals(childTable.tableName))
+                    || (case_sensitive_sql == false && name.equalsIgnoreCase(childTable.tableName))) {
                 return true;
             }
         }
@@ -662,8 +671,8 @@ public class Table {
             throw new Exception("table cann not be null");
         }
         for (ChildTable childTable : childTables) {
-            if ((caseSensitiveSql == true && table.name.equals(childTable.tableName))
-                    || (caseSensitiveSql == false && table.name.equalsIgnoreCase(childTable.tableName))) {
+            if ((case_sensitive_sql == true && table.name.equals(childTable.tableName))
+                    || (case_sensitive_sql == false && table.name.equalsIgnoreCase(childTable.tableName))) {
                 return true;
             }
         }
@@ -757,8 +766,8 @@ public class Table {
             } else {
                 ArrayList<Table> tablesPathClone = (ArrayList<Table>) tablesPath.clone();
                 childTable.table.compileTablePaths(tablesPathClone, returnedTablesPaths, is_building_model);
-                /*if ((caseSensitiveSql == true && name.equals("sys_measurement_system"))
-                        || (caseSensitiveSql == false && name.equalsIgnoreCase("sys_measurement_system"))){
+                /*if ((case_sensitive_sql == true && name.equals("sys_measurement_system"))
+                        || (case_sensitive_sql == false && name.equalsIgnoreCase("sys_measurement_system"))){
                     name = name;
                 }*/
             }

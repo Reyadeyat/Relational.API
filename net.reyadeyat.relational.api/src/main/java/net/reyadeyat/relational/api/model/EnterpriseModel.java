@@ -66,34 +66,34 @@ public class EnterpriseModel<Model extends Enterprise> implements DataModel<Mode
             database.case_sensitive_sql = enterprise.case_sensitive_sql;
             for (Table table : database.tables) {
                 table.database = database;
-                table.caseSensitiveSql = database.case_sensitive_sql;
+                table.case_sensitive_sql = database.case_sensitive_sql;
                 for (Field field : table.fields) {
                     field.table = table;
-                    field.caseSensitiveSql = table.caseSensitiveSql;
+                    field.case_sensitive_sql = table.case_sensitive_sql;
                 }
                 for (PrimaryKey primaryKey : table.primaryKeys) {
                     primaryKey.table = table;
-                    primaryKey.caseSensitiveSql = table.caseSensitiveSql;
-                    for (PrimaryKeyField primaryKeyField : primaryKey.primaryKeyFields) {
+                    primaryKey.case_sensitive_sql = table.case_sensitive_sql;
+                    for (PrimaryKeyField primaryKeyField : primaryKey.primary_key_field_list) {
                         primaryKeyField.parentPrimaryKey = primaryKey;
-                        primaryKeyField.caseSensitiveSql = primaryKey.caseSensitiveSql;
+                        primaryKeyField.case_sensitive_sql = primaryKey.case_sensitive_sql;
                     }
                 }
-                for (ForeignKey foreignKey : table.foreignKeys) {
-                    foreignKey.table = table;
-                    foreignKey.caseSensitiveSql = table.caseSensitiveSql;
-                    for (ForeignKeyField foreignKeyField : foreignKey.foreignKeyFields) {
-                        foreignKeyField.foreignKey = foreignKey;
-                        foreignKeyField.caseSensitiveSql = foreignKey.caseSensitiveSql;
+                for (ForeignKey foreign_key : table.foreignKeys) {
+                    foreign_key.table = table;
+                    foreign_key.case_sensitive_sql = table.case_sensitive_sql;
+                    for (ForeignKeyField foreignKeyField : foreign_key.foreignKeyFields) {
+                        foreignKeyField.foreignKey = foreign_key;
+                        foreignKeyField.case_sensitive_sql = foreign_key.case_sensitive_sql;
                     }
-                    for (ReferencedKeyField referencedKeyField : foreignKey.referencedKeyFields) {
-                        referencedKeyField.foreignKey = foreignKey;
-                        referencedKeyField.caseSensitiveSql = foreignKey.caseSensitiveSql;
+                    for (ReferencedKeyField referencedKeyField : foreign_key.referencedKeyFields) {
+                        referencedKeyField.foreign_key = foreign_key;
+                        referencedKeyField.case_sensitive_sql = foreign_key.case_sensitive_sql;
                     }
                 }
                 for (ChildTable childTable : table.childTables) {
                     childTable.parentTable = table;
-                    childTable.caseSensitiveSql = table.caseSensitiveSql;
+                    childTable.case_sensitive_sql = table.case_sensitive_sql;
                     String tableName = new String(childTable.tableName);
                     childTable.table = database.tables.stream().filter(o -> o.name.equals(tableName)).findAny().orElse(null);
                     String foreigKeyName = new String(childTable.foreigKeyName);

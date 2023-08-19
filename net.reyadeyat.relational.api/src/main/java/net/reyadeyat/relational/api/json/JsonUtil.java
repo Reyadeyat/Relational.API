@@ -639,4 +639,13 @@ public class JsonUtil {
         }
         return element;
     }
+    
+    public static void throwJsonExceptionOnError(String error_title, JsonArray error_list) throws Exception {
+        if (error_list.size() > 0) {
+            Gson gson = JsonUtil.gsonPretty();
+            String error_list_string = gson.toJson(error_list);
+            JsonUtil.reclaimGsonPretty(gson);
+            throw new Exception(error_title+"\n"+error_list_string);
+        }
+    }
 }

@@ -45,7 +45,7 @@ public class Field {
     public Integer size;
     public Integer decimalDigits;
     
-    transient public Boolean caseSensitiveSql;
+    transient public Boolean case_sensitive_sql;
     transient public Table table;
     
     /**no-arg default constructor for jaxb marshalling*/
@@ -59,7 +59,7 @@ public class Field {
             String defaultValue,
             Integer list_order,
             Integer size,
-            Integer decimalDigits, Boolean caseSensitiveSql,
+            Integer decimalDigits, Boolean case_sensitive_sql,
             DataLookup dataLookup) throws Exception {
         this.table = table;
         this.name = name;
@@ -79,7 +79,7 @@ public class Field {
         this.list_order = list_order;
         this.size = size;
         this.decimalDigits = decimalDigits;
-        this.caseSensitiveSql = caseSensitiveSql;
+        this.case_sensitive_sql = case_sensitive_sql;
     }
     
     public void init() {

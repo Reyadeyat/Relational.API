@@ -19,6 +19,7 @@ package net.reyadeyat.relational.api.request;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import static net.reyadeyat.relational.api.modeler.ModelingRequest.SECURITY_FLAG_RETURN_DESCRIPTIVE_RESPONSE_MESSAGE;
 
 /**
  * 

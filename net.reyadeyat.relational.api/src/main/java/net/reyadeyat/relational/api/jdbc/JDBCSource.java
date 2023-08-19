@@ -36,7 +36,7 @@ public interface JDBCSource {
     String getURL() throws Exception;
     String getDatabaseServer() throws Exception;
     String getDatabaseName() throws Exception;
-    String getDatabaseSchem() throws Exception;
+    String getDatabaseSchema() throws Exception;
     String getDatabaseOpenQuote() throws Exception;
     String getDatabaseCloseQuote() throws Exception;
 }
