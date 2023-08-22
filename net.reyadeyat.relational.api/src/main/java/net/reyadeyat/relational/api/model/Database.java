@@ -41,7 +41,7 @@ import java.util.logging.Logger;
 public class Database {
     public String name;
     public String engine;
-    public ArrayList<Table> tables;
+    public ArrayList<Table> table_list;
     public String java_package_name;
     
     transient public Boolean case_sensitive_sql;
@@ -50,12 +50,12 @@ public class Database {
     
     /**no-arg default constructor for jaxb marshalling*/
     public Database() {
-        tables = new ArrayList<Table>();
+        table_list = new ArrayList<Table>();
         table_map = new HashMap<String, Table>();
     }
     
     public void init() {
-        for (Table table : tables) {
+        for (Table table : table_list) {
             table.init();
             table_map.put(table.name, table);
         }
@@ -71,7 +71,7 @@ public class Database {
     
     public void addTable(Table table) {
         table.database = this;
-        tables.add(table);
+        table_list.add(table);
         table_map.put(table.name, table);
     }
     
@@ -80,7 +80,7 @@ public class Database {
     }
     
     public void extractTableLogic(Boolean is_building_model) throws Exception {
-        for (Table table : tables) {
+        for (Table table : table_list) {
             table_map.put(table.name, table);
             ArrayList<Table> tablesPath = new ArrayList<Table>();
             ArrayList<ArrayList<Table>> tablesPathReturned = new ArrayList<ArrayList<Table>>();
@@ -108,10 +108,10 @@ public class Database {
             throw new Exception("path is null");
         }
         ArrayList<Table> tablePath = new ArrayList<Table>();
-        String tables[] = path.indexOf(".") == -1 ? new String[]{path} : path.split("\\.");
+        String table_list[] = path.indexOf(".") == -1 ? new String[]{path} : path.split("\\.");
         Table parentTable = null;
-        for (int i = 0; i < tables.length; i++) {
-            String tableName = tables[i];
+        for (int i = 0; i < table_list.length; i++) {
+            String tableName = table_list[i];
             Table table = table_map.get(tableName);
             if (table != null) {
                 if (parentTable != null && parentTable.hasChild(table) == false) {
@@ -151,10 +151,10 @@ public class Database {
             throw new Exception("path is null");
         }
         ArrayList<Table> tablePath = new ArrayList<Table>();
-        String tables[] = path.indexOf(".") == -1 ? new String[]{path} : path.split("\\.");
+        String table_list[] = path.indexOf(".") == -1 ? new String[]{path} : path.split("\\.");
         Table parentTable = null;
-        for (int i = 0; i < tables.length; i++) {
-            String tableName = tables[i];
+        for (int i = 0; i < table_list.length; i++) {
+            String tableName = table_list[i];
             Table table = table_map.get(tableName);
             if (table != null) {
                 if (parentTable != null && parentTable.hasChild(table) == false) {
@@ -190,23 +190,23 @@ public class Database {
             from.append(databaseFieldOpenQuote).append(name).append(databaseFieldCloseQuote).append(databaseSchem).append(".").append(databaseFieldOpenQuote).append(table.name).append(databaseFieldCloseQuote).append(" AS ").append(databaseFieldOpenQuote).append(tableAlias).append(databaseFieldCloseQuote);
             if (oldTable != null) {
                 from.append(" ON ");
-                for (int x = 0; x < table.foreignKeys.size(); x++) {
-                    ForeignKey foreignKey = table.foreignKeys.get(x);
-                    if (foreignKey.referencedKeyTableName.equalsIgnoreCase(oldTable.name) == false) {
+                for (int x = 0; x < table.foreign_key_list.size(); x++) {
+                    ForeignKey foreignKey = table.foreign_key_list.get(x);
+                    if (foreignKey.referenced_key_table_name.equalsIgnoreCase(oldTable.name) == false) {
                         continue;
                     }
-                    String foreignKeyTableName = foreignKey.foreignKeyTableName;
-                    String referencedKeyTableName = foreignKey.referencedKeyTableName;
-                    for (int f = 0; f < foreignKey.foreignKeyFields.size(); f++) {
-                        ForeignKeyField foreignKeyField = foreignKey.foreignKeyFields.get(f);
-                        ReferencedKeyField referencedKeyField = foreignKey.referencedKeyFields.get(f);
-                        from.append(databaseFieldOpenQuote).append(/*foreignKeyTableName*/oldTableAlias).append(databaseFieldCloseQuote).append(".").append(databaseFieldOpenQuote).append(foreignKeyField.name).append(databaseFieldCloseQuote).append("=").append(databaseFieldOpenQuote).append(/*referencedKeyTableName*/tableAlias).append(databaseFieldCloseQuote).append(".").append(databaseFieldOpenQuote).append(referencedKeyField.name).append(databaseFieldCloseQuote).append(" AND ");
+                    String foreign_key_table_name = foreignKey.foreign_key_table_name;
+                    String referenced_key_table_name = foreignKey.referenced_key_table_name;
+                    for (int f = 0; f < foreignKey.foreign_key_field_list.size(); f++) {
+                        ForeignKeyField foreignKeyField = foreignKey.foreign_key_field_list.get(f);
+                        ReferencedKeyField referenced_key_field = foreignKey.referenced_key_field_list.get(f);
+                        from.append(databaseFieldOpenQuote).append(/*foreign_key_table_name*/oldTableAlias).append(databaseFieldCloseQuote).append(".").append(databaseFieldOpenQuote).append(foreignKeyField.name).append(databaseFieldCloseQuote).append("=").append(databaseFieldOpenQuote).append(/*referenced_key_table_name*/tableAlias).append(databaseFieldCloseQuote).append(".").append(databaseFieldOpenQuote).append(referenced_key_field.name).append(databaseFieldCloseQuote).append(" AND ");
                     }
                 }
                 from.delete(from.length() - 5, from.length());
             }
-            for (int x = 0; x < table.fields.size(); x++) {
-                Field field = table.fields.get(x);
+            for (int x = 0; x < table.field_list.size(); x++) {
+                Field field = table.field_list.get(x);
                 fieldRandom++;
                 String fieldAlias = field.name+"_"+fieldRandom;
                 dataSet.addField(tableAlias, fieldAlias, field.name, field.getTypeJavaClassPath());
@@ -233,7 +233,7 @@ public class Database {
             return appendable.toString();
         } catch (Exception exception) {
             appendable.delete(0, appendable.length());
-            appendable.append("Database: ").append(name).append(" Tables [").append(tables.size()).append("]").toString();
+            appendable.append("Database: ").append(name).append(" Tables [").append(table_list.size()).append("]").toString();
             appendable.append("toString '").append(name).append("' error").append(exception.getMessage());
             Logger.getLogger(getClass().getName()).log(Level.SEVERE, "toString error", exception);
         }
@@ -254,8 +254,8 @@ public class Database {
         for (int i = 0; i < shift - 1; i++) {
             appendable.append(".");
         }
-        appendable.append("Database: ").append(name).append(" Tables [").append(String.valueOf(tables.size())).append("]");
-        for (Table table : tables) {
+        appendable.append("Database: ").append(name).append(" Tables [").append(String.valueOf(table_list.size())).append("]");
+        for (Table table : table_list) {
             table.toString(appendable, level + 1, shift);
         }
         //appendable.append("Table Logic: ");appendable.append(name);appendable.append(" Root Tables [");appendable.append(rootTables.size());appendable.append("]");
@@ -274,8 +274,8 @@ public class Database {
         for (int i = 0; i < shift - 1; i++) {
             appendable.append(".");
         }
-        appendable.append("Table Logic Tree: Database[").append(name).append("] Tables Count [").append(String.valueOf(tables.size())).append("]");
-        for (Table table : tables) {
+        appendable.append("Table Logic Tree: Database[").append(name).append("] Tables Count [").append(String.valueOf(table_list.size())).append("]");
+        for (Table table : table_list) {
             ArrayList<Table> tablesPath = new ArrayList<Table>();
             tablesPath.add(table);
             table.toStringTableTree(appendable, level + 1, shift, tablesPath);

@@ -42,12 +42,12 @@ public class Enterprise {
     @MetadataAnnotation (field=true, type="LONGTEXT", indexed=false, indexed_expresion="((SUBSTRING(`databaseUrl`, 1, 64)))")
     public String database_url;
     public Boolean case_sensitive_sql;
-    public ArrayList<Database> databases;
+    public ArrayList<Database> database_list;
     transient public TreeMap<String, Database> database_map;
     
     /**no-arg default constructor for json jaxb marshalling*/
     public Enterprise() {
-        databases = new ArrayList<Database>();
+        database_list = new ArrayList<Database>();
         database_map = new TreeMap<String, Database>();
     }
     
@@ -60,7 +60,7 @@ public class Enterprise {
     }
     
     public void init() {
-        for (Database database : databases) {
+        for (Database database : database_list) {
             database.init();
             database_map.put(database.name, database);
         }
@@ -68,7 +68,7 @@ public class Enterprise {
     
     public void addDatabase(Database database) {
         database.enterprise = this;
-        databases.add(database);
+        database_list.add(database);
         database_map.put(database.name, database);
     }
     
@@ -85,7 +85,7 @@ public class Enterprise {
             return appendable.toString();
         } catch (Exception exception) {
             appendable.delete(0, appendable.length());
-            appendable.append("Enterprise: ").append(name).append(" : Databases [").append(databases.size()).append("]");
+            appendable.append("Enterprise: ").append(name).append(" : Databases [").append(database_list.size()).append("]");
             appendable.append("toString error").append(exception.getMessage());
             Logger.getLogger(getClass().getName()).log(Level.SEVERE, "toString error", exception);
         }
@@ -110,8 +110,8 @@ public class Enterprise {
         for (int i = 0; i < shift - 1; i++) {
             appendable.append(".");
         }
-        appendable.append("Enterprise: ").append(name).append(" Databases [").append(String.valueOf(databases.size())).append("]");
-        for (Database database : databases) {
+        appendable.append("Enterprise: ").append(name).append(" Databases [").append(String.valueOf(database_list.size())).append("]");
+        for (Database database : database_list) {
             database.toString(appendable, level + 1, shift);
         }
     }

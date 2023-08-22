@@ -38,42 +38,42 @@ public class DataSet {
         class Field {
             String name;
             String alias;
-            String classPath;
-            public Field(String name, String alias, String classPath) {
+            String class_path;
+            public Field(String name, String alias, String class_path) {
                 this.name = name;
                 this.alias = alias;
-                this.classPath = classPath;
+                this.class_path = class_path;
             }
         }
         String name;
         String alias;
-        ArrayList<Field> fields;
+        ArrayList<Field> field_list;
         public Table(String name, String alias) {
             this.name = name;
             this.alias = alias;
-            this.fields = new ArrayList<Field>();
+            this.field_list = new ArrayList<Field>();
         }
         public void addField(String fieldAlias, String fieldName, String classPath) {
-            fields.add(new Field(fieldAlias, fieldName, classPath));
+            field_list.add(new Field(fieldAlias, fieldName, classPath));
         }
     }
     String sql;
-    String tablesPath;
-    ArrayList<Table> tables;
-    ArrayList<HashMap<String, Object>> recordSet;
+    String table_list_path;
+    ArrayList<Table> table_list;
+    ArrayList<HashMap<String, Object>> recordset;
     
-    public DataSet(String tablesPath) {
-        this.tablesPath = tablesPath;
-        tables = new ArrayList<Table>();
-        recordSet = new ArrayList<HashMap<String, Object>>();
+    public DataSet(String table_list_path) {
+        this.table_list_path = table_list_path;
+        table_list = new ArrayList<Table>();
+        recordset = new ArrayList<HashMap<String, Object>>();
     }
     
     public void addTable(String tableAlias, String tableName) {
-        tables.add(new Table(tableName, tableAlias));
+        table_list.add(new Table(tableName, tableAlias));
     }
     
     public void addField(String tableAlias, String fieldAlias, String fieldName, String classPath) throws Exception {
-        for (Table table : tables) {
+        for (Table table : table_list) {
             if (table.alias.equals(tableAlias)) {
                 table.addField(fieldName, fieldAlias, classPath);
             }
@@ -93,14 +93,14 @@ public class DataSet {
             try (ResultSet rs = preparedStatement.executeQuery()) {
                 while (rs.next()) {
                     HashMap<String, Object> record = new HashMap<String, Object>();
-                    for (int i = 0; i < tables.size(); i++) {
-                        Table table = tables.get(i);
-                        for (int x = 0; x < table.fields.size(); x++) {
-                            Table.Field field = table.fields.get(x);
+                    for (int i = 0; i < table_list.size(); i++) {
+                        Table table = table_list.get(i);
+                        for (int x = 0; x < table.field_list.size(); x++) {
+                            Table.Field field = table.field_list.get(x);
                             record.put(field.alias, rs.getObject(field.alias));
                         }
                     }
-                    recordSet.add(record);
+                    recordset.add(record);
                 }
                 rs.close();
             }

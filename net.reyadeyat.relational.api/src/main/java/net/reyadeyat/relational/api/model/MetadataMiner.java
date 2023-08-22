@@ -65,13 +65,14 @@ public class MetadataMiner {
     private JDBCSource data_jdbc_source;
     private ModelDefinition model_definition;
     private String secret_key;
+    private HashMap<String, Class> interface_implementation;
     private ArrayList<String> table_list;
     
     private static String nl = "\n";
     private static String section_separator = "\n-------------------------------------------------------------------------------\n";
     private static String data_separator = "  -------------------------  ";
 
-    public MetadataMiner(Integer model_id, String java_package_name, JDBCSource model_jdbc_source, JDBCSource data_jdbc_source, ArrayList<String> table_list, ModelDefinition model_definition, String secret_key) throws Exception {
+    public MetadataMiner(Integer model_id, String java_package_name, JDBCSource model_jdbc_source, JDBCSource data_jdbc_source, ArrayList<String> table_list, ModelDefinition model_definition, String secret_key, HashMap<String, Class> interface_implementation) throws Exception {
         this.model_id = model_id == null ? -1 : model_id;
         this.java_package_name = java_package_name;
         this.model_jdbc_source = model_jdbc_source;
@@ -79,9 +80,10 @@ public class MetadataMiner {
         this.table_list = table_list;
         this.model_definition = model_definition;
         this.secret_key = secret_key;
+        this.interface_implementation = interface_implementation;
     }
     
-    public Integer generateModel(PrintWriter writer, JsonArray generating_time_elements) throws Exception {
+    public Integer generateModel(PrintWriter writer, JsonArray generating_time_elements, TableDataStructures table_data_structures) throws Exception {
         ArrayList<String> models = new ArrayList<String>(Arrays.asList(new String[]{data_jdbc_source.getDatabaseName()}));
         long t1, t2;
         Boolean write_output = true;
@@ -138,9 +140,9 @@ public class MetadataMiner {
             ResultSet dbrs = databaseMetaData.getCatalogs();
             ResultSetMetaData dbrsmd = dbrs.getMetaData();
             int dbfeilds_count = dbrsmd.getColumnCount();
-            //extract record fields
+            //extract record field_list
             while (dbrs.next()) {
-                //analyze record fields
+                //analyze record field_list
                 /*for (int i = 1; i <= dbfeilds_count; i++) {
                     writer.appendln("Field [" + i + ", " + dbrsmd.getColumnName(i) + ", " + dbrsmd.getColumnLabel(i) + "] [" + dbrs.getString(i) + "]-{" + dbrsmd.getColumnTypeName(i) + "-" + dbrsmd.getColumnDisplaySize(i) + "-(" + dbrsmd.getPrecision(i) + "," + dbrsmd.getScale(i) + ")}-" + dbrsmd.getColumnClassName(i) + "}");
                 }*/
@@ -155,7 +157,7 @@ public class MetadataMiner {
             }
             dbrs.close();
 
-            for (Database tModelDatabase : model_enterprise.databases) {
+            for (Database tModelDatabase : model_enterprise.database_list) {
                 //writer.appendln("Database [" + modelDatabaseName + "]");
                 ResultSetMetaData tbrsmd;
                 int tbfeilds_count = 0;
@@ -163,9 +165,9 @@ public class MetadataMiner {
                 ResultSet tbrs = databaseMetaData.getTables(tModelDatabase.name, null, null, new String[]{"TABLE"});
                 tbrsmd = tbrs.getMetaData();
                 tbfeilds_count = tbrsmd.getColumnCount();
-                //extract record fields
+                //extract record field_list
                 while (tbrs.next()) {
-                    //analyze record fields
+                    //analyze record field_list
                     /*for (int i = 1; i <= tbfeilds_count; i++) {
                         writer.appendln("Field [" + i + ", " + tbrsmd.getColumnName(i) + ", " + tbrsmd.getColumnLabel(i) + "] [" + tbrs.getString(i) + "]-{" + tbrsmd.getColumnTypeName(i) + "-" + tbrsmd.getColumnDisplaySize(i) + "-(" + tbrsmd.getPrecision(i) + "," + tbrsmd.getScale(i) + ")}-" + tbrsmd.getColumnClassName(i) + "}");
                     }*/
@@ -208,7 +210,7 @@ public class MetadataMiner {
                     } catch (Exception ex) {
                         throw ex;
                     }*/
-                    Table table = new Table(tableName, case_sensitive_sql, rows, data_lookup);
+                    Table table = new Table(tableName, case_sensitive_sql, rows, data_lookup, table_data_structures);
                     tModelDatabase.addTable(table);
                     //writer.appendln("Table [" + tableName + "]");
                 }
@@ -216,15 +218,15 @@ public class MetadataMiner {
             }
         
 
-            for (Database tModelDatabase : model_enterprise.databases) {
-                for (Table table : tModelDatabase.tables) {
+            for (Database tModelDatabase : model_enterprise.database_list) {
+                for (Table table : tModelDatabase.table_list) {
                     //Exract Table Fields
                     ResultSet rs = databaseMetaData.getColumns(tModelDatabase.name, null, table.name, null);
                     ResultSetMetaData rsmd = rs.getMetaData();
                     int feilds_count = rsmd.getColumnCount();
-                    //extract record fields
+                    //extract record field_list
                     while (rs.next()) {
-                        //analyze record fields
+                        //analyze record field_list
                         /*for (int i = 1; i <= feilds_count; i++) {
                             writer.appendln("Field [" + i + ", " + rsmd.getColumnName(i) + ", " + rsmd.getColumnLabel(i) + "] [" + rs.getString(i) + "]-{" + rsmd.getColumnTypeName(i) + "-" + rsmd.getColumnDisplaySize(i) + "-(" + rsmd.getPrecision(i) + "," + rsmd.getScale(i) + ")}-" + rsmd.getColumnClassName(i) + "}");
                         }*/
@@ -247,11 +249,11 @@ public class MetadataMiner {
                 }
             }
 
-            for (Database tModelDatabase : model_enterprise.databases) {
-                for (Table table : tModelDatabase.tables) {
+            for (Database tModelDatabase : model_enterprise.database_list) {
+                for (Table table : tModelDatabase.table_list) {
                     //Extract Primary keys
                     ResultSet rs = databaseMetaData.getPrimaryKeys(tModelDatabase.name, null, table.name);
-                    //analyze record fields
+                    //analyze record field_list
                     ResultSetMetaData rsmd = rs.getMetaData();
                     int feilds_count = rsmd.getColumnCount();
                     /*for (int i = 1; i <= feilds_count; i++) {
@@ -259,7 +261,7 @@ public class MetadataMiner {
                     }*/
                     String currentPrimaryKeyName = "";
                     PrimaryKey modelPrimaryKey = null;
-                    //extract record fields
+                    //extract record field_list
                     while (rs.next()) {
 
                         String primaryKeyName = rs.getString("PK_NAME");
@@ -274,8 +276,8 @@ public class MetadataMiner {
                         /*for (int i = 1; i <= feilds_count; i++) {
                             writer.appendln(rsmd.getColumnName(i) + "-" + rsmd.getColumnLabel(i) + " {" + rsmd.getColumnTypeName(i) + " [" + rs.getString(i) + "] - {" + rsmd.getColumnDisplaySize(i) + " (" + rsmd.getPrecision(i) + "," + rsmd.getScale(i) + ")} - " + rsmd.getColumnClassName(i) + "}");
                         }*/
-                        PrimaryKeyField primaryKeyField = new PrimaryKeyField(rs.getString("COLUMN_NAME"), case_sensitive_sql);
-                        modelPrimaryKey.addField(primaryKeyField);
+                        PrimaryKeyField primary_key_field = new PrimaryKeyField(rs.getString("COLUMN_NAME"), case_sensitive_sql);
+                        modelPrimaryKey.addField(primary_key_field);
                         currentPrimaryKeyName = primaryKeyName;
                     }
                     rs.close();
@@ -286,11 +288,11 @@ public class MetadataMiner {
                 }
             }
 
-            for (Database tModelDatabase : model_enterprise.databases) {
-                for (Table table : tModelDatabase.tables) {
+            for (Database tModelDatabase : model_enterprise.database_list) {
+                for (Table table : tModelDatabase.table_list) {
                     //Extract Foreign keys
                     ResultSet rs = databaseMetaData.getImportedKeys(tModelDatabase.name, null, table.name);
-                    //analyze record fields
+                    //analyze record field_list
                     ResultSetMetaData rsmd = rs.getMetaData();
                     int feilds_count = rsmd.getColumnCount();
                     /*for (int i = 1; i <= feilds_count; i++) {
@@ -298,16 +300,16 @@ public class MetadataMiner {
                     }*/
                     String currentForeignKeyName = "";
                     ForeignKey modelForeignKey = null;
-                    //extract record fields
+                    //extract record field_list
                     while (rs.next()) {
                         String foreignKeyName = rs.getString("FK_NAME");
                         //writer.appendln("------------TABLE " + tableName + " FOREIGN KEY " + foreignKeyName + "-------------");
                         //Validate Foreign Key Tables
                         String table_name = rs.getString("FKTABLE_NAME");
-                        String referencedKeyTableName = rs.getString("PKTABLE_NAME");
-                        Table parentTable = tModelDatabase.tables.stream().filter(o -> o.name.equals(referencedKeyTableName)).findAny().orElse(null);
+                        String referenced_key_table_name = rs.getString("PKTABLE_NAME");
+                        Table parentTable = tModelDatabase.table_list.stream().filter(o -> o.name.equals(referenced_key_table_name)).findAny().orElse(null);
                         if (parentTable == null) {
-                            writer.append("------------Warning - Foreign Key inconsitency detected - referenced table '" + referencedKeyTableName + "' for FOREIGN KEY " + foreignKeyName + " in table '" + table_name + "'-------------").append("\n");
+                            writer.append("------------Warning - Foreign Key inconsitency detected - referenced table '" + referenced_key_table_name + "' for FOREIGN KEY " + foreignKeyName + " in table '" + table_name + "'-------------").append("\n");
                             continue;
                         }
                         try {
@@ -327,13 +329,13 @@ public class MetadataMiner {
                             }
                             String foreign_key_referenced_field_name = rs.getString("FKCOLUMN_NAME");
                             Boolean is_primary_key_field = parentTable.isFieldPrimaryKey(foreign_key_referenced_field_name);
-                            ReferencedKeyField referencedKeyField = new ReferencedKeyField(foreign_key_referenced_field_name, case_sensitive_sql, is_primary_key_field);
+                            ReferencedKeyField referenced_key_field = new ReferencedKeyField(foreign_key_referenced_field_name, case_sensitive_sql, is_primary_key_field);
                             ForeignKeyField foreignKeyField = new ForeignKeyField(rs.getString("PKCOLUMN_NAME"), case_sensitive_sql);
                             if (foreignKeyName.equalsIgnoreCase("pur_tender_analysis_fin_items_spec_pur_tender_items_financial_fk")) {
                                 foreignKeyName = foreignKeyName;
                             }
-                            modelForeignKey.addForeignFieldReferencedField(foreignKeyField, referencedKeyField);
-                            //modelForeignKey.addReferencedField(referencedKeyField);
+                            modelForeignKey.addForeignFieldReferencedField(foreignKeyField, referenced_key_field);
+                            //modelForeignKey.addReferencedField(referenced_key_field);
                             //modelForeignKey.addForeignField(foreignKeyField);
 
                             /*for (int i = 1; i <= feilds_count; i++) {
@@ -353,7 +355,7 @@ public class MetadataMiner {
         t2 = System.nanoTime();
         generating_time_elements.add("01- Analyze Database Schema Metadata = " + TimeUnit.MILLISECONDS.convert(t2 - t1, TimeUnit.NANOSECONDS) + " ms");
         
-        /*for (Database model_database : model_enterprise.databases) {
+        /*for (Database model_database : model_enterprise.database_list) {
             model_database.extractTableLogic();
         }*/
         
@@ -361,16 +363,16 @@ public class MetadataMiner {
         writer.flush();
         
         t1 = System.nanoTime();
-        for (Database database : model_enterprise.databases) {
+        for (Database database : model_enterprise.database_list) {
             int level = 0, shift = 4;
             database.extractTableLogic(true);
         }
         if (write_output == true) {
             writer.append("\n");
-            for (Database database : model_enterprise.databases) {
+            for (Database database : model_enterprise.database_list) {
                 int level = 0, shift = 4;
                 database.extractTableLogic(true);
-                for (Table table : database.tables) {
+                for (Table table : database.table_list) {
                     writer.append("Table [");
                     writer.append(table.name);
                     writer.append("][Parent Paths]\n");
@@ -450,7 +452,7 @@ public class MetadataMiner {
                         writer.append("\n");
                         String datasetJSON = database.getInnerJoinedSelect(foundTablesPathString, data_jdbc_source.getDatabaseSchema(), data_jdbc_source.getDatabaseOpenQuote(), data_jdbc_source.getDatabaseCloseQuote()).toString();
                         /*create the path
-                        search tables for this path
+                        search table_list for this path
                         if path not found throw exception
                         if found send it to getPathInnerJoinSelect
                         static table.getPathInnerJoinedSelect();
@@ -517,7 +519,7 @@ public class MetadataMiner {
         String model_description = data_jdbc_source.getDatabaseName() + " - Database Enterprise Model";
         
         t1 = System.nanoTime();
-        DataProcessor<Enterprise> dataProcessor = new DataProcessor<Enterprise>(EnterpriseModel.class, Enterprise.class, model_jdbc_source, model_definition, data_lookup);
+        DataProcessor<Enterprise> dataProcessor = new DataProcessor<Enterprise>(EnterpriseModel.class, Enterprise.class, model_jdbc_source, model_definition, data_lookup, interface_implementation);
         //SchemaClass dataClass = dataProcessor.getSchemaClass();
         //t2 = System.nanoTime();
         //generating_time_elements.add("Schema Class Walk = " + TimeUnit.MILLISECONDS.convert(t2 - t1, TimeUnit.NANOSECONDS) + " ms");
@@ -531,7 +533,7 @@ public class MetadataMiner {
         
         t1 = System.nanoTime();
         
-        model_id = dataProcessor.generateModel(data_jdbc_source, model_id, instance_sequence_type_id, instance_sequence_last_value, secret_key);
+        model_id = dataProcessor.generateModel(data_jdbc_source, model_id, instance_sequence_type_id, instance_sequence_last_value, secret_key, table_data_structures.getClass().getName());
         t2 = System.nanoTime();
         generating_time_elements.add("04- Create Model ID [" + model_id + "] Data Class in Database = " + TimeUnit.MILLISECONDS.convert(t2 - t1, TimeUnit.NANOSECONDS) + " ms");
         
@@ -570,7 +572,7 @@ public class MetadataMiner {
         String timeText = "";
         writer.append("Loaded Models").append("\n");
         t1 = System.nanoTime();
-        DataProcessor<Enterprise> dataProcessor = new DataProcessor<Enterprise>(EnterpriseModel.class, Enterprise.class, model_jdbc_source, model_definition, data_lookup);
+        DataProcessor<Enterprise> dataProcessor = new DataProcessor<Enterprise>(EnterpriseModel.class, Enterprise.class, model_jdbc_source, model_definition, data_lookup, interface_implementation);
         ArrayList<Integer> model_instance_ids = dataProcessor.selectModelInstanceIDsFromDatabase(model_definition.modeled_database_name);
         t2 = System.nanoTime();
         StringBuilder ids = new StringBuilder();
@@ -649,19 +651,19 @@ public class MetadataMiner {
                         if (model_instance_id.equals(0) == false && model_instance_id.equals(instance_id) == false) {
                             continue;
                         }
-                        delete_sql = "DELETE FROM `model`.`referencedkeyfield` WHERE `model_id`=? AND `model_instance_id`=?";
+                        delete_sql = "DELETE FROM `model`.`referenced_key_field` WHERE `model_id`=? AND `model_instance_id`=?";
                         deleteDataModelInstance(model_database_connection, delete_sql, selected_model_id, instance_id);
-                        delete_sql = "DELETE FROM `model`.`foreignkeyfield` WHERE `model_id`=? AND `model_instance_id`=?";
+                        delete_sql = "DELETE FROM `model`.`foreign_key_field` WHERE `model_id`=? AND `model_instance_id`=?";
                         deleteDataModelInstance(model_database_connection, delete_sql, selected_model_id, instance_id);
-                        delete_sql = "DELETE FROM `model`.`foreignkey` WHERE `model_id`=? AND `model_instance_id`=?";
+                        delete_sql = "DELETE FROM `model`.`foreign_key` WHERE `model_id`=? AND `model_instance_id`=?";
                         deleteDataModelInstance(model_database_connection, delete_sql, selected_model_id, instance_id);
-                        delete_sql = "DELETE FROM `model`.`primarykeyfield` WHERE `model_id`=? AND `model_instance_id`=?";
+                        delete_sql = "DELETE FROM `model`.`primary_key_field` WHERE `model_id`=? AND `model_instance_id`=?";
                         deleteDataModelInstance(model_database_connection, delete_sql, selected_model_id, instance_id);
-                        delete_sql = "DELETE FROM `model`.`primarykey` WHERE `model_id`=? AND `model_instance_id`=?";
+                        delete_sql = "DELETE FROM `model`.`primary_key` WHERE `model_id`=? AND `model_instance_id`=?";
                         deleteDataModelInstance(model_database_connection, delete_sql, selected_model_id, instance_id);
                         delete_sql = "DELETE FROM `model`.`field` WHERE `model_id`=? AND `model_instance_id`=?";
                         deleteDataModelInstance(model_database_connection, delete_sql, selected_model_id, instance_id);
-                        delete_sql = "DELETE FROM `model`.`childtable` WHERE `model_id`=? AND `model_instance_id`=?";
+                        delete_sql = "DELETE FROM `model`.`child_table` WHERE `model_id`=? AND `model_instance_id`=?";
                         deleteDataModelInstance(model_database_connection, delete_sql, selected_model_id, instance_id);
                         delete_sql = "DELETE FROM `model`.`table` WHERE `model_id`=? AND `model_instance_id`=?";
                         deleteDataModelInstance(model_database_connection, delete_sql, selected_model_id, instance_id);

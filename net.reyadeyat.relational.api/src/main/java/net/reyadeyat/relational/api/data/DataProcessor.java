@@ -55,15 +55,17 @@ public class DataProcessor<Model> {
     DataLookup data_lookup;
     DataClass data_class;
     HashMap<DataModel<Model>, DataInstance> dataModelDataInstanceMap;
+    HashMap<String, Class> interface_implementation;
     
     final static public ZonedDateTimeAdapter zonedDateTimeAdapter = new ZonedDateTimeAdapter();
     
-    public DataProcessor(Class data_model_class, Class model_class, JDBCSource model_jdbc_source, ModelDefinition model_definition, DataLookup data_lookup) throws Exception {
+    public DataProcessor(Class data_model_class, Class model_class, JDBCSource model_jdbc_source, ModelDefinition model_definition, DataLookup data_lookup, HashMap<String, Class> interface_implementation) throws Exception {
         this.data_model_class = data_model_class;
         this.model_class = model_class;
         this.model_jdbc_source = model_jdbc_source;
         this.model_definition = model_definition;
         this.data_lookup = data_lookup;
+        this.interface_implementation = interface_implementation;
 
         Boolean foundDataModelInterface = false;
         for (Class intrface : this.data_model_class.getInterfaces()) {
@@ -80,7 +82,7 @@ public class DataProcessor<Model> {
         if (model_class.getCanonicalName().equals(modelDeclaredField.getType().getCanonicalName()) == false) {
             throw new Exception("data_model_class '" + data_model_class.getCanonicalName() + "' declared model field '" + modelDeclaredField.getName() + "' is of type class '" + modelDeclaredField.getType().getCanonicalName() + "' that is not same as model_class '" + model_class.getCanonicalName() + "'");
         }
-        this.data_class = new DataClass(null, modelDeclaredField, data_lookup);
+        this.data_class = new DataClass(null, modelDeclaredField, this.data_lookup, this.interface_implementation);
         
         dataModelDataInstanceMap = new HashMap<DataModel<Model>, DataInstance>();
     }
@@ -187,7 +189,7 @@ public class DataProcessor<Model> {
         return modelInstanceIds;
     }
     
-    public Integer generateModel(JDBCSource data_jdbc_source, Integer model_id, Integer instance_sequence_type_id, String instance_sequence_last_value, String secret_key) throws Exception {
+    public Integer generateModel(JDBCSource data_jdbc_source, Integer model_id, Integer instance_sequence_type_id, String instance_sequence_last_value, String secret_key, String modeled_table_data_structures_class) throws Exception {
         //String model_name = this.data_model.getName();
         
         ArrayList<String> creates = new ArrayList<String>();
@@ -195,7 +197,7 @@ public class DataProcessor<Model> {
         try (Connection data_model_connection = data_jdbc_source.getConnection(false)) {
             data_class.createDatabaseSchema(data_model_connection, model_jdbc_source.getDatabaseName(), data_class, dataClasses, creates);
             //try (Connection data_model_connection = data_model_source.getConnection(false)) {
-                String insert_model_sql = "INSERT INTO `model`.`model`(`model_id`, `model_instance_sequence_type_id`, `model_instance_sequence_last_value`, `model_name`, `model_version`, `model_class_path`, `model_data_lookup_category`, `modeled_database_url`, `modeled_database_url_user_name`, `modeled_database_url_user_password`, `modeled_database_schem`, `modeled_database_name`, `modeled_database_field_open_quote`, `modeled_database_field_close_quote`) VALUES (?,?,?,?,?,?,?,?,?,TO_BASE64(AES_ENCRYPT(?, '"+secret_key+"')),?,?,?,?)";
+                String insert_model_sql = "INSERT INTO `model`.`model`(`model_id`, `model_instance_sequence_type_id`, `model_instance_sequence_last_value`, `model_name`, `model_version`, `model_class_path`, `model_data_lookup_category`, `modeled_database_url`, `modeled_database_url_user_name`, `modeled_database_url_user_password`, `modeled_database_schem`, `modeled_database_name`, `modeled_database_field_open_quote`, `modeled_database_field_close_quote`, `modeled_table_data_structures_class`) VALUES (?,?,?,?,?,?,?,?,?,TO_BASE64(AES_ENCRYPT(?, '"+secret_key+"')),?,?,?,?,?)";
                 try (PreparedStatement data_stmt = data_model_connection.prepareStatement(insert_model_sql, Statement.RETURN_GENERATED_KEYS)) {
                     data_stmt.setObject(1, model_id == -1 || model_id == null ? null : model_id);
                     data_stmt.setObject(2, instance_sequence_type_id);
@@ -211,6 +213,7 @@ public class DataProcessor<Model> {
                     data_stmt.setObject(12, data_jdbc_source.getDatabaseName());
                     data_stmt.setObject(13, data_jdbc_source.getDatabaseOpenQuote());
                     data_stmt.setObject(14, data_jdbc_source.getDatabaseCloseQuote());
+                    data_stmt.setObject(15, modeled_table_data_structures_class);
                     data_stmt.executeUpdate();
                     /*try (ResultSet generatedKeys = data_stmt.getGeneratedKeys()) {
                         generatedKeys.next();

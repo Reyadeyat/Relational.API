@@ -35,7 +35,7 @@ public class ForeignKey {
     private String key;
     private String database_name;
     private String foreign_table;
-    private ArrayList<Field> fields;
+    private ArrayList<Field> field_list;
     private HashMap<Field, String> foreignFields;//Foreign Field, Field
     private String foreiness_validation_statement;
     
@@ -63,7 +63,7 @@ public class ForeignKey {
     }
     
     public ArrayList<Field> getFields() {
-        return this.fields;
+        return this.field_list;
     }
     
     public void prepareForeinessValidationStatement() {
@@ -72,13 +72,13 @@ public class ForeignKey {
             return;
         }
         StringBuilder sb = new StringBuilder();
-        fields = new ArrayList<>(foreignFields.keySet());
-        Collections.sort(fields);
+        field_list = new ArrayList<>(foreignFields.keySet());
+        Collections.sort(field_list);
         sb.append("SELECT * FROM ").append("`").append(database_name).append("`.`").append(foreign_table).append("` WHERE ");
-        for (int i = 0; i < fields.size(); i++) {
-            Field field = fields.get(i);
+        for (int i = 0; i < field_list.size(); i++) {
+            Field field = field_list.get(i);
             String foreignFieldName = foreignFields.get(field);
-            sb.append("`").append(foreign_table).append("`.`").append(foreignFieldName).append("`<=>?").append(i+1 == fields.size() ? "" : " AND ");
+            sb.append("`").append(foreign_table).append("`.`").append(foreignFieldName).append("`<=>?").append(i+1 == field_list.size() ? "" : " AND ");
         }
         foreiness_validation_statement = sb.toString();
     }

@@ -35,6 +35,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -51,6 +52,7 @@ import net.reyadeyat.relational.api.model.Enterprise;
 import net.reyadeyat.relational.api.model.EnterpriseModel;
 import net.reyadeyat.relational.api.model.MetadataMiner;
 import net.reyadeyat.relational.api.request.Response;
+import net.reyadeyat.relational.api.model.TableDataStructures;
 
 /**
  * 
@@ -109,12 +111,12 @@ public abstract class ModelingRequest implements ModelHandler {
         return json_request.getAsJsonObject();
     }
 
-    public void serviceTransaction(Integer security_flag, InputStream json_request_stream, OutputStream response_output_stream, Connection jdbc_connection, JsonArray log_list, JsonArray error_list) throws Exception {
+    public void serviceTransaction(Integer security_flag, InputStream json_request_stream, OutputStream response_output_stream, Connection jdbc_connection, TableDataStructures table_data_structures, HashMap<String, Class> interface_implementation, JsonArray log_list, JsonArray error_list) throws Exception {
         JsonObject service_transaction_request = serviceContent(json_request_stream, response_output_stream);
-        serviceTransaction(security_flag, service_transaction_request, response_output_stream, jdbc_connection, log_list, error_list);
+        serviceTransaction(security_flag, service_transaction_request, response_output_stream, jdbc_connection, table_data_structures, interface_implementation, log_list, error_list);
     }
     
-    public Response serviceTransaction(Integer security_flag, JsonObject service_transaction_request, OutputStream response_output_stream, Connection jdbc_connection, JsonArray log_list, JsonArray error_list) throws Exception {
+    public Response serviceTransaction(Integer security_flag, JsonObject service_transaction_request, OutputStream response_output_stream, Connection jdbc_connection, TableDataStructures table_data_structures, HashMap<String, Class> interface_implementation, JsonArray log_list, JsonArray error_list) throws Exception {
         this.security_flag = security_flag;
         if (service_transaction_request == null) {
             error_list.add("Bad Request, Non JSON received => null !");
@@ -152,11 +154,11 @@ public abstract class ModelingRequest implements ModelHandler {
             MetadataMiner.deleteDataModel(model_jdbc_source, model_id, 0);
             ArrayList<String> table_list = new ArrayList<>();
             //data_database, data_model_database, model_database, data_lookup_category, model_version, model_database_schem, model_database_field_open_quote, model_database_field_close_quote;
-            MetadataMiner databaseMetadata = new MetadataMiner(model_id, java_package_name, model_jdbc_source, data_jdbc_source, table_list, model_definition, secret_key);
+            MetadataMiner databaseMetadata = new MetadataMiner(model_id, java_package_name, model_jdbc_source, data_jdbc_source, table_list, model_definition, secret_key, interface_implementation);
             generating_time_elements = new JsonArray();
             //PrintWriter writer = new PrintWriter(Writer.nullWriter());
             PrintWriter writer = new PrintWriter(response_output_stream);
-            model_id = databaseMetadata.generateModel(writer, generating_time_elements);
+            model_id = databaseMetadata.generateModel(writer, generating_time_elements, table_data_structures);
         } else if (transaction.equalsIgnoreCase("print")) {
             Integer print_style = JsonUtil.getJsonInteger(service_transaction_request, "print_style", false);
             Integer model_instance_id = 1;
@@ -202,7 +204,7 @@ public abstract class ModelingRequest implements ModelHandler {
                 throw exception;
             }
             if (model_definition != null) {
-                DataProcessor<Enterprise> dataProcessor = new DataProcessor<Enterprise>(EnterpriseModel.class, Enterprise.class, model_jdbc_source, model_definition, data_lookup);
+                DataProcessor<Enterprise> dataProcessor = new DataProcessor<Enterprise>(EnterpriseModel.class, Enterprise.class, model_jdbc_source, model_definition, data_lookup, interface_implementation);
                 EnterpriseModel<Enterprise> enterprise_model = (EnterpriseModel<Enterprise>) dataProcessor.loadModelFromDatabase(model_id, model_instance_id, loadMethod);
                 PrintWriter writer = new PrintWriter(response_output_stream);
                 writer.println("----------- START Database Model ------------");

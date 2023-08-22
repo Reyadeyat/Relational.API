@@ -28,9 +28,9 @@ package net.reyadeyat.relational.api.model;
  * @since 2023.01.01
  */
 public class ChildTable {
-    public String tableName;
-    public String parentTableName;
-    public String foreigKeyName;
+    public String table_name;
+    public String parent_table_name;
+    public String foreig_key_name;
     
     transient public Boolean case_sensitive_sql;
     transient public Table parentTable;
@@ -40,13 +40,13 @@ public class ChildTable {
     /**no-arg default constructor for jaxb marshalling*/
     public ChildTable() {}
 
-    public ChildTable(Table parentTable, Table table, ForeignKey foreignKey, String parentTableName, String tableName, String foreigKeyName, Boolean case_sensitive_sql) {
+    public ChildTable(Table parentTable, Table table, ForeignKey foreignKey, String parent_table_name, String table_name, String foreig_key_name, Boolean case_sensitive_sql) {
         this.parentTable = parentTable;
         this.table = table;
         this.foreignKey = foreignKey;
-        this.parentTableName = parentTableName;
-        this.tableName = tableName;
-        this.foreigKeyName = foreigKeyName;
+        this.parent_table_name = parent_table_name;
+        this.table_name = table_name;
+        this.foreig_key_name = foreig_key_name;
         this.case_sensitive_sql = case_sensitive_sql;
     }
     
@@ -66,13 +66,13 @@ public class ChildTable {
         for (int i = 0; i < shift - 1; i++) {
             b.append(".");
         }
-        b.append("Child Table: ").append("[").append(tableName).append(" -> ").append(parentTableName).append("] [");
-        for (int i = 0; i < foreignKey.foreignKeyFields.size(); i++) {
-            ForeignKeyField foreignKeyFieldName = foreignKey.foreignKeyFields.get(i);
-            ReferencedKeyField referencedKeyFieldName = foreignKey.referencedKeyFields.get(i);
-            b.append("`").append(tableName).append("`.`").append(foreignKeyFieldName.name).append("` -> `").append(parentTableName).append("`.`").append(referencedKeyFieldName.name).append("`,");
+        b.append("Child Table: ").append("[").append(table_name).append(" -> ").append(parent_table_name).append("] [");
+        for (int i = 0; i < foreignKey.foreign_key_field_list.size(); i++) {
+            ForeignKeyField foreignKeyFieldName = foreignKey.foreign_key_field_list.get(i);
+            ReferencedKeyField referenced_key_fieldName = foreignKey.referenced_key_field_list.get(i);
+            b.append("`").append(table_name).append("`.`").append(foreignKeyFieldName.name).append("` -> `").append(parent_table_name).append("`.`").append(referenced_key_fieldName.name).append("`,");
         }
-        if (foreignKey.foreignKeyFields.size() > 0) {
+        if (foreignKey.foreign_key_field_list.size() > 0) {
             b.delete(b.length()-1, b.length());
         }
         b.append("]");
@@ -81,6 +81,6 @@ public class ChildTable {
 
     @Override
     public String toString() {
-        return new StringBuilder().append("ChildTable: ").append("[").append(tableName).append("] -> Parent Table: [").append(parentTableName).append("] ForeignKey: [").append(foreigKeyName).append("] On").toString();
+        return new StringBuilder().append("ChildTable: ").append("[").append(table_name).append("] -> Parent Table: [").append(parent_table_name).append("] ForeignKey: [").append(foreig_key_name).append("] On").toString();
     }
 }

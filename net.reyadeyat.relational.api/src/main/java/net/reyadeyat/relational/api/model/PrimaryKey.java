@@ -49,8 +49,8 @@ public class PrimaryKey {
         this.case_sensitive_sql = case_sensitive_sql;
     }
     
-    public void addField(PrimaryKeyField primaryKeyField) {
-        primary_key_field_list.add(primaryKeyField);
+    public void addField(PrimaryKeyField primary_key_field) {
+        primary_key_field_list.add(primary_key_field);
     }
     
     public boolean isFieldPrimaryKey(String field_name) {
@@ -95,8 +95,8 @@ public class PrimaryKey {
     public String toString() {
         StringBuilder b = new StringBuilder();
         b.append("Primary Key: ").append(name).append(" {");
-        for (PrimaryKeyField primaryKeyField : primary_key_field_list) {
-            b.append(primaryKeyField.name).append(",");
+        for (PrimaryKeyField primary_key_field : primary_key_field_list) {
+            b.append(primary_key_field.name).append(",");
         }
         b.delete(b.length()-1, b.length());
         b.append("}");

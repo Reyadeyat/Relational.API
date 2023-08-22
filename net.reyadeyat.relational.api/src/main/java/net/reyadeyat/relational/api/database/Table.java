@@ -59,7 +59,7 @@ public class Table {
     private JsonObject table_tree;
     private String table_name;
     private HashMap<String, Field> fieldMap;
-    private ArrayList<Field> fields;
+    private ArrayList<Field> field_list;
     private String selectWhereCondition;
     private ArrayList<Field> selectWhereConditionFields;
     private String updateWhereCondition;
@@ -137,7 +137,7 @@ public class Table {
         this.fieldMap = new HashMap<String, Field>();
         hasPrimaryKeyAI = null;
         hasPrimaryKeyMI = null;
-        fields = new ArrayList<Field>();
+        field_list = new ArrayList<Field>();
         errors = new ArrayList<String>();
         join_sql_list = new ArrayList<String>();
         joinKeys = new HashMap<String, JoinKey>();
@@ -241,7 +241,7 @@ public class Table {
         }
 
         if (primary_keys == null) {
-            error_list.add("Primary Keys are not defined fields tableFields");
+            error_list.add("Primary Keys are not defined field_list tableFields");
         }
 
         if (transaction_type_list.contains("insert") == true) {
@@ -258,7 +258,7 @@ public class Table {
             }
             sb.setLength(0);
             if (transaction_type_list.contains("insert") == true && insert_fields.size() == 0) {
-                error_list.add("no valid insert fields defined");
+                error_list.add("no valid insert field_list defined");
             } else if (/*insert_fields != null && */transaction_type_list.contains("insert") == false) {
                 //ignore
             } else {
@@ -395,7 +395,7 @@ public class Table {
         if (transaction_type_list.contains("select") == true) {
             sb.setLength(0);
             if (transaction_type_list.contains("select") == true && select_fields.size() == 0) {
-                error_list.add("no valid select fields defined");
+                error_list.add("no valid select field_list defined");
             } else if (/*select_fields != null && */transaction_type_list.contains("select") == false) {
                 //ignore
             } else {
@@ -417,7 +417,7 @@ public class Table {
         if (transaction_type_list.contains("update") == true) {
             sb.setLength(0);
             if (update_fields == null && transaction_type_list.contains("update") == true) {
-                error_list.add("no valid update fields defined");
+                error_list.add("no valid update field_list defined");
             } else if (/*update_fields != null && */transaction_type_list.contains("update") == false) {
                 //ignore
             } else {
@@ -425,7 +425,7 @@ public class Table {
                 for (String fieldName : update_fields) {
                     if (tableFields.get(fieldName) == null) {
                         initerror = true;
-                        error_list.add("Update Field '" + fieldName + "' is not defined in fields tableFields");
+                        error_list.add("Update Field '" + fieldName + "' is not defined in field_list tableFields");
                     }
                 }*/
                 //StringBuilder sb = new StringBuilder();
@@ -437,7 +437,7 @@ public class Table {
                     sb.setLength(0);
                     sb.append("SELECT ").append(getFieldsFor(Field.UPDATE, true));
                     /*Make Select shows count as a flag of uniquness
-                            Group by fields to get these uniqueness*/
+                            Group by field_list to get these uniqueness*/
                     sb.append(" FROM `").append(database_name).append("`.`").append(table_name).append("` WHERE ");
                     if (primary_keys != null) {
                         hasUniqueness = true;
@@ -483,8 +483,8 @@ public class Table {
             sb.append("DELETE FROM `").append(database_name).append("`.`").append(table_name).append("` $WHERE$");
             delete_statement = sb.toString();
         }
-        ArrayList<Field> fields = getFields();
-        for (Field field : fields) {
+        ArrayList<Field> field_list = getFields();
+        for (Field field : field_list) {
             if (field.hasErrors()) {
                 ArrayList<String> errors = field.getErrors();
                 for (String error : errors) {
@@ -497,8 +497,8 @@ public class Table {
     }
     
     public void postInit() {
-        this.fields = new ArrayList<Field>(fieldMap.values());
-        Collections.sort(this.fields);
+        this.field_list = new ArrayList<Field>(fieldMap.values());
+        Collections.sort(this.field_list);
         if (joinKeys != null) {
             Set<String> joinKeysSet = joinKeys.keySet();
             for (String key : joinKeysSet) {
@@ -535,7 +535,7 @@ public class Table {
     }
     
     public ArrayList<Field> getFields() {
-        return fields;
+        return field_list;
     }
     
     public HashMap<String, Field> getFieldMap() {
@@ -551,7 +551,7 @@ public class Table {
     }
     
     private void checkDuplicity(Field field) {
-        for (Field f : fields) {
+        for (Field f : field_list) {
             if (table_name.equalsIgnoreCase(f.getTable()) == true
                     && f.isVariable() == false && f.hasFormulaDefined() == false && f.getName().equalsIgnoreCase(field.getName())) {
                 errors.add("Field name '" + f.getTable() + "'.'" + f.getName() + "' is duplicated");
@@ -572,13 +572,13 @@ public class Table {
     }
     
     public Field addField(Boolean nullable, Boolean group, FieldType fieldType, String joinTable, String joinTableAlias, String name, String alias) {
-        Field field = new Field(fields.size(), nullable, group, fieldType, joinTable, joinTableAlias, name, alias);
+        Field field = new Field(field_list.size(), nullable, group, fieldType, joinTable, joinTableAlias, name, alias);
         /*if (name.length() == 0) {
             field.disallow(Field.INSERT);
             field.disallow(Field.UPDATE);
         }*/
         checkDuplicity(field);
-        fields.add(field);
+        field_list.add(field);
         fieldMap.put(alias, field);
         return field;
     }
@@ -728,7 +728,7 @@ public class Table {
     public Boolean hasPrimaryKeyAI() {
         if (hasPrimaryKeyAI == null) {
             hasPrimaryKeyAI = false;
-            for (Field field : fields) {
+            for (Field field : field_list) {
                 if (field.isPrimaryKeyAI() == true) {
                     hasPrimaryKeyAI = true;
                     break;
@@ -741,7 +741,7 @@ public class Table {
     public Integer countPrimaryKeyAI() {
         if (countPrimaryKeyAI == null) {
             countPrimaryKeyAI = 0;
-            for (Field field : fields) {
+            for (Field field : field_list) {
                 if (field.isPrimaryKeyMI() == true) {
                     countPrimaryKeyAI++;
                 }
@@ -753,7 +753,7 @@ public class Table {
     public Boolean hasPrimaryKeyMI() {
         if (hasPrimaryKeyMI == null) {
             hasPrimaryKeyMI = false;
-            for (Field field : fields) {
+            for (Field field : field_list) {
                 if (field.isPrimaryKeyMI() == true) {
                     hasPrimaryKeyMI = true;
                     break;
@@ -766,7 +766,7 @@ public class Table {
     public Integer countPrimaryKeyMI() {
         if (countPrimaryKeyMI == null) {
             countPrimaryKeyMI = 0;
-            for (Field field : fields) {
+            for (Field field : field_list) {
                 if (field.isPrimaryKeyMI() == true) {
                     countPrimaryKeyMI++;
                 }
@@ -987,7 +987,7 @@ public class Table {
                 //Validate Primary key field in Where Field array list
                 JsonObject where = JsonUtil.getJsonObject(json, "where", false);
                 JsonArray where_value_list = JsonUtil.getJsonArray(where, "values", true);
-                JsonArray where_field_list = JsonUtil.getJsonArray(where, "fields", true);
+                JsonArray where_field_list = JsonUtil.getJsonArray(where, "field_list", true);
                 if (where_field_list != null) {
                     for (int i = 0; i < primary_keys.size(); i++) {
                         Field field = primary_keys.get(i);
@@ -1092,14 +1092,14 @@ public class Table {
         }
         JsonArray values = json.get("values").getAsJsonArray();
         for (ForeignKey foreignKey : foreignKeys) {
-            ArrayList<Field> fields = foreignKey.getFields();
+            ArrayList<Field> field_list = foreignKey.getFields();
             ArrayList<Integer> nullableRecords = new ArrayList<Integer>();
             //validate nullability
             for (int oo = 0; oo < values.size(); oo++) {
                 JsonObject o = values.get(oo).getAsJsonObject();
                 Integer nullables = 0;
-                for (int i = 0; i < fields.size(); i++) {
-                    Field f = fields.get(i);
+                for (int i = 0; i < field_list.size(); i++) {
+                    Field f = field_list.get(i);
                     JsonElement fje = o.get(f.getAlias());
                     String fieldValue = (fje == null || fje.isJsonNull() ? null : fje.getAsString());
                     if (f.isNullable() == true && fieldValue == null) {
@@ -1107,7 +1107,7 @@ public class Table {
                     }
                 }
                 nullableRecords.add(nullables);
-                if (nullables > 0 && nullables != fields.size()) {
+                if (nullables > 0 && nullables != field_list.size()) {
                     errors.add("Foreign Key '" + foreignKey.getKey() + "' for Table '" + foreignKey.getForeignTable() + "' has mixed keys {null} values check index [" + oo + "], either or null or all non-null}");
                 }
             }
@@ -1121,8 +1121,8 @@ public class Table {
                 try (PreparedStatement preparedInsertedSelectStmt = con.prepareStatement(foreignness_statement)) {
                     int idx = 0;
                     StringBuilder sb = new StringBuilder();
-                    for (int i = 0; i < fields.size(); i++) {
-                        Field f = fields.get(i);
+                    for (int i = 0; i < field_list.size(); i++) {
+                        Field f = field_list.get(i);
                         JsonElement fje = o.get(f.getAlias());
                         String fieldValue = (fje == null || fje.isJsonNull() ? null : fje.getAsString());
                         preparedInsertedSelectStmt.setObject(++idx, f.getFieldObject(fieldValue));
@@ -1152,15 +1152,15 @@ public class Table {
         if (foreignKeys.size() > 0) {
             JsonArray values = json.get("values").getAsJsonArray();
             for (ForeignKey foreignKey : foreignKeys) {
-                ArrayList<Field> fields = foreignKey.getFields();
-                Integer checkForeignKeyUpdate = fields.size();
+                ArrayList<Field> field_list = foreignKey.getFields();
+                Integer checkForeignKeyUpdate = field_list.size();
                 StringBuilder sb = new StringBuilder();
                 String foreignness_statement = foreignKey.getForeinessValidationStatement();
                 Boolean skipForeignKeyCheck = false;
                 for (int oo = 0; oo < 1 /*values.size()*/; oo++) {
                     JsonObject o = values.get(oo).getAsJsonObject();
-                    for (int i = 0; i < fields.size(); i++) {
-                        Field f = fields.get(i);
+                    for (int i = 0; i < field_list.size(); i++) {
+                        Field f = field_list.get(i);
                         JsonElement je = o.get(f.getAlias());
                         if (je == null) {
                             sb.append(f.getAlias()).append(",");
@@ -1168,10 +1168,10 @@ public class Table {
                         checkForeignKeyUpdate += (je == null ? 0 : -1);
                     }
                     sb = (sb.length() == 0 ? sb : sb.delete(sb.length() - 1, sb.length()));
-                    if (checkForeignKeyUpdate == fields.size()) {
+                    if (checkForeignKeyUpdate == field_list.size()) {
                         skipForeignKeyCheck = true;
-                    } else if (checkForeignKeyUpdate != 0) {//some fields exists but some others doesn't
-                        errors.add("Table '" + foreignKey.getForeignTable() + "' missing '" + (fields.size() - checkForeignKeyUpdate) + "' foreign keys '" + foreignKey.getKey() + "' keys {" + sb.toString() + "}");
+                    } else if (checkForeignKeyUpdate != 0) {//some field_list exists but some others doesn't
+                        errors.add("Table '" + foreignKey.getForeignTable() + "' missing '" + (field_list.size() - checkForeignKeyUpdate) + "' foreign keys '" + foreignKey.getKey() + "' keys {" + sb.toString() + "}");
                         return false;
                     }
                 }
@@ -1183,8 +1183,8 @@ public class Table {
                     try (PreparedStatement preparedInsertedSelectStmt = con.prepareStatement(foreignness_statement)) {
                         int idx = 0;
                         sb.setLength(0);
-                        for (int i = 0; i < fields.size(); i++) {
-                            Field f = fields.get(i);
+                        for (int i = 0; i < field_list.size(); i++) {
+                            Field f = field_list.get(i);
                             JsonElement fje = o.get(f.getAlias());
                             String fieldValue = (fje == null || fje.isJsonNull() ? null : fje.getAsString());
                             preparedInsertedSelectStmt.setObject(++idx, f.getFieldObject(fieldValue));
@@ -1280,12 +1280,12 @@ public class Table {
         return new ServiceField(formula, type, alias, errorList);
     }
 
-    protected boolean areValidSelectFields(ArrayList<String> field, ArrayList<ServiceField> serviceFields, HashMap<String, Field> record, ArrayList<Field> fields, JsonArray errorList) {
+    protected boolean areValidSelectFields(ArrayList<String> field, ArrayList<ServiceField> serviceFields, HashMap<String, Field> record, ArrayList<Field> field_list, JsonArray errorList) {
         for (int i = 0; i < field.size(); i++) {
             Field f = record.get(field.get(i));
             if (f != null && f.isAllowedTo(Field.SELECT) == false) {
                 errorList.add("Field '" + field.get(i) + "' is not allowed in select operation");
-            } else if (f == null || fields.contains(f) == false) {
+            } else if (f == null || field_list.contains(f) == false) {
                 ServiceField sf = isValidServiceField(field.get(i), record, errorList);
                 if (sf != null) {
                     serviceFields.add(sf);
@@ -1319,7 +1319,7 @@ public class Table {
         return errorList.size() == 0;
     }
 
-    protected boolean areValidUpdateFieldsValues(HashMap<String, Field> field_map, JsonArray jsonRecordset, ArrayList<String> conditionalFields, ArrayList<Field> fields, JsonArray errorList) throws Exception {
+    protected boolean areValidUpdateFieldsValues(HashMap<String, Field> field_map, JsonArray jsonRecordset, ArrayList<String> conditionalFields, ArrayList<Field> field_list, JsonArray errorList) throws Exception {
         StringBuilder error = new StringBuilder();
         for (int i = 0; i < jsonRecordset.size(); i++) {
             JsonObject record = jsonRecordset.get(i).getAsJsonObject();
@@ -1331,7 +1331,7 @@ public class Table {
                     errorList.add("Field '" + fieldName + "' is not a valid condition field name, check record[" + (i + 1) + "]");
                 } else if (conditionalFields == null && f == null) {
                     errorList.add("Field '" + fieldName + "' is not a valid field name, check record[" + (i + 1) + "]");
-                } else if (conditionalFields == null && fields.contains(f) == false) {
+                } else if (conditionalFields == null && field_list.contains(f) == false) {
                     errorList.add("Field '" + fieldName + "' is not allowed field to be updated, check record[" + (i + 1) + "]");
                 } else if (conditionalFields == null && record.get(fieldName) != null && f != null && f.isNullable() == false && record.get(fieldName).isJsonNull() == true) {
                     errorList.add("Field '" + fieldName + "' doesn't accept null values, check record[" + (i + 1) + "]");
@@ -1355,7 +1355,7 @@ public class Table {
             for (int x = 0; conditionalFields != null && x < conditionalFields.size(); x++) {
                 String fieldName = conditionalFields.get(x);
                 if (record.get(fieldName) == null) {
-                    errorList.add("Field '" + fieldName + "', in {where.fields} doesn't exist in values record, check record[" + (i + 1) + "]");
+                    errorList.add("Field '" + fieldName + "', in {where.field_list} doesn't exist in values record, check record[" + (i + 1) + "]");
                 }
             }
         }
@@ -1683,7 +1683,7 @@ public class Table {
         return errorList.size() == 0;
     }
 
-    public boolean areValidInsertValueFields(HashMap<String, Field> record, JsonArray values, ArrayList<Field> fields, JsonArray errorList) throws Exception {
+    public boolean areValidInsertValueFields(HashMap<String, Field> record, JsonArray values, ArrayList<Field> field_list, JsonArray errorList) throws Exception {
         StringBuilder error = new StringBuilder();
         for (int i = 0; i < values.size(); i++) {
             JsonObject o = values.get(i).getAsJsonObject();
@@ -1696,7 +1696,7 @@ public class Table {
                 Field f = record.get(fieldName);
                 if (f != null && f.isAllowedTo(Field.INSERT) == false) {
                     errorList.add("Field '" + fieldName + "' is not allowed in insert operation");
-                } else if (f == null || fields.contains(f) == false) {
+                } else if (f == null || field_list.contains(f) == false) {
                     errorList.add("Field '" + fieldName + "' is not a valid field name for insert operation");
                 } else if (f.isAllowedTo(Field.INSERT) == false) {
                     errorList.add("Field '" + fieldName + "' is not allowed to insert opertation");
@@ -1710,9 +1710,9 @@ public class Table {
         }
         for (int i = 0; i < values.size(); i++) {
             JsonObject o = values.get(i).getAsJsonObject();
-            for (int x = 0; x < fields.size(); x++) {
-                Field f = fields.get(x);
-                JsonElement fje = o.get(fields.get(x).getAlias());
+            for (int x = 0; x < field_list.size(); x++) {
+                Field f = field_list.get(x);
+                JsonElement fje = o.get(field_list.get(x).getAlias());
                 String fieldValue = (fje == null || fje.isJsonNull() ? null : fje.getAsString());
                 if (f.isPrimaryKeyAI() == false && f.isPrimaryKeyMI() == false
                         && f.isAllowedTo(Field.INSERT) == true && f.isValid(Field.INSERT, fieldValue, error) == false
@@ -1739,9 +1739,9 @@ public class Table {
 
     protected String getFieldsFor(Integer operation, Boolean include_primary_keys) throws Exception {
         StringBuilder csv = new StringBuilder();
-        ArrayList<Field> fields = getFields();
-        for (int i = 0; i < fields.size(); i++) {
-            Field f = fields.get(i);
+        ArrayList<Field> field_list = getFields();
+        for (int i = 0; i < field_list.size(); i++) {
+            Field f = field_list.get(i);
             if (f.isAllowedTo(operation)
                     || (include_primary_keys == true && f.isPrimaryKey())) {
                 csv.append(f.getSelect()).append(",");
@@ -1806,12 +1806,12 @@ public class Table {
         return csv.toString();
     }
 
-    protected String fieldAliasToCsv(ArrayList<Field> fields) {
-        if (fields.size() == 0) {
+    protected String fieldAliasToCsv(ArrayList<Field> field_list) {
+        if (field_list.size() == 0) {
             return "";
         }
         StringBuilder csv = new StringBuilder();
-        for (Field f : fields) {
+        for (Field f : field_list) {
             csv.append(f.getAlias()).append(",");
         }
         csv.delete(csv.length() - 1, csv.length());
@@ -2204,10 +2204,10 @@ public class Table {
                 }
                 if (table.hasSelectWhereCondition() == true) {
                     //JsonArray selectFields = json.get("select").getAsJsonArray();
-                    ArrayList<Field> fields = table.getSelectWhereConditionFields();
-                    for (int i = 0; i < fields.size(); i++) {
+                    ArrayList<Field> field_list = table.getSelectWhereConditionFields();
+                    for (int i = 0; i < field_list.size(); i++) {
                         for (int x = 0; x < wf.size(); x++) {
-                            if (fields.get(i).getAlias().equalsIgnoreCase(wf.get(x).getAlias())) {
+                            if (field_list.get(i).getAlias().equalsIgnoreCase(wf.get(x).getAlias())) {
                                 preparedStmt.setObject(++idx, v.get(i));
                             }
                         }
@@ -2510,7 +2510,7 @@ public class Table {
                         //ignore
                         //errors.add("Field '" + fn + "' is a primary key and is not allowed for update");
                     } else if (f == null && ff != null && ff.contains(fn) == false) {
-                        errors.add("Field '" + fn + "' is unknowen to where fields");
+                        errors.add("Field '" + fn + "' is unknowen to where field_list");
                     } else if (f == null && ff != null && ff.contains(fn) == true) {
                         /*uf.add(f);
                         uu.append(f.getSQLName()).append("=?, ");*/
@@ -2641,7 +2641,7 @@ public class Table {
                         errors.add("Field '" + fn + "' is a primary key and is not allowed for delete");
                     } else */
                     if (f == null && ff != null && ff.contains(alias) == false) {
-                        errors.add("Field '" + alias + "' is unknowen to where fields");
+                        errors.add("Field '" + alias + "' is unknowen to where field_list");
                     } else if (f == null && ff != null && ff.contains(alias) == true) {
                         /*uf.add(f);
                         uu.append(f.getSQLName()).append("=?, ");*/
@@ -2719,7 +2719,7 @@ public class Table {
      * @throws java.lang.Exception
      */
     
-    public static void loadDataModel(String secret_key, JDBCSource model_jdbc_source, JDBCSource data_jdbc_source, Integer model_id, JsonArray errors) throws Exception {
+    public static void loadDataModel(String secret_key, JDBCSource model_jdbc_source, JDBCSource data_jdbc_source, Integer model_id, HashMap<String, Class> interface_implementation, JsonArray errors) throws Exception {
         Integer model_instance_id = 1;
         DataClass.LoadMethod loadMethod = DataClass.LoadMethod.REFLECTION;
         DataLookup data_lookup = null;
@@ -2763,7 +2763,7 @@ public class Table {
             throw exception;
         }
         if (data_model_definition != null) {
-            DataProcessor<Enterprise> dataProcessor = new DataProcessor<Enterprise>(EnterpriseModel.class, Enterprise.class, model_jdbc_source, data_model_definition, data_lookup);
+            DataProcessor<Enterprise> dataProcessor = new DataProcessor<Enterprise>(EnterpriseModel.class, Enterprise.class, model_jdbc_source, data_model_definition, data_lookup, interface_implementation);
             EnterpriseModel<Enterprise> enterprise_model = (EnterpriseModel<Enterprise>) dataProcessor.loadModelFromDatabase(model_id, model_instance_id, loadMethod);
             enterprise_model.getInstance().init();
             data_model_map.put(model_id, enterprise_model);
@@ -2773,7 +2773,7 @@ public class Table {
     private void initializeTable(Integer model_id) throws Exception {
         EnterpriseModel<Enterprise> enterprise_model = data_model_map.get(model_id);
         net.reyadeyat.relational.api.model.Table database_table = enterprise_model.getInstance().getDatabase(database_name).getTable(table_name);
-        for(net.reyadeyat.relational.api.model.Field table_field: database_table.fields) {
+        for(net.reyadeyat.relational.api.model.Field table_field: database_table.field_list) {
             String field_alias = table_field.name;
             FieldType field_type = FieldType.getClassFieldType(table_field.getTypeJavaClass());
             Boolean nullable = table_field.nullable;
@@ -2790,7 +2790,7 @@ public class Table {
         database_table = database_table;
         
         //scan table
-        //add fields
+        //add field_list
         /*
         addField("customer_id", FieldType.Integer, false, false, "customer_id").allow(Field.SELECT).disallow(Field.INSERT | Field.UPDATE);
         addField("erp_customer_id", FieldType.String, true, false, "erp_customer_id").allow(Field.SELECT).disallow(Field.INSERT | Field.UPDATE);
@@ -2893,8 +2893,8 @@ public class Table {
         } else if (database_request.get("where").getAsJsonObject().get("clause") == null || database_request.get("where").getAsJsonObject().get("clause").isJsonNull()) {
             record_processor.addError("Delete command misses 'where.clause' object");
         } else if ((database_request.get("where").getAsJsonObject().get("values") == null || database_request.get("where").getAsJsonObject().get("values").isJsonNull())
-                && (database_request.get("where").getAsJsonObject().get("fields") == null || database_request.get("where").getAsJsonObject().get("fields").isJsonNull())) {
-            record_processor.addError("Delete command misses but shall have either 'where.values' or 'where.fields' compound object");
+                && (database_request.get("where").getAsJsonObject().get("field_list") == null || database_request.get("where").getAsJsonObject().get("field_list").isJsonNull())) {
+            record_processor.addError("Delete command misses but shall have either 'where.values' or 'where.field_list' compound object");
         }
     }
     

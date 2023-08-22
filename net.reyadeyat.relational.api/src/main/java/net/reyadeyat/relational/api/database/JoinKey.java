@@ -69,17 +69,17 @@ public class JoinKey {
     
     public void prepareJoinStatement() {
         StringBuilder sb = new StringBuilder();
-        ArrayList<Field> fields = new ArrayList<>(joinFields.keySet());
-        Collections.sort(fields);
+        ArrayList<Field> field_list = new ArrayList<>(joinFields.keySet());
+        Collections.sort(field_list);
         if (join_table_alias == null) {
             sb.append(join_type == JoinType.INNER_JOIN ? " INNER JOIN " : join_type == JoinType.LEFT_JOIN ? " LEFT JOIN " : "RIGHT JOIN").append("`").append(database_name).append("`.`").append(join_table).append("` ON ");
         } else {
             sb.append(join_type == JoinType.INNER_JOIN ? " INNER JOIN " : join_type == JoinType.LEFT_JOIN ? " LEFT JOIN " : "RIGHT JOIN").append("`").append(database_name).append("`.`").append(join_table).append("` AS `").append(join_table_alias).append("` ON ");
         }
-        for (int i = 0; i < fields.size(); i++) {
-            Field field = fields.get(i);
+        for (int i = 0; i < field_list.size(); i++) {
+            Field field = field_list.get(i);
             String joinFieldName = joinFields.get(field);
-            sb.append("`").append(join_table_alias == null ? join_table : join_table_alias).append("`.`").append(joinFieldName).append("`=`").append(primary_table).append("`.`").append(field.getName()).append("`").append(i+1 == fields.size() ? "" : " AND ");
+            sb.append("`").append(join_table_alias == null ? join_table : join_table_alias).append("`.`").append(joinFieldName).append("`=`").append(primary_table).append("`.`").append(field.getName()).append("`").append(i+1 == field_list.size() ? "" : " AND ");
         }
         join_statement = sb.toString();
     }

@@ -24,6 +24,7 @@ import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
+import java.util.HashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.sql.DataSource;
@@ -44,8 +45,8 @@ import net.reyadeyat.relational.api.request.RelationalRequest;
  */
 public class TestRelationalRequest extends RelationalRequest {
     
-    public TestRelationalRequest(JsonObject request_service_definition_json) throws Exception {
-        super(request_service_definition_json);
+    public TestRelationalRequest(JsonObject request_service_definition_json, HashMap<String, Class> interface_implementation) throws Exception {
+        super(request_service_definition_json, interface_implementation);
     }
 
     /**
@@ -64,7 +65,10 @@ public class TestRelationalRequest extends RelationalRequest {
             JsonArray error_list = new JsonArray();
             JsonObject request_service_definition_json = gson.fromJson(request_service_definition_json_text, JsonObject.class);
             
-            TestRelationalRequest relational_request = new TestRelationalRequest(request_service_definition_json);
+            HashMap<String, Class> interface_implementation = new HashMap<String, Class>();
+            interface_implementation.put("net.reyadeyat.relational.api.model.TableDataStructures", UserDefinedTableDataStructures.class);
+            
+            TestRelationalRequest relational_request = new TestRelationalRequest(request_service_definition_json, interface_implementation);
             relational_request.serviceTransaction(security_flag, json_request, response_output_stream, jdbc_connection, log_list, error_list);
             String reposnse_string = new String(response_output_stream.toByteArray(), StandardCharsets.UTF_8);
             Logger.getLogger(TestRelationalRequest.class.getName()).log(Level.INFO, reposnse_string);
