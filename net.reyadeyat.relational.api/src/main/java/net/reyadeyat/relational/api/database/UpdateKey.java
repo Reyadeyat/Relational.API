@@ -34,7 +34,7 @@ import java.util.HashMap;
 public class UpdateKey {
     private String database_name;
     private String update_table;
-    private ArrayList<Field> fields;
+    private ArrayList<Field> field_list;
     private HashMap<Field, String> updateFields;//Update Field, Field
     private String updating_validation_statement;
     
@@ -53,13 +53,13 @@ public class UpdateKey {
     
     public void prepareUpdatingStatement() {
         StringBuilder sb = new StringBuilder();
-        fields = new ArrayList<>(updateFields.keySet());
-        Collections.sort(fields);
+        field_list = new ArrayList<>(updateFields.keySet());
+        Collections.sort(field_list);
         sb.append("SELECT * FROM ").append("`").append(database_name).append("`.`").append(update_table).append("` WHERE ");
-        for (int i = 0; i < fields.size(); i++) {
-            Field field = fields.get(i);
+        for (int i = 0; i < field_list.size(); i++) {
+            Field field = field_list.get(i);
             String updateFieldName = updateFields.get(field);
-            sb.append("`").append(update_table).append("`.`").append(updateFieldName).append("`=?").append(i+1 == fields.size() ? "" : " AND ");
+            sb.append("`").append(update_table).append("`.`").append(updateFieldName).append("`=?").append(i+1 == field_list.size() ? "" : " AND ");
         }
         updating_validation_statement = sb.toString();
     }

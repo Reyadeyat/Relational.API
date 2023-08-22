@@ -35,7 +35,7 @@ public class DependentKey {
     private String key;
     private String database_name;
     private String dependent_table;
-    private ArrayList<Field> fields;
+    private ArrayList<Field> field_list;
     private HashMap<Field, String> dependentFields;//Dependent Field, Field
     private String dependency_validation_statement;
     
@@ -63,7 +63,7 @@ public class DependentKey {
     }
     
     public ArrayList<Field> getFields() {
-        return this.fields;
+        return this.field_list;
     }
     
     public void prepareDependencyValidationStatement() {
@@ -72,13 +72,13 @@ public class DependentKey {
             return;
         }
         StringBuilder sb = new StringBuilder();
-        fields = new ArrayList<>(dependentFields.keySet());
-        Collections.sort(fields);
+        field_list = new ArrayList<>(dependentFields.keySet());
+        Collections.sort(field_list);
         sb.append("SELECT * FROM ").append("`").append(database_name).append("`.`").append(dependent_table).append("` WHERE ");
-        for (int i = 0; i < fields.size(); i++) {
-            Field field = fields.get(i);
+        for (int i = 0; i < field_list.size(); i++) {
+            Field field = field_list.get(i);
             String dependentFieldName = dependentFields.get(field);
-            sb.append("`").append(dependent_table).append("`.`").append(dependentFieldName).append("`=?").append(i+1 == fields.size() ? "" : " AND ");
+            sb.append("`").append(dependent_table).append("`.`").append(dependentFieldName).append("`=?").append(i+1 == field_list.size() ? "" : " AND ");
         }
         dependency_validation_statement = sb.toString();
     }

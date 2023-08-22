@@ -25,6 +25,7 @@ import java.io.FileOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.util.HashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.sql.DataSource;
@@ -32,6 +33,7 @@ import net.reyadeyat.relational.api.jdbc.JDBCSource;
 import net.reyadeyat.relational.api.json.JsonUtil;
 import net.reyadeyat.relational.api.modeler.ModelingRequest;
 import net.reyadeyat.relational.api.request.Response;
+import net.reyadeyat.relational.api.model.TableDataStructures;
 
 /**
  *
@@ -61,22 +63,26 @@ public class TestModelingRequest extends ModelingRequest {
             JsonArray log_list = new JsonArray();
             
             //ByteArrayOutputStream response_output_stream = new ByteArrayOutputStream();
-            FileOutputStream response_output_stream = new FileOutputStream(new File("/linux/reyadeyat/projects/open-source/Relational.API/modeling.sql"));
+            FileOutputStream response_output_stream = new FileOutputStream(new File("/linux/reyadeyat/yanobel/open-source/Relational.API/modeling.sql"));
             
             JsonArray error_list = new JsonArray();
             TestModelingRequest modeling_request = new TestModelingRequest();
             
+            TableDataStructures table_data_structures = new UserDefinedTableDataStructures();
+            HashMap<String, Class> interface_implementation = new HashMap<String, Class>();
+            interface_implementation.put("net.reyadeyat.relational.api.model.TableDataStructures", UserDefinedTableDataStructures.class);
+            
             //Delete Model Request
             JsonObject model_service_delete_json = gson.fromJson(model_service_delete_request_json_text, JsonObject.class);
-            Response delete_response = modeling_request.serviceTransaction(security_flag, model_service_delete_json, response_output_stream, jdbc_connection, log_list, error_list);
+            Response delete_response = modeling_request.serviceTransaction(security_flag, model_service_delete_json, response_output_stream, jdbc_connection, table_data_structures, interface_implementation, log_list, error_list);
             
             //Build Model Request
             JsonObject model_service_build_json = gson.fromJson(model_service_build_request_json_text, JsonObject.class);
-            Response build_response = modeling_request.serviceTransaction(security_flag, model_service_build_json, response_output_stream, jdbc_connection, log_list, error_list);
+            Response build_response = modeling_request.serviceTransaction(security_flag, model_service_build_json, response_output_stream, jdbc_connection, table_data_structures, interface_implementation, log_list, error_list);
             
             //Print Model Request
             JsonObject model_service_print_json = gson.fromJson(model_service_print_request_json_text, JsonObject.class);
-            Response print_response = modeling_request.serviceTransaction(security_flag, model_service_print_json, response_output_stream, jdbc_connection, log_list, error_list);
+            Response print_response = modeling_request.serviceTransaction(security_flag, model_service_print_json, response_output_stream, jdbc_connection, table_data_structures, interface_implementation, log_list, error_list);
             
             //String reposnse_string = new String(response_output_stream.toByteArray(), StandardCharsets.UTF_8);
             //Logger.getLogger(TestModelingRequest.class.getName()).log(Level.INFO, reposnse_string);
@@ -99,7 +105,7 @@ public class TestModelingRequest extends ModelingRequest {
     public JDBCSource getJDBCSource(String datasource_name) throws Exception {
         if (datasource_name.equalsIgnoreCase("model") == true) {
             return model_jdbc_source;
-        } else if (datasource_name.equalsIgnoreCase("parental") == true) {
+        } else if (datasource_name.equalsIgnoreCase(data_database) == true) {
             return data_jdbc_source;
         }
         throw new Exception("JDBC Source '"+datasource_name+"' is not defined in this service container!!");
@@ -125,27 +131,29 @@ public class TestModelingRequest extends ModelingRequest {
         throw new UnsupportedOperationException("Not implemented yet.");
     }
     
+    private static String data_database = "parental";
+    
     /*private static String model_transaction_request_json_text = """
             {
                 "service_name": "parental_service",
-                "default_datasource_name": "parental",
-                "database_name": "parental",
+                "default_datasource_name": "%s",
+                "database_name": "%s",
                 "model_id": "500",
                 "model_datasource_name": "model",
-                "data_datasource_name": "parental",
+                "data_datasource_name": "%s",
                 "secret_key": "1234567890"
             }
-            """;*/
+            """.formatted(data_database, data_database, data_database);*/
     
     private static String model_service_build_request_json_text = """
     {
         "transaction": "build",
         "service_name": "parental_service",
-        "default_datasource_name": "parental",
-        "database_name": "parental",
+        "default_datasource_name": "%s",
+        "database_name": "%s",
         "model_id": "500",
         "model_datasource_name": "model",
-        "data_datasource_name": "parental",
+        "data_datasource_name": "%s",
         "secret_key": "1234567890",
                                                                   
         "model_id": 500,
@@ -158,9 +166,11 @@ public class TestModelingRequest extends ModelingRequest {
         "modeled_database_url_user_name": "remote",
         "modeled_database_url_user_password": "123456",
         "modeled_database_schem": "",
-        "modeled_database_name": "parental",
+        "modeled_database_name": "%s",
         "modeled_database_field_open_quote": "`",
         "modeled_database_field_close_quote": "`",
+                                                                  
+        "modeled_table_data_structures_class": "net.reyadeyat.relational.test.api.UserDefinedTableDataStructures",
                                                                   
         "table_tree": [
             {
@@ -187,23 +197,23 @@ public class TestModelingRequest extends ModelingRequest {
             }
         ]
     }
-    """;
+    """.formatted(data_database, data_database, data_database, data_database);
     
     private static String model_service_print_request_json_text = """
     {
         "transaction": "print",
         "print_style": 1,
         "service_name": "parental_service",
-        "default_datasource_name": "parental",
-        "database_name": "parental",
+        "default_datasource_name": "%s",
+        "database_name": "%s",
         "model_id": "500",
         "model_datasource_name": "model",
-        "data_datasource_name": "parental",
+        "data_datasource_name": "%s",
         "secret_key": "1234567890",
                                                                   
         "model_id": 500,
         "model_instance_sequence_type_id": 1,
-        "model_name": "parental",
+        "model_name": "%s",
         "model_version": 0.0.000001",
         "model_class_path": "net.reyadeyat.relational.api.model.Enterprise",
         "model_data_lookup_category": "MySQL Data Type",
@@ -211,9 +221,11 @@ public class TestModelingRequest extends ModelingRequest {
         "modeled_database_url_user_name": "remote",
         "modeled_database_url_user_password": "123456",
         "modeled_database_schem": "",
-        "modeled_database_name": "parental",
+        "modeled_database_name": "%s",
         "modeled_database_field_open_quote": "`",
         "modeled_database_field_close_quote": "`",
+                                                                  
+        "modeled_table_data_structures_class": "net.reyadeyat.relational.test.api.UserDefinedTableDataStructures",
                                                                   
         "table_tree": [
             {
@@ -240,20 +252,20 @@ public class TestModelingRequest extends ModelingRequest {
             }
         ]
     }
-    """;
+    """.formatted(data_database, data_database, data_database, data_database, data_database);
 
     private static String model_service_delete_request_json_text = """
     {
         "transaction": "delete",
         "service_name": "parental_service",
-        "default_datasource_name": "parental",
-        "database_name": "parental",
+        "default_datasource_name": "%s",
+        "database_name": "%s",
         "model_id": "500",
         "model_datasource_name": "model",
-        "data_datasource_name": "parental",
+        "data_datasource_name": "%s",
         "secret_key": "1234567890"
     }
-    """;
+    """.formatted(data_database, data_database, data_database);
     
     private static String model_version = "0.0.0.0001";
 
@@ -261,7 +273,7 @@ public class TestModelingRequest extends ModelingRequest {
         private static final String data_database_server = "localhost:33060";
         private static final String data_database_user_name = "remote";
         private static final String data_database_password = "123456";
-        private static final String data_database_schema = "parental";
+        private static final String data_database_schema = data_database;
         private static final String database_schema = "";
         private static final String mysql_database_field_open_quote = "`";
         private static final String mysql_database_field_close_quote = "`";

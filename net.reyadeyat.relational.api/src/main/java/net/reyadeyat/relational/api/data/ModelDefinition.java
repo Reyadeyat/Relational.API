@@ -42,6 +42,7 @@ public class ModelDefinition {
     public String modeled_database_name;
     public String modeled_database_field_open_quote;
     public String modeled_database_field_close_quote;
+    public String modeled_table_data_structures_class;
     
     public ModelDefinition() {
         

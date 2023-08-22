@@ -81,9 +81,10 @@ public class DataClass {
     Map<String, DataClass> fieldsMap;//field members inside this instace // Inserted in parent table
     
     DataLookup data_lookup;
+    HashMap<String, Class> interface_implementation;
     
     
-    public DataClass(DataClass parentDataClass, Field field, DataLookup data_lookup) throws Exception {
+    public DataClass(DataClass parentDataClass, Field field, DataLookup data_lookup, HashMap<String, Class> interface_implementation) throws Exception {
         /*if (dataClass == null) {
             throw new Exception("DataClass cannot be null");
         }
@@ -92,6 +93,7 @@ public class DataClass {
         }*/
         this.field = field;
         this.data_lookup = data_lookup;
+        this.interface_implementation = interface_implementation;
         this.declaredName = field.getName();
         /*if (declaredName.equalsIgnoreCase("childTables")) {
             declaredName = declaredName;
@@ -128,7 +130,7 @@ public class DataClass {
         } else {
             throw new Exception("Data Package is '" + packageName + "'; can not traverse class " + clas.getSimpleName());
         }
-        this.nameLower = this.name.toLowerCase();
+        this.declaredName = this.name.toLowerCase();
         this.canonicalPath = this.parentDataClass == null ? this.name : this.parentDataClass.canonicalPath + "." + this.name;
         this.membersList = new ArrayList<>();
         this.tablesList = new ArrayList<>();
@@ -140,12 +142,12 @@ public class DataClass {
 
         //Dig only inside own package
         if (this.clas.getPackage().getName().startsWith(this.packageName) == true) {
-            List<Field> fields = new ArrayList<>();
-            getFields(this.clas, fields);
-            for (Field newDatafield : fields) {
+            List<Field> field_list = new ArrayList<>();
+            getFields(this.clas, field_list);
+            for (Field newDatafield : field_list) {
                 //////field.setAccessible(true); // grant access to (protected) field
                 //DataClass newDataClass = dataClassWalker(this, nfield);
-                DataClass newDataClass = new DataClass(this, newDatafield, this.data_lookup);
+                DataClass newDataClass = new DataClass(this, newDatafield, this.data_lookup, this.interface_implementation);
                 this.membersList.add(newDataClass);
                 this.membersMap.put(newDataClass.name, newDataClass);
                 if (newDataClass.isTable) {//Table
@@ -159,9 +161,12 @@ public class DataClass {
         }
     }
 
-    private void getFields(Class clas, List<Field> fields) {
+    private void getFields(Class clas, List<Field> field_list) {
+        if (clas.isInterface()) {
+            clas = interface_implementation.get(clas.getName());
+        }
         if (clas.getSuperclass().getName().equalsIgnoreCase("java.lang.Object") == false) {
-            getFields(clas.getSuperclass(), fields);
+            getFields(clas.getSuperclass(), field_list);
         }
         Field[] declaredfields = clas.getDeclaredFields();
         for (Field field : declaredfields) {
@@ -174,7 +179,7 @@ public class DataClass {
                     && Modifier.isTransient(field.getModifiers()) == true)) {
                 continue;
             }
-            fields.add(field);
+            field_list.add(field);
         }
     }
 
@@ -351,8 +356,8 @@ public class DataClass {
         }
         dataClasses.add(dataClass.clas.getCanonicalName());
         StringBuilder sql = new StringBuilder();
-        //Create dataClass table with member fields 
-        sql.append("CREATE TABLE IF NOT EXISTS `").append(databaseName).append("`.`").append(dataClass.nameLower).append("` (\n");
+        //Create dataClass table with member field_list 
+        sql.append("CREATE TABLE IF NOT EXISTS `").append(databaseName).append("`.`").append(dataClass.declaredName /*dataClass.declaredName*/).append("` (\n");
         sql.append(" ").append("`model_id` SMALLINT UNSIGNED NOT NULL,\n");
         sql.append(" ").append("`model_instance_id` BIGINT UNSIGNED NOT NULL,\n");
         sql.append(" ").append("`child_id` SMALLINT UNSIGNED NOT NULL,\n");
@@ -362,14 +367,14 @@ public class DataClass {
         sql.append(" ").append("`json_object` LONGTEXT NOT NULL,\n");
         StringBuilder indexes = new StringBuilder();
         for (DataClass dbField : dataClass.fieldsList) {
-            sql.append(" `").append(dbField.nameLower).append("` ").append(dbField.getFieldType());
+            sql.append(" `").append(dbField.declaredName).append("` ").append(dbField.getFieldType());
             if (dbField.isNotNull() == true) {
                 sql.append(" NOT NULL");
                 if (dbField.metadataAnnotation.indexed() == true) {
                     if (dbField.metadataAnnotation.indexed_expresion().isEmpty() == false) {
-                        indexes.append("  INDEX `").append(dbField.nameLower).append("` " + dbField.metadataAnnotation.indexed_expresion() + ",\n");
+                        indexes.append("  INDEX `").append(dbField.declaredName).append("` " + dbField.metadataAnnotation.indexed_expresion() + ",\n");
                     } else {
-                        indexes.append("  INDEX(`").append(dbField.nameLower).append("`),\n");
+                        indexes.append("  INDEX(`").append(dbField.declaredName).append("`),\n");
                     }
                 }
             }
@@ -381,15 +386,15 @@ public class DataClass {
         sql.append("  PRIMARY KEY (`model_id`,`model_instance_id`,`child_id`").append(dataClass.hasParent() ? ",`parent_id`" : "").append(")");
         sql.append(dataClass.hasParent() ? "," : "").append("\n");
         if (dataClass.hasParent() == true) {
-            sql.append("  FOREIGN KEY `fk_").append(dataClass.parentDataClass.nameLower).append("` (`model_id`,`model_instance_id`,`parent_id`)\n");
-            sql.append("    REFERENCES `").append(dataClass.parentDataClass.nameLower).append("` (`model_id`,`model_instance_id`,`child_id`)\n");
+            sql.append("  FOREIGN KEY `fk_").append(dataClass.parentDataClass.declaredName).append("` (`model_id`,`model_instance_id`,`parent_id`)\n");
+            sql.append("    REFERENCES `").append(dataClass.parentDataClass.declaredName).append("` (`model_id`,`model_instance_id`,`child_id`)\n");
             sql.append("    ON UPDATE CASCADE\n");
             sql.append("    ON DELETE RESTRICT\n");
         }
         sql.append(") ENGINE=InnoDB CHARACTER SET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;");
         creates.add(sql.toString());
 
-        //Create dataClass child tables with member fields
+        //Create dataClass child tables with member field_list
         for (DataClass dbTable : dataClass.tablesList) {
             createDatabaseSchema(connection, databaseName, dbTable, dataClasses, creates);
         }
@@ -436,9 +441,9 @@ public class DataClass {
                         for (int i = 0; i < fieldsList.size(); i++) {
                             DataClass sc = fieldsList.get(i);
                             if (sc.clas.getCanonicalName().equalsIgnoreCase("java.lang.Boolean")) {
-                                record.put(sc.nameLower, rs.getBoolean(sc.nameLower));
+                                record.put(sc.declaredName, rs.getBoolean(sc.declaredName));
                             } else {
-                                record.put(sc.nameLower, rs.getObject(sc.nameLower));
+                                record.put(sc.declaredName, rs.getObject(sc.declaredName));
                             }
                         }
                     }
@@ -503,13 +508,13 @@ public class DataClass {
                     DataClass fieldDataClass = fieldsList.get(y);
                     Object fieldInstanceObject = null;
                     if (fieldDataClass.metadataAnnotation.lookup() == true) {
-                        fieldInstanceObject = data_lookup.lookupCode((Integer) record.get(fieldDataClass.nameLower));
+                        fieldInstanceObject = data_lookup.lookupCode((Integer) record.get(fieldDataClass.declaredName));
                         fieldDataClass.field.set(recordInstanceObject, fieldInstanceObject);
                     } else if (fieldDataClass.clas.getCanonicalName().equalsIgnoreCase("java.lang.Boolean")) {
-                        fieldInstanceObject = (Boolean) record.get(fieldDataClass.nameLower);
+                        fieldInstanceObject = (Boolean) record.get(fieldDataClass.declaredName);
                         fieldDataClass.field.set(recordInstanceObject, fieldInstanceObject);
                     } else {
-                        fieldInstanceObject = record.get(fieldDataClass.nameLower);
+                        fieldInstanceObject = record.get(fieldDataClass.declaredName);
                         fieldDataClass.field.set(recordInstanceObject, fieldInstanceObject);
                     }
                     recordDataInstance.addChildInstanceObject(DataInstance.State.LOADED, fieldDataClass, recordInstanceObject, fieldInstanceObject, sequence, false);
@@ -538,31 +543,31 @@ public class DataClass {
         StringBuilder sql = new StringBuilder();
         sql.append("SELECT");
         if (loadMethod == LoadMethod.JSON) {
-            sql.append(" `").append(nameLower).append("`.`model_instance_id`,`").append(nameLower).append("`.`child_id`,`").append(nameLower).append("`.`parent_id`,`").append(nameLower).append("`.`declared_field_name`,`").append(nameLower).append("`.`class_name`,`").append(nameLower).append("`.`json_object`");
+            sql.append(" `").append(declaredName).append("`.`model_instance_id`,`").append(declaredName).append("`.`child_id`,`").append(declaredName).append("`.`parent_id`,`").append(declaredName).append("`.`declared_field_name`,`").append(declaredName).append("`.`class_name`,`").append(declaredName).append("`.`json_object`");
         } else if (loadMethod == LoadMethod.REFLECTION) {
-            sql.append(" `").append(nameLower).append("`.`model_instance_id`,`").append(nameLower).append("`.`child_id`,`").append(nameLower).append("`.`parent_id`,`").append(nameLower).append("`.`declared_field_name`,`").append(nameLower).append("`.`class_name`,");//,`json_object`");
+            sql.append(" `").append(declaredName).append("`.`model_instance_id`,`").append(declaredName).append("`.`child_id`,`").append(declaredName).append("`.`parent_id`,`").append(declaredName).append("`.`declared_field_name`,`").append(declaredName).append("`.`class_name`,");//,`json_object`");
             for (int i = 0; i < fieldsList.size(); i++) {
                 DataClass fieldDataClass = fieldsList.get(i);
-                sql.append("`").append(nameLower).append("`.`").append(fieldDataClass.nameLower).append("`,");
+                sql.append("`").append(declaredName).append("`.`").append(fieldDataClass.declaredName).append("`,");
             }
             sql.delete(sql.length() - 1, sql.length());
         }
-        sql.append(" FROM `").append(databaseName).append("`.`").append(nameLower).append("`");
+        sql.append(" FROM `").append(databaseName).append("`.`").append(declaredName).append("`");
         if (parentDataClass != null) {
-            sql.append(" INNER JOIN `").append(databaseName).append("`.`").append(parentDataClass.nameLower).append("`");
-            sql.append(" ON `").append(nameLower).append("`.`model_id`=`").append(parentDataClass.nameLower).append("`.`model_id`");
-            sql.append(" AND `").append(nameLower).append("`.`model_instance_id`=`").append(parentDataClass.nameLower).append("`.`model_instance_id`");
-            sql.append(" AND `").append(nameLower).append("`.`parent_id`=`").append(parentDataClass.nameLower).append("`.`child_id`");
+            sql.append(" INNER JOIN `").append(databaseName).append("`.`").append(parentDataClass.declaredName).append("`");
+            sql.append(" ON `").append(declaredName).append("`.`model_id`=`").append(parentDataClass.declaredName).append("`.`model_id`");
+            sql.append(" AND `").append(declaredName).append("`.`model_instance_id`=`").append(parentDataClass.declaredName).append("`.`model_instance_id`");
+            sql.append(" AND `").append(declaredName).append("`.`parent_id`=`").append(parentDataClass.declaredName).append("`.`child_id`");
         }
-        sql.append(" WHERE `").append(nameLower).append("`.`model_id`=").append(model_id);
-        sql.append(" AND `").append(nameLower).append("`.`model_instance_id`=");
+        sql.append(" WHERE `").append(declaredName).append("`.`model_id`=").append(model_id);
+        sql.append(" AND `").append(declaredName).append("`.`model_instance_id`=");
         if (model_instance_id instanceof Number) {
             sql.append(model_instance_id);
         } else if (model_instance_id instanceof String) {
             sql.append("'").append(model_instance_id).append("'");
         }
         if (parentDataClass != null) {
-            sql.append(" AND `").append(nameLower).append("`.`parent_id`=").append(parentID);
+            sql.append(" AND `").append(declaredName).append("`.`parent_id`=").append(parentID);
         }
 
         return sql.toString();

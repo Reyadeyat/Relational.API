@@ -61,45 +61,45 @@ public class EnterpriseModel<Model extends Enterprise> implements DataModel<Mode
 
     @Override
     public void prepareInstance() throws Exception {
-        for (Database database : enterprise.databases) {
+        for (Database database : enterprise.database_list) {
             database.enterprise = enterprise;
             database.case_sensitive_sql = enterprise.case_sensitive_sql;
-            for (Table table : database.tables) {
+            for (Table table : database.table_list) {
                 table.database = database;
                 table.case_sensitive_sql = database.case_sensitive_sql;
-                for (Field field : table.fields) {
+                for (Field field : table.field_list) {
                     field.table = table;
                     field.case_sensitive_sql = table.case_sensitive_sql;
                 }
-                for (PrimaryKey primaryKey : table.primaryKeys) {
-                    primaryKey.table = table;
-                    primaryKey.case_sensitive_sql = table.case_sensitive_sql;
-                    for (PrimaryKeyField primaryKeyField : primaryKey.primary_key_field_list) {
-                        primaryKeyField.parentPrimaryKey = primaryKey;
-                        primaryKeyField.case_sensitive_sql = primaryKey.case_sensitive_sql;
+                for (PrimaryKey primary_key : table.primary_key_list) {
+                    primary_key.table = table;
+                    primary_key.case_sensitive_sql = table.case_sensitive_sql;
+                    for (PrimaryKeyField primary_key_field : primary_key.primary_key_field_list) {
+                        primary_key_field.parentPrimaryKey = primary_key;
+                        primary_key_field.case_sensitive_sql = primary_key.case_sensitive_sql;
                     }
                 }
-                for (ForeignKey foreign_key : table.foreignKeys) {
+                for (ForeignKey foreign_key : table.foreign_key_list) {
                     foreign_key.table = table;
                     foreign_key.case_sensitive_sql = table.case_sensitive_sql;
-                    for (ForeignKeyField foreignKeyField : foreign_key.foreignKeyFields) {
+                    for (ForeignKeyField foreignKeyField : foreign_key.foreign_key_field_list) {
                         foreignKeyField.foreignKey = foreign_key;
                         foreignKeyField.case_sensitive_sql = foreign_key.case_sensitive_sql;
                     }
-                    for (ReferencedKeyField referencedKeyField : foreign_key.referencedKeyFields) {
-                        referencedKeyField.foreign_key = foreign_key;
-                        referencedKeyField.case_sensitive_sql = foreign_key.case_sensitive_sql;
+                    for (ReferencedKeyField referenced_key_field : foreign_key.referenced_key_field_list) {
+                        referenced_key_field.foreign_key = foreign_key;
+                        referenced_key_field.case_sensitive_sql = foreign_key.case_sensitive_sql;
                     }
                 }
-                for (ChildTable childTable : table.childTables) {
-                    childTable.parentTable = table;
-                    childTable.case_sensitive_sql = table.case_sensitive_sql;
-                    String tableName = new String(childTable.tableName);
-                    childTable.table = database.tables.stream().filter(o -> o.name.equals(tableName)).findAny().orElse(null);
-                    String foreigKeyName = new String(childTable.foreigKeyName);
-                    childTable.foreignKey = childTable./*parentTable*/table.foreignKeys.stream().filter(o -> o.name.equals(foreigKeyName)).findAny().orElse(null);
-                    /*if (childTable.table.name.equalsIgnoreCase("ap_payment")) {
-                        childTable = childTable;
+                for (ChildTable child_table : table.child_table_list) {
+                    child_table.parentTable = table;
+                    child_table.case_sensitive_sql = table.case_sensitive_sql;
+                    String tableName = new String(child_table.table_name);
+                    child_table.table = database.table_list.stream().filter(o -> o.name.equals(tableName)).findAny().orElse(null);
+                    String foreigKeyName = new String(child_table.foreig_key_name);
+                    child_table.foreignKey = child_table./*parentTable*/table.foreign_key_list.stream().filter(o -> o.name.equals(foreigKeyName)).findAny().orElse(null);
+                    /*if (child_table.table.name.equalsIgnoreCase("ap_payment")) {
+                        child_table = child_table;
                     }*/
                 }
             }

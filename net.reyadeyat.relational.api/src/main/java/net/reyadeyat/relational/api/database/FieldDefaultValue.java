@@ -51,17 +51,17 @@ public class FieldDefaultValue {
         }
 
         if (field_type == FieldType.String) {
-            throw new Exception("FieldDefaultValue expression allowed for Date and Time fields only; Field Type [String]");
+            throw new Exception("FieldDefaultValue expression allowed for Date and Time field type only; Field Type [String]");
         } else if (field_type == FieldType.Set) {
-            throw new Exception("FieldDefaultValue expression allowed for Date and Time fields only; Field Type [Set]");
+            throw new Exception("FieldDefaultValue expression allowed for Date and Time field type only; Field Type [Set]");
         } else if (field_type == FieldType.Long) {
-            throw new Exception("FieldDefaultValue expression allowed for Date and Time fields only; Field Type [Long]");
+            throw new Exception("FieldDefaultValue expression allowed for Date and Time field type only; Field Type [Long]");
         } else if (field_type == FieldType.Integer) {
-            throw new Exception("FieldDefaultValue expression allowed for Date and Time fields only; Field Type [Integer]");
+            throw new Exception("FieldDefaultValue expression allowed for Date and Time field type only; Field Type [Integer]");
         } else if (field_type == FieldType.Double) {
-            throw new Exception("FieldDefaultValue expression allowed for Date and Time fields only; Field Type [Double]");
+            throw new Exception("FieldDefaultValue expression allowed for Date and Time field type only; Field Type [Double]");
         } else if (field_type == FieldType.Boolean) {
-            throw new Exception("FieldDefaultValue expression allowed for Date and Time fields only; Field Type [Boolean]");
+            throw new Exception("FieldDefaultValue expression allowed for Date and Time field type only; Field Type [Boolean]");
         } else if (field_type == FieldType.Date) {
             this.expression = (String) static_default_value;
             //this.static_default_value = getSqlDate(field_value);

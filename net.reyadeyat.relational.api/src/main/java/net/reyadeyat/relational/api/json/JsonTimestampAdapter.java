@@ -35,7 +35,7 @@ import java.text.SimpleDateFormat;
  */
 public class JsonTimestampAdapter extends TypeAdapter<Timestamp>{
     
-    final static SimpleDateFormat stf = new SimpleDateFormat("hh:mm:ss");
+    final static SimpleDateFormat stf = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss");
     
     @Override
     public void write(JsonWriter writer, Timestamp timestamp) throws IOException {

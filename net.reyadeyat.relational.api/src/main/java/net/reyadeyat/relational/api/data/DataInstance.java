@@ -106,27 +106,27 @@ public class DataInstance {
         //this.parentInstanceObject = parentInstanceObject;
         this.instanceObject = instanceObject;
         if (this.instanceObject == null && this.dataClass.isNotNull() == true) {
-            if (this.dataClass.declaredName.equalsIgnoreCase("referencedKeyname") == true) {
-                if (dataClass.field.getName().equalsIgnoreCase("referencedKeyname")) {
+            if (this.dataClass.declaredName.equalsIgnoreCase("referenced_key_name") == true) {
+                if (dataClass.field.getName().equalsIgnoreCase("referenced_key_name")) {
                     if (parentInstanceObject instanceof net.reyadeyat.relational.api.model.ForeignKey foreign_key) {
                         StringBuilder foreign_key_field_list_strb = new StringBuilder();
                         Boolean is_primary_key = true;
-                        for (ForeignKeyField foreign_key_field : foreign_key.foreignKeyFields) {
+                        for (ForeignKeyField foreign_key_field : foreign_key.foreign_key_field_list) {
                             foreign_key_field_list_strb.append("`").append(foreign_key_field.name).append("`,");
                         }
-                        if (foreign_key.foreignKeyFields.size() > 0) {
+                        if (foreign_key.foreign_key_field_list.size() > 0) {
                             foreign_key_field_list_strb.delete(foreign_key_field_list_strb.length()-1, foreign_key_field_list_strb.length());
                         }
                         StringBuilder referenced_key_field_list_strb = new StringBuilder();
-                        for (ReferencedKeyField referenced_key_field : foreign_key.referencedKeyFields) {
+                        for (ReferencedKeyField referenced_key_field : foreign_key.referenced_key_field_list) {
                             referenced_key_field_list_strb.append("`").append(referenced_key_field.name).append("`,");
                             is_primary_key = is_primary_key && referenced_key_field.is_primary_key_field;
                         }
-                        if (foreign_key.referencedKeyFields.size() > 0) {
+                        if (foreign_key.referenced_key_field_list.size() > 0) {
                             referenced_key_field_list_strb.delete(referenced_key_field_list_strb.length()-1, referenced_key_field_list_strb.length());
                         }
                         if (is_primary_key == false) {
-                            throw new Exception("Database Foreign Key Constraint sufferes integgrity check failure Table.[Field List] `"+foreign_key.foreignKeyTableName+"`.["+foreign_key_field_list_strb.toString()+"] has Foreing Key '"+foreign_key.name+"' linked to a none Primary Key Table.[Field List] `"+foreign_key.referencedKeyTableName+"`.["+referenced_key_field_list_strb.toString()+"], please fix this issue first !!!");
+                            throw new Exception("Database Foreign Key Constraint sufferes integgrity check failure Table.[Field List] `"+foreign_key.foreign_key_table_name+"`.["+foreign_key_field_list_strb.toString()+"] has Foreing Key '"+foreign_key.name+"' linked to a none Primary Key Table.[Field List] `"+foreign_key.referenced_key_table_name+"`.["+referenced_key_field_list_strb.toString()+"], please fix this issue first !!!");
                         }
                     }
                 }
@@ -339,7 +339,7 @@ public class DataInstance {
             if (string instanceof String) {
                 theObject = dataLookup.lookupID((String) instances.get(0));
             } else {
-                throw new Exception("Only String fields can be used with metadataAnnotation");
+                throw new Exception("Only String field_list can be used with metadataAnnotation");
             }
         } else {
             theObject = instances.get(0);
@@ -464,10 +464,10 @@ public class DataInstance {
 
         StringBuilder sql = new StringBuilder();
         String instanceObjectJSON = gson.toJson(instanceObject).replaceAll("\"", "\"\"");
-        sql.append("INSERT INTO `").append(databaseName).append("`.`").append(dataInstance.dataClass.nameLower).append("`");
+        sql.append("INSERT INTO `").append(databaseName).append("`.`").append(dataInstance.dataClass.declaredName).append("`");
         sql.append("(`model_id`,`model_instance_id`,`child_id`,`parent_id`,`declared_field_name`,`class_name`,`json_object`,");
         for (DataInstance fieldDataInstance : dataInstance.fieldsMapList.get(instanceObject)) {
-            sql.append(databaseFieldOpenQuote).append(fieldDataInstance.dataClass.nameLower).append(databaseFieldCloseQuote).append(",");
+            sql.append(databaseFieldOpenQuote).append(fieldDataInstance.dataClass.declaredName).append(databaseFieldCloseQuote).append(",");
         }
         sql.deleteCharAt(sql.length() - 1);
         sql.append(") VALUES (");

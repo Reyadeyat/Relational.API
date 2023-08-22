@@ -33,17 +33,17 @@ import net.reyadeyat.relational.api.annotation.MetadataAnnotation;
 public class Field {
     public String name;
     @MetadataAnnotation (lookup=true)
-    public String dataTypeName;
+    public String data_type_name;
     //public String typeCode;
     public Boolean primary_key;
     public Boolean nullable;
-    public Boolean autoIncrment;
+    public Boolean auto_increment;
     public Boolean foreign_reference;
     @MetadataAnnotation (field=true, nullable=true)
-    public String defaultValue;
+    public String default_value;
     public Integer list_order;
     public Integer size;
-    public Integer decimalDigits;
+    public Integer decimal_digits;
     
     transient public Boolean case_sensitive_sql;
     transient public Table table;
@@ -52,33 +52,33 @@ public class Field {
     public Field() {}
 
     public Field(Table table, String name,
-            String dataTypeName,
+            String data_type_name,
             String dataTypeCode,
             Boolean nullable,
-            Boolean autoIncrment,
-            String defaultValue,
+            Boolean auto_increment,
+            String default_value,
             Integer list_order,
             Integer size,
-            Integer decimalDigits, Boolean case_sensitive_sql,
+            Integer decimal_digits, Boolean case_sensitive_sql,
             DataLookup dataLookup) throws Exception {
         this.table = table;
         this.name = name;
-        this.dataTypeName = dataTypeName.trim();
+        this.data_type_name = data_type_name.trim();
         /*if (this.table.name.equalsIgnoreCase("XYZ") == true) {
-            this.dataTypeName = this.dataTypeName;
+            this.data_type_name = this.data_type_name;
         }*/
-        if (dataLookup.lookupID(this.dataTypeName) == null) {
-            throw new Exception("Data Type '" + this.dataTypeName + "' is not defined in Lookup Category '" + dataLookup.getDataLookupCategory() + "'");
+        if (dataLookup.lookupID(this.data_type_name) == null) {
+            throw new Exception("Data Type '" + this.data_type_name + "' is not defined in Lookup Category '" + dataLookup.getDataLookupCategory() + "'");
         }
         //this.typeCode = dataTypeCode;
         this.primary_key = false;
         this.nullable = nullable;
-        this.autoIncrment = autoIncrment;
+        this.auto_increment = auto_increment;
         this.foreign_reference = false;
-        this.defaultValue = defaultValue;
+        this.default_value = default_value;
         this.list_order = list_order;
         this.size = size;
-        this.decimalDigits = decimalDigits;
+        this.decimal_digits = decimal_digits;
         this.case_sensitive_sql = case_sensitive_sql;
     }
     
@@ -111,169 +111,169 @@ public class Field {
         }
         /*.append(dataTypeCode)*/
         b.append("Field: ").append("[").append(list_order).append("] `").append(name).append("` ")
-                .append(dataTypeName).append("(").append(size).append(decimalDigits > 0 ? ","+decimalDigits : "").append(")")
+                .append(data_type_name).append("(").append(size).append(decimal_digits > 0 ? ","+decimal_digits : "").append(")")
                 .append(nullable == true ? " NULL" : "")
-                .append(autoIncrment == true ? " AUTOINCREMENT" : "")
-                .append(defaultValue == null ? "" : " DEFAULT '" + defaultValue + "'");
+                .append(auto_increment == true ? " AUTOINCREMENT" : "")
+                .append(default_value == null ? "" : " DEFAULT '" + default_value + "'");
         return b.toString();
     }
 
     @Override
     public String toString() {
         return new StringBuilder().append("Field: ").append("[").append(list_order).append("] `").append(name).append("` ")
-                .append(dataTypeName).append("(").append(size).append(decimalDigits > 0 ? ","+decimalDigits : "").append(")")
+                .append(data_type_name).append("(").append(size).append(decimal_digits > 0 ? ","+decimal_digits : "").append(")")
                 .append(nullable == true ? " NULL" : "")
-                .append(autoIncrment == true ? " AUTOINCREMENT" : "")
-                .append(defaultValue == null ? "" : " '" + defaultValue + "'").toString();
+                .append(auto_increment == true ? " AUTOINCREMENT" : "")
+                .append(default_value == null ? "" : " '" + default_value + "'").toString();
     }
     
     public String getTypeJavaClassPath() throws Exception {
-        if ((dataTypeName.equalsIgnoreCase("TINYINT") || dataTypeName.equalsIgnoreCase("TINYINT UNSIGNED") && size == 1 /*mysql*/)
-                || dataTypeName.equalsIgnoreCase("BOOLEAN"/*informix*/)) {
+        if ((data_type_name.equalsIgnoreCase("TINYINT") || data_type_name.equalsIgnoreCase("TINYINT UNSIGNED") && size == 1 /*mysql*/)
+                || data_type_name.equalsIgnoreCase("BOOLEAN"/*informix*/)) {
             return Boolean.class.getCanonicalName();
-        } else if (dataTypeName.equalsIgnoreCase("TINYINT") || dataTypeName.equalsIgnoreCase("TINYINT UNSIGNED")) {
+        } else if (data_type_name.equalsIgnoreCase("TINYINT") || data_type_name.equalsIgnoreCase("TINYINT UNSIGNED")) {
             return Byte.class.getCanonicalName();
-        } else if (dataTypeName.equalsIgnoreCase("SMALLINT") || dataTypeName.equalsIgnoreCase("SMALLINT UNSIGNED")) {
+        } else if (data_type_name.equalsIgnoreCase("SMALLINT") || data_type_name.equalsIgnoreCase("SMALLINT UNSIGNED")) {
             return Short.class.getCanonicalName();
-        } else if (dataTypeName.equalsIgnoreCase("MEDIUMINT") || dataTypeName.equalsIgnoreCase("INT") || dataTypeName.equalsIgnoreCase("INTEGER")
-                || dataTypeName.equalsIgnoreCase("MEDIUMINT UNSIGNED") || dataTypeName.equalsIgnoreCase("INT UNSIGNED") || dataTypeName.equalsIgnoreCase("INTEGER UNSIGNED")
-                || dataTypeName.equalsIgnoreCase("BIT") || dataTypeName.equalsIgnoreCase("BIT UNSIGNED")
-                || dataTypeName.equalsIgnoreCase("INT IDENTITY"/*sqlserver*/)
-                || dataTypeName.equalsIgnoreCase("SERIAL"/*informix*/)) {
+        } else if (data_type_name.equalsIgnoreCase("MEDIUMINT") || data_type_name.equalsIgnoreCase("INT") || data_type_name.equalsIgnoreCase("INTEGER")
+                || data_type_name.equalsIgnoreCase("MEDIUMINT UNSIGNED") || data_type_name.equalsIgnoreCase("INT UNSIGNED") || data_type_name.equalsIgnoreCase("INTEGER UNSIGNED")
+                || data_type_name.equalsIgnoreCase("BIT") || data_type_name.equalsIgnoreCase("BIT UNSIGNED")
+                || data_type_name.equalsIgnoreCase("INT IDENTITY"/*sqlserver*/)
+                || data_type_name.equalsIgnoreCase("SERIAL"/*informix*/)) {
             return Integer.class.getCanonicalName();
-        } else if (dataTypeName.equalsIgnoreCase("BIGINT")
-                || dataTypeName.equalsIgnoreCase("BIGINT UNSIGNED")
-                || dataTypeName.equalsIgnoreCase("BIGINT IDENTITY"/*sqlserver*/)
-                || dataTypeName.equalsIgnoreCase("SERIAL8"/*informix*/)
-                || dataTypeName.equalsIgnoreCase("INT8"/*informix*/)
-                || dataTypeName.equalsIgnoreCase("BIGSERIAL"/*informix*/)) {
+        } else if (data_type_name.equalsIgnoreCase("BIGINT")
+                || data_type_name.equalsIgnoreCase("BIGINT UNSIGNED")
+                || data_type_name.equalsIgnoreCase("BIGINT IDENTITY"/*sqlserver*/)
+                || data_type_name.equalsIgnoreCase("SERIAL8"/*informix*/)
+                || data_type_name.equalsIgnoreCase("INT8"/*informix*/)
+                || data_type_name.equalsIgnoreCase("BIGSERIAL"/*informix*/)) {
             return Long.class.getCanonicalName();
-        } else if (dataTypeName.equalsIgnoreCase("FLOAT") || dataTypeName.equalsIgnoreCase("FLOAT UNSIGNED")) {
+        } else if (data_type_name.equalsIgnoreCase("FLOAT") || data_type_name.equalsIgnoreCase("FLOAT UNSIGNED")) {
             return Float.class.getCanonicalName();
-        } else if (dataTypeName.equalsIgnoreCase("DOUBLE") || dataTypeName.equalsIgnoreCase("DOUBLE UNSIGNED")) {
+        } else if (data_type_name.equalsIgnoreCase("DOUBLE") || data_type_name.equalsIgnoreCase("DOUBLE UNSIGNED")) {
             return Double.class.getCanonicalName();
-        } else if (dataTypeName.equalsIgnoreCase("NUMERIC") || dataTypeName.equalsIgnoreCase("DECIMAL")
-            || dataTypeName.equalsIgnoreCase("NUMERIC UNSIGNED") || dataTypeName.equalsIgnoreCase("DECIMAL UNSIGNED")
-            || dataTypeName.equalsIgnoreCase("UNIQUEIDENTIFIER")/*sqlserver*/
-            || dataTypeName.equalsIgnoreCase("MONEY")/*sqlserver*/
-            || dataTypeName.equalsIgnoreCase("numeric() identity")/*sqlserver*/) {
-            if (decimalDigits == 0) {
+        } else if (data_type_name.equalsIgnoreCase("NUMERIC") || data_type_name.equalsIgnoreCase("DECIMAL")
+            || data_type_name.equalsIgnoreCase("NUMERIC UNSIGNED") || data_type_name.equalsIgnoreCase("DECIMAL UNSIGNED")
+            || data_type_name.equalsIgnoreCase("UNIQUEIDENTIFIER")/*sqlserver*/
+            || data_type_name.equalsIgnoreCase("MONEY")/*sqlserver*/
+            || data_type_name.equalsIgnoreCase("numeric() identity")/*sqlserver*/) {
+            if (decimal_digits == 0) {
                 return Long.class.getCanonicalName();
             } else {
                 return Double.class.getCanonicalName();
             }
-        } else if (dataTypeName.equalsIgnoreCase("YEAR")
-            || dataTypeName.equalsIgnoreCase("DATE")) {
+        } else if (data_type_name.equalsIgnoreCase("YEAR")
+            || data_type_name.equalsIgnoreCase("DATE")) {
             return java.sql.Date.class.getCanonicalName();
-        } else if (dataTypeName.equalsIgnoreCase("TIME")) {
+        } else if (data_type_name.equalsIgnoreCase("TIME")) {
             return java.sql.Time.class.getCanonicalName();
-        } else if (dataTypeName.equalsIgnoreCase("DATETIME")
-            || dataTypeName.equalsIgnoreCase("TIMESTAMP")
-            || dataTypeName.equalsIgnoreCase("SMALLDATETIME")
-            || dataTypeName.toLowerCase().startsWith("datetime"/*informix*/)) {
+        } else if (data_type_name.equalsIgnoreCase("DATETIME")
+            || data_type_name.equalsIgnoreCase("TIMESTAMP")
+            || data_type_name.equalsIgnoreCase("SMALLDATETIME")
+            || data_type_name.toLowerCase().startsWith("datetime"/*informix*/)) {
             return java.sql.Timestamp.class.getCanonicalName();
-        } else if (dataTypeName.equalsIgnoreCase("CHAR")
-            || dataTypeName.equalsIgnoreCase("ENUM")
-            || dataTypeName.equalsIgnoreCase("SET")
-            || dataTypeName.equalsIgnoreCase("VARCHAR")
-            || dataTypeName.equalsIgnoreCase("TINYTEXT")
-            || dataTypeName.equalsIgnoreCase("TEXT")
-            || dataTypeName.equalsIgnoreCase("MEDIUMTEXT")
-            || dataTypeName.equalsIgnoreCase("LONGTEXT")
-            || dataTypeName.equalsIgnoreCase("NVARCHAR"/*sqlserver*/)
-            || dataTypeName.equalsIgnoreCase("NTEXT"/*sqlserver*/)
-            || dataTypeName.equalsIgnoreCase("NCHAR"/*sqlserver*/)
-            || dataTypeName.equalsIgnoreCase("SYSNAME"/*sqlserver*/)
-            || dataTypeName.equalsIgnoreCase("GEOGRAPHY"/*sqlserver*/)
-            || dataTypeName.equalsIgnoreCase("LVARCHAR"/*informix*/)) {
+        } else if (data_type_name.equalsIgnoreCase("CHAR")
+            || data_type_name.equalsIgnoreCase("ENUM")
+            || data_type_name.equalsIgnoreCase("SET")
+            || data_type_name.equalsIgnoreCase("VARCHAR")
+            || data_type_name.equalsIgnoreCase("TINYTEXT")
+            || data_type_name.equalsIgnoreCase("TEXT")
+            || data_type_name.equalsIgnoreCase("MEDIUMTEXT")
+            || data_type_name.equalsIgnoreCase("LONGTEXT")
+            || data_type_name.equalsIgnoreCase("NVARCHAR"/*sqlserver*/)
+            || data_type_name.equalsIgnoreCase("NTEXT"/*sqlserver*/)
+            || data_type_name.equalsIgnoreCase("NCHAR"/*sqlserver*/)
+            || data_type_name.equalsIgnoreCase("SYSNAME"/*sqlserver*/)
+            || data_type_name.equalsIgnoreCase("GEOGRAPHY"/*sqlserver*/)
+            || data_type_name.equalsIgnoreCase("LVARCHAR"/*informix*/)) {
             return java.lang.String.class.getCanonicalName();
-        } else if (dataTypeName.equalsIgnoreCase("BINARY")
-            || dataTypeName.equalsIgnoreCase("VARBINARY")
-            || dataTypeName.equalsIgnoreCase("TINYBLOB")
-            || dataTypeName.equalsIgnoreCase("BLOB")
-            || dataTypeName.equalsIgnoreCase("CLOB")
-            || dataTypeName.equalsIgnoreCase("MEDIUMBLOB")
-            || dataTypeName.equalsIgnoreCase("LONGBLOB")
-            || dataTypeName.equalsIgnoreCase("IMAGE"/*sqlserver*/)) {
+        } else if (data_type_name.equalsIgnoreCase("BINARY")
+            || data_type_name.equalsIgnoreCase("VARBINARY")
+            || data_type_name.equalsIgnoreCase("TINYBLOB")
+            || data_type_name.equalsIgnoreCase("BLOB")
+            || data_type_name.equalsIgnoreCase("CLOB")
+            || data_type_name.equalsIgnoreCase("MEDIUMBLOB")
+            || data_type_name.equalsIgnoreCase("LONGBLOB")
+            || data_type_name.equalsIgnoreCase("IMAGE"/*sqlserver*/)) {
             return java.lang.Object.class.getCanonicalName();
-        } else if (dataTypeName.equalsIgnoreCase("JSON")) {
+        } else if (data_type_name.equalsIgnoreCase("JSON")) {
             return com.google.gson.JsonElement.class.getCanonicalName();
         }
-        throw new Exception("Field data type '" + dataTypeName + "' is not implemented yet");
+        throw new Exception("Field data type '" + data_type_name + "' is not implemented yet");
     }
     
     public Class getTypeJavaClass() throws Exception {
-        if ((dataTypeName.equalsIgnoreCase("TINYINT") || dataTypeName.equalsIgnoreCase("TINYINT UNSIGNED") && size == 1 /*mysql*/)
-                || dataTypeName.equalsIgnoreCase("BOOLEAN"/*informix*/)) {
+        if ((data_type_name.equalsIgnoreCase("TINYINT") || data_type_name.equalsIgnoreCase("TINYINT UNSIGNED") && size == 1 /*mysql*/)
+                || data_type_name.equalsIgnoreCase("BOOLEAN"/*informix*/)) {
             return Boolean.class;
-        } else if (dataTypeName.equalsIgnoreCase("TINYINT") || dataTypeName.equalsIgnoreCase("TINYINT UNSIGNED")) {
+        } else if (data_type_name.equalsIgnoreCase("TINYINT") || data_type_name.equalsIgnoreCase("TINYINT UNSIGNED")) {
             return Byte.class;
-        } else if (dataTypeName.equalsIgnoreCase("SMALLINT") || dataTypeName.equalsIgnoreCase("SMALLINT UNSIGNED")) {
+        } else if (data_type_name.equalsIgnoreCase("SMALLINT") || data_type_name.equalsIgnoreCase("SMALLINT UNSIGNED")) {
             return Short.class;
-        } else if (dataTypeName.equalsIgnoreCase("MEDIUMINT") || dataTypeName.equalsIgnoreCase("INT") || dataTypeName.equalsIgnoreCase("INTEGER")
-                || dataTypeName.equalsIgnoreCase("MEDIUMINT UNSIGNED") || dataTypeName.equalsIgnoreCase("INT UNSIGNED") || dataTypeName.equalsIgnoreCase("INTEGER UNSIGNED")
-                || dataTypeName.equalsIgnoreCase("BIT") || dataTypeName.equalsIgnoreCase("BIT UNSIGNED")
-                || dataTypeName.equalsIgnoreCase("INT IDENTITY"/*sqlserver*/)
-                || dataTypeName.equalsIgnoreCase("SERIAL"/*informix*/)) {
+        } else if (data_type_name.equalsIgnoreCase("MEDIUMINT") || data_type_name.equalsIgnoreCase("INT") || data_type_name.equalsIgnoreCase("INTEGER")
+                || data_type_name.equalsIgnoreCase("MEDIUMINT UNSIGNED") || data_type_name.equalsIgnoreCase("INT UNSIGNED") || data_type_name.equalsIgnoreCase("INTEGER UNSIGNED")
+                || data_type_name.equalsIgnoreCase("BIT") || data_type_name.equalsIgnoreCase("BIT UNSIGNED")
+                || data_type_name.equalsIgnoreCase("INT IDENTITY"/*sqlserver*/)
+                || data_type_name.equalsIgnoreCase("SERIAL"/*informix*/)) {
             return Integer.class;
-        } else if (dataTypeName.equalsIgnoreCase("BIGINT")
-                || dataTypeName.equalsIgnoreCase("BIGINT UNSIGNED")
-                || dataTypeName.equalsIgnoreCase("BIGINT IDENTITY"/*sqlserver*/)
-                || dataTypeName.equalsIgnoreCase("SERIAL8"/*informix*/)
-                || dataTypeName.equalsIgnoreCase("INT8"/*informix*/)
-                || dataTypeName.equalsIgnoreCase("BIGSERIAL"/*informix*/)) {
+        } else if (data_type_name.equalsIgnoreCase("BIGINT")
+                || data_type_name.equalsIgnoreCase("BIGINT UNSIGNED")
+                || data_type_name.equalsIgnoreCase("BIGINT IDENTITY"/*sqlserver*/)
+                || data_type_name.equalsIgnoreCase("SERIAL8"/*informix*/)
+                || data_type_name.equalsIgnoreCase("INT8"/*informix*/)
+                || data_type_name.equalsIgnoreCase("BIGSERIAL"/*informix*/)) {
             return Long.class;
-        } else if (dataTypeName.equalsIgnoreCase("FLOAT") || dataTypeName.equalsIgnoreCase("FLOAT UNSIGNED")) {
+        } else if (data_type_name.equalsIgnoreCase("FLOAT") || data_type_name.equalsIgnoreCase("FLOAT UNSIGNED")) {
             return Float.class;
-        } else if (dataTypeName.equalsIgnoreCase("DOUBLE") || dataTypeName.equalsIgnoreCase("DOUBLE UNSIGNED")) {
+        } else if (data_type_name.equalsIgnoreCase("DOUBLE") || data_type_name.equalsIgnoreCase("DOUBLE UNSIGNED")) {
             return Double.class;
-        } else if (dataTypeName.equalsIgnoreCase("NUMERIC") || dataTypeName.equalsIgnoreCase("DECIMAL")
-            || dataTypeName.equalsIgnoreCase("NUMERIC UNSIGNED") || dataTypeName.equalsIgnoreCase("DECIMAL UNSIGNED")
-            || dataTypeName.equalsIgnoreCase("UNIQUEIDENTIFIER")/*sqlserver*/
-            || dataTypeName.equalsIgnoreCase("MONEY")/*sqlserver*/
-            || dataTypeName.equalsIgnoreCase("numeric() identity")/*sqlserver*/) {
-            if (decimalDigits == 0) {
+        } else if (data_type_name.equalsIgnoreCase("NUMERIC") || data_type_name.equalsIgnoreCase("DECIMAL")
+            || data_type_name.equalsIgnoreCase("NUMERIC UNSIGNED") || data_type_name.equalsIgnoreCase("DECIMAL UNSIGNED")
+            || data_type_name.equalsIgnoreCase("UNIQUEIDENTIFIER")/*sqlserver*/
+            || data_type_name.equalsIgnoreCase("MONEY")/*sqlserver*/
+            || data_type_name.equalsIgnoreCase("numeric() identity")/*sqlserver*/) {
+            if (decimal_digits == 0) {
                 return Long.class;
             } else {
                 return Double.class;
             }
-        } else if (dataTypeName.equalsIgnoreCase("YEAR")
-            || dataTypeName.equalsIgnoreCase("DATE")) {
+        } else if (data_type_name.equalsIgnoreCase("YEAR")
+            || data_type_name.equalsIgnoreCase("DATE")) {
             return java.sql.Date.class;
-        } else if (dataTypeName.equalsIgnoreCase("TIME")) {
+        } else if (data_type_name.equalsIgnoreCase("TIME")) {
             return java.sql.Time.class;
-        } else if (dataTypeName.equalsIgnoreCase("DATETIME")
-            || dataTypeName.equalsIgnoreCase("TIMESTAMP")
-            || dataTypeName.equalsIgnoreCase("SMALLDATETIME")
-            || dataTypeName.toLowerCase().startsWith("datetime"/*informix*/)) {
+        } else if (data_type_name.equalsIgnoreCase("DATETIME")
+            || data_type_name.equalsIgnoreCase("TIMESTAMP")
+            || data_type_name.equalsIgnoreCase("SMALLDATETIME")
+            || data_type_name.toLowerCase().startsWith("datetime"/*informix*/)) {
             return java.sql.Timestamp.class;
-        } else if (dataTypeName.equalsIgnoreCase("CHAR")
-            || dataTypeName.equalsIgnoreCase("ENUM")
-            || dataTypeName.equalsIgnoreCase("SET")
-            || dataTypeName.equalsIgnoreCase("VARCHAR")
-            || dataTypeName.equalsIgnoreCase("TINYTEXT")
-            || dataTypeName.equalsIgnoreCase("TEXT")
-            || dataTypeName.equalsIgnoreCase("MEDIUMTEXT")
-            || dataTypeName.equalsIgnoreCase("LONGTEXT")
-            || dataTypeName.equalsIgnoreCase("NVARCHAR"/*sqlserver*/)
-            || dataTypeName.equalsIgnoreCase("NTEXT"/*sqlserver*/)
-            || dataTypeName.equalsIgnoreCase("NCHAR"/*sqlserver*/)
-            || dataTypeName.equalsIgnoreCase("SYSNAME"/*sqlserver*/)
-            || dataTypeName.equalsIgnoreCase("GEOGRAPHY"/*sqlserver*/)
-            || dataTypeName.equalsIgnoreCase("LVARCHAR"/*informix*/)) {
+        } else if (data_type_name.equalsIgnoreCase("CHAR")
+            || data_type_name.equalsIgnoreCase("ENUM")
+            || data_type_name.equalsIgnoreCase("SET")
+            || data_type_name.equalsIgnoreCase("VARCHAR")
+            || data_type_name.equalsIgnoreCase("TINYTEXT")
+            || data_type_name.equalsIgnoreCase("TEXT")
+            || data_type_name.equalsIgnoreCase("MEDIUMTEXT")
+            || data_type_name.equalsIgnoreCase("LONGTEXT")
+            || data_type_name.equalsIgnoreCase("NVARCHAR"/*sqlserver*/)
+            || data_type_name.equalsIgnoreCase("NTEXT"/*sqlserver*/)
+            || data_type_name.equalsIgnoreCase("NCHAR"/*sqlserver*/)
+            || data_type_name.equalsIgnoreCase("SYSNAME"/*sqlserver*/)
+            || data_type_name.equalsIgnoreCase("GEOGRAPHY"/*sqlserver*/)
+            || data_type_name.equalsIgnoreCase("LVARCHAR"/*informix*/)) {
             return java.lang.String.class;
-        } else if (dataTypeName.equalsIgnoreCase("BINARY")
-            || dataTypeName.equalsIgnoreCase("VARBINARY")
-            || dataTypeName.equalsIgnoreCase("TINYBLOB")
-            || dataTypeName.equalsIgnoreCase("BLOB")
-            || dataTypeName.equalsIgnoreCase("CLOB")
-            || dataTypeName.equalsIgnoreCase("MEDIUMBLOB")
-            || dataTypeName.equalsIgnoreCase("LONGBLOB")
-            || dataTypeName.equalsIgnoreCase("IMAGE"/*sqlserver*/)) {
+        } else if (data_type_name.equalsIgnoreCase("BINARY")
+            || data_type_name.equalsIgnoreCase("VARBINARY")
+            || data_type_name.equalsIgnoreCase("TINYBLOB")
+            || data_type_name.equalsIgnoreCase("BLOB")
+            || data_type_name.equalsIgnoreCase("CLOB")
+            || data_type_name.equalsIgnoreCase("MEDIUMBLOB")
+            || data_type_name.equalsIgnoreCase("LONGBLOB")
+            || data_type_name.equalsIgnoreCase("IMAGE"/*sqlserver*/)) {
             return java.lang.Object.class;
-        } else if (dataTypeName.equalsIgnoreCase("JSON")) {
+        } else if (data_type_name.equalsIgnoreCase("JSON")) {
             return com.google.gson.JsonElement.class;
         }
-        throw new Exception("Field data type '" + dataTypeName + "' is not implemented yet");
+        throw new Exception("Field data type '" + data_type_name + "' is not implemented yet");
     }
 }

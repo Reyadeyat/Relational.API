@@ -32,6 +32,7 @@ import java.io.OutputStream;
 import java.sql.Connection;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.logging.Level;
@@ -66,7 +67,7 @@ public abstract class RelationalRequest implements RecordHandler {
     
     private JsonObject request_service_definition_json;
     
-    public RelationalRequest(JsonObject request_service_definition_json) throws Exception {
+    public RelationalRequest(JsonObject request_service_definition_json, HashMap<String, Class> interface_implementation) throws Exception {
         this.request_service_definition_json = request_service_definition_json;
         String service_name = JsonUtil.getJsonString(request_service_definition_json, "service_name", false);
         try {
@@ -84,7 +85,7 @@ public abstract class RelationalRequest implements RecordHandler {
             JDBCSource model_jdbc_source = getJDBCSource(model_datasource_name);
             JDBCSource data_jdbc_source = getJDBCSource(data_datasource_name);
             JsonArray error_list = new JsonArray();
-            Table.loadDataModel(secret_key, model_jdbc_source, data_jdbc_source, model_id, error_list);
+            Table.loadDataModel(secret_key, model_jdbc_source, data_jdbc_source, model_id, interface_implementation, error_list);
             JsonUtil.throwJsonExceptionOnError("Table service definition has errors:", error_list);
             String table_tree = JsonUtil.getJsonString(request_service_definition_json, "table_tree", false);
             JsonObject table_tree_list = JsonUtil.getJsonObject(request_service_definition_json, table_tree, false);

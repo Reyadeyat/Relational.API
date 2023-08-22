@@ -34,12 +34,12 @@ import java.util.logging.Logger;
  */
 public class ForeignKey {
     public String name;
-    public String referencedKeyname;
-    public String foreignKeyTableName;
-    public String referencedKeyTableName;
+    public String referenced_key_name;
+    public String foreign_key_table_name;
+    public String referenced_key_table_name;
     transient public HashMap<ForeignKeyField, ReferencedKeyField> foreign_key_referenced_key_map;
-    public ArrayList<ForeignKeyField> foreignKeyFields;
-    public ArrayList<ReferencedKeyField> referencedKeyFields;
+    public ArrayList<ForeignKeyField> foreign_key_field_list;
+    public ArrayList<ReferencedKeyField> referenced_key_field_list;
     public Integer key_sequence;
     public String update_rule;
     public String delete_rule;
@@ -47,19 +47,19 @@ public class ForeignKey {
     
     transient public Boolean case_sensitive_sql;
     transient public Table table;
-    transient public PrimaryKey primaryKey;
+    transient public PrimaryKey primary_key;
     
     /**no-arg default constructor for jaxb marshalling*/
     public ForeignKey() {
-        this.foreignKeyFields = new ArrayList<ForeignKeyField>();
-        this.referencedKeyFields = new ArrayList<ReferencedKeyField>();
+        this.foreign_key_field_list = new ArrayList<ForeignKeyField>();
+        this.referenced_key_field_list = new ArrayList<ReferencedKeyField>();
         this.foreign_key_referenced_key_map = new HashMap<ForeignKeyField, ReferencedKeyField>();
     }
     
     public ForeignKey(Table table, String name,
-    String referencedKeyname,
-    String referencedKeyTableName,
-    String foreignKeyTableName,
+    String referenced_key_name,
+    String referenced_key_table_name,
+    String foreign_key_table_name,
     Integer key_sequence,
     String update_rule,
     String delete_rule,
@@ -67,9 +67,9 @@ public class ForeignKey {
         this();
         this.table = table;
         this.name = name;
-        this.referencedKeyname = referencedKeyname;
-        this.foreignKeyTableName = foreignKeyTableName;
-        this.referencedKeyTableName = referencedKeyTableName;
+        this.referenced_key_name = referenced_key_name;
+        this.foreign_key_table_name = foreign_key_table_name;
+        this.referenced_key_table_name = referenced_key_table_name;
         this.key_sequence = key_sequence;
         this.update_rule = update_rule;
         this.delete_rule = delete_rule;
@@ -93,25 +93,25 @@ public class ForeignKey {
         }
     }
     
-    public void addForeignFieldReferencedField(ForeignKeyField foreignKeyField, ReferencedKeyField referencedKeyField) {
-        this.foreign_key_referenced_key_map.put(foreignKeyField, referencedKeyField);
-        this.addReferencedField(referencedKeyField);
+    public void addForeignFieldReferencedField(ForeignKeyField foreignKeyField, ReferencedKeyField referenced_key_field) {
+        this.foreign_key_referenced_key_map.put(foreignKeyField, referenced_key_field);
+        this.addReferencedField(referenced_key_field);
         this.addForeignField(foreignKeyField);
         
                 
-        for (Field field : table.fields) {
+        for (Field field : table.field_list) {
             if (field.name.equalsIgnoreCase(foreignKeyField.name) == true) {
                 field.setForeignReference();
             }
         }
     }
     
-    public void addReferencedField(ReferencedKeyField referencedKeyField) {
-        referencedKeyFields.add(referencedKeyField);
+    public void addReferencedField(ReferencedKeyField referenced_key_field) {
+        referenced_key_field_list.add(referenced_key_field);
     }
     
     public void addForeignField(ForeignKeyField foreignKeyField) {
-        foreignKeyFields.add(foreignKeyField);
+        foreign_key_field_list.add(foreignKeyField);
     }
     
     @Override
@@ -147,24 +147,24 @@ public class ForeignKey {
         appendable.append("` FOREIGN KEY ");
         appendable.append("(");
         int i = 1;
-        for (ForeignKeyField foreignKeyFieldName : foreignKeyFields) {
+        for (ForeignKeyField foreignKeyFieldName : foreign_key_field_list) {
             appendable.append("`");
             appendable.append(foreignKeyFieldName.name);
             i++;
-            if (i < foreignKeyFields.size()) {
+            if (i < foreign_key_field_list.size()) {
                 appendable.append("`,");
             }
         }
         appendable.append(") REFERENCES");
         appendable.append(" `");
-        appendable.append(referencedKeyTableName);
+        appendable.append(referenced_key_table_name);
         appendable.append("` (");
         i = 1;
-        for (ReferencedKeyField referencedKeyFieldName : referencedKeyFields) {
+        for (ReferencedKeyField referenced_key_fieldName : referenced_key_field_list) {
             appendable.append("`");
-            appendable.append(referencedKeyFieldName.name);
+            appendable.append(referenced_key_fieldName.name);
             i++;
-            if (i < foreignKeyFields.size()) {
+            if (i < foreign_key_field_list.size()) {
                 appendable.append("`,");
             }
         }
@@ -180,24 +180,24 @@ public class ForeignKey {
         appendable.append("` FOREIGN KEY ");
         appendable.append("(");
         int i = 1;
-        for (ForeignKeyField foreignKeyFieldName : foreignKeyFields) {
+        for (ForeignKeyField foreignKeyFieldName : foreign_key_field_list) {
             appendable.append("`");
             appendable.append(foreignKeyFieldName.name);
             i++;
-            if (i < foreignKeyFields.size()) {
+            if (i < foreign_key_field_list.size()) {
                 appendable.append("`,");
             }
         }
         appendable.append(") REFERENCES");
         appendable.append(" `");
-        appendable.append(referencedKeyTableName);
+        appendable.append(referenced_key_table_name);
         appendable.append("` (");
         i = 1;
-        for (ReferencedKeyField referencedKeyFieldName : referencedKeyFields) {
+        for (ReferencedKeyField referenced_key_fieldName : referenced_key_field_list) {
             appendable.append("`");
-            appendable.append(referencedKeyFieldName.name);
+            appendable.append(referenced_key_fieldName.name);
             i++;
-            if (i < foreignKeyFields.size()) {
+            if (i < foreign_key_field_list.size()) {
                 appendable.append("`,");
             }
         }
