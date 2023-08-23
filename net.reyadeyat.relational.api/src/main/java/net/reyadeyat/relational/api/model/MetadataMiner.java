@@ -619,7 +619,7 @@ public class MetadataMiner {
     
     public static void deleteDataModel(JDBCSource model_jdbc_source, ModelDefinition model_definition) throws Exception {
             try (Connection model_database_connection = model_jdbc_source.getConnection(false)) {
-                HashMap<Integer, ArrayList<Integer>> model_instance_map = new HashMap<>();
+                /*HashMap<Integer, ArrayList<Integer>> model_instance_map = new HashMap<>();
                 String select_model_instance = "SELECT `model_instance_id`, `model_id` FROM `model_instance` WHERE `model_id`=?";
                 try ( PreparedStatement select_model_instance_stmt = model_database_connection.prepareStatement(select_model_instance)) {
                     select_model_instance_stmt.setInt(1, model_definition.model_id);
@@ -637,19 +637,23 @@ public class MetadataMiner {
                     }
                 } catch (Exception ex) {
                     throw ex;
-                }
+                }*/
 
                 String delete_sql;
                 ArrayList<Integer> deleted_instance_list = new ArrayList<Integer>();
-                for (Map.Entry<Integer, ArrayList<Integer>> model_instance_entry : model_instance_map.entrySet()) {
-                    Integer selected_model_id = model_instance_entry.getKey();
-                    ArrayList<Integer> instance_id_list = (ArrayList<Integer>) model_instance_entry.getValue();
-                    for (Integer instance_id : instance_id_list) {
+                //for (Map.Entry<Integer, ArrayList<Integer>> model_instance_entry : model_instance_map.entrySet()) {
+                    //Integer selected_model_id = model_instance_entry.getKey();
+                    Integer selected_model_id = model_definition.model_id;
+                    //ArrayList<Integer> instance_id_list = (ArrayList<Integer>) model_instance_entry.getValue();
+                    //for (Integer instance_id : instance_id_list) {
+                        Integer instance_id = Integer.valueOf(model_definition.model_instance_sequence_last_value);
                         if (model_definition.model_id.equals(selected_model_id) == false) {
-                            continue;
+                            return;
+                            //continue;
                         }
                         if (Objects.equals(Integer.parseInt(model_definition.model_instance_sequence_last_value), instance_id) == false) {
-                            continue;
+                            return;
+                            //continue;
                         }
                         delete_sql = "DELETE FROM `model`.`referenced_key_field_list` WHERE `model_id`=? AND `model_instance_id`=?";
                         deleteDataModelInstance(model_database_connection, delete_sql, selected_model_id, instance_id);
@@ -684,12 +688,12 @@ public class MetadataMiner {
                         deleteDataModel(model_database_connection, delete_sql, model_definition.model_id, instance_id);
 
                         deleted_instance_list.add(instance_id);
-                    }
-                }
-                if (model_instance_map.size() > 0 && model_instance_map.get(model_definition.model_id).size() == deleted_instance_list.size()) {
+                    //}
+                //}
+                //if (model_instance_map.size() > 0 && model_instance_map.get(model_definition.model_id).size() == deleted_instance_list.size()) {
                     delete_sql = "DELETE FROM `model`.`model` WHERE `model_id`=?";
                     deleteDataModel(model_database_connection, delete_sql, model_definition.model_id);
-                }
+                //}
 
                 model_database_connection.commit();
             } catch (Exception ex) {
