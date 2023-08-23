@@ -48,29 +48,29 @@ import java.util.logging.Logger;
 public class DataInstance {
     public enum State{NEW,LOADED,UPDATED,DELETED};
     private State state;
-    DataClass dataClass;
-    DataInstance parentDataInstance;
-    SequenceNumber<Integer> sequenceNumber;
-    Boolean isNull;
-    Integer parentID;
-    Object instanceObject;
-    HashMap<Object, Integer> instancesIDMap;
+    DataClass data_class;
+    DataInstance parent_data_instance;
+    SequenceNumber<Integer> sequence_number;
+    Boolean is_null;
+    Integer parent_id;
+    Object instance_object;
+    HashMap<Object, Integer> instances_id_map;
     ArrayList<Object> instances;
-    String runtimePath;
+    String runtime_path;
     
-    String databaseName;
+    String database_name;
     
     //used to get field array of an instance
-    Map<Object, ArrayList<DataInstance>> membersMapList;//members inside this instace
-    Map<Object, ArrayList<DataInstance>> tablesMapList;//table members inside this instace
-    Map<Object, ArrayList<DataInstance>> fieldsMapList;//field members inside this instace // Inserted in parent table
+    Map<Object, ArrayList<DataInstance>> member_list_map;//members inside this instace
+    Map<Object, ArrayList<DataInstance>> table_list_map;//table members inside this instace
+    Map<Object, ArrayList<DataInstance>> field_list_map;//field members inside this instace // Inserted in parent table
     
     //used to get field by its name from inside an instance
-    Map<Object, HashMap<String, DataInstance>> membersMapMap;//members inside this instace
-    Map<Object, HashMap<String, DataInstance>> tablesMapMap;//table members inside this instace
-    Map<Object, HashMap<String, DataInstance>> fieldsMapMap;//field members inside this instace // Inserted in parent table
+    Map<Object, HashMap<String, DataInstance>> member_instance_list_map;//members inside this instace
+    Map<Object, HashMap<String, DataInstance>> table_instance_list_map;//table members inside this instace
+    Map<Object, HashMap<String, DataInstance>> field_instance_list_map;//field members inside this instace // Inserted in parent table
     
-    TreeMap<String, HashMap<String, Integer>> listCodeMap;
+    TreeMap<String, HashMap<String, Integer>> code_list_map;
     
     static final public Gson gson = new GsonBuilder()/*.setPrettyPrinting()*/.registerTypeAdapter(ZonedDateTime.class, new ZonedDateTimeAdapter()).create();
     static final public ArrayList<String> ignore_field_list = new ArrayList<String>(
@@ -89,25 +89,25 @@ public class DataInstance {
                 "http_requests"
             }));
     
-    public DataInstance(State state, String databaseName, DataClass dataClass, DataInstance parentDataInstance, Object parentInstanceObject, Object instanceObject, SequenceNumber<Integer> sequenceNumber, Boolean traverse) throws Exception {
+    public DataInstance(State state, String database_name, DataClass data_class, DataInstance parent_data_instance, Object parentInstanceObject, Object instance_object, SequenceNumber<Integer> sequence_number, Boolean traverse) throws Exception {
         this.state = state;
-        this.databaseName = databaseName;
-        this.dataClass = dataClass;
-        if (this.dataClass == null) {
+        this.database_name = database_name;
+        this.data_class = data_class;
+        if (this.data_class == null) {
             throw new Exception("DataClass is null !!!");
         }
-        if (dataClass.declaredName.equalsIgnoreCase("childTables")) {
-            dataClass.declaredName = dataClass.declaredName;
+        if (data_class.declared_name.equalsIgnoreCase("childTables")) {
+            data_class.declared_name = data_class.declared_name;
         }
-        this.parentDataInstance = parentDataInstance;
-        this.sequenceNumber = sequenceNumber;
-        this.parentID = /*sequenceNumber == null ? 0 : */parentDataInstance == null ? 0 : parentDataInstance.instancesIDMap.get(parentInstanceObject);
-        //this.nextChildTableID = travers == false ? 0 : parentDataInstance == null ? 0 : parentDataInstance.nextChildTableID;
+        this.parent_data_instance = parent_data_instance;
+        this.sequence_number = sequence_number;
+        this.parent_id = /*sequence_number == null ? 0 : */parent_data_instance == null ? 0 : parent_data_instance.instances_id_map.get(parentInstanceObject);
+        //this.nextChildTableID = travers == false ? 0 : parent_data_instance == null ? 0 : parent_data_instance.nextChildTableID;
         //this.parentInstanceObject = parentInstanceObject;
-        this.instanceObject = instanceObject;
-        if (this.instanceObject == null && this.dataClass.isNotNull() == true) {
-            if (this.dataClass.declaredName.equalsIgnoreCase("referenced_key_name") == true) {
-                if (dataClass.field.getName().equalsIgnoreCase("referenced_key_name")) {
+        this.instance_object = instance_object;
+        if (this.instance_object == null && this.data_class.isNotNull() == true) {
+            if (this.data_class.declared_name.equalsIgnoreCase("referenced_key_name") == true) {
+                if (data_class.field.getName().equalsIgnoreCase("referenced_key_name")) {
                     if (parentInstanceObject instanceof net.reyadeyat.relational.api.model.ForeignKey foreign_key) {
                         StringBuilder foreign_key_field_list_strb = new StringBuilder();
                         Boolean is_primary_key = true;
@@ -131,46 +131,46 @@ public class DataInstance {
                     }
                 }
             }
-            //throw new Exception("Instance Object is null in '" + this.dataClass.name + "'");
+            //throw new Exception("Instance Object is null in '" + this.data_class.name + "'");
         }
-        if (parentDataInstance == null && this.dataClass.clas.isInstance(this.instanceObject) == false) {
-            throw new ClassCastException("DataInstance '" + this.dataClass.clas.getCanonicalName() + "' required class but got instance object of class '" + this.instanceObject.getClass().getCanonicalName() + "'");
+        if (parent_data_instance == null && this.data_class.clas.isInstance(this.instance_object) == false) {
+            throw new ClassCastException("DataInstance '" + this.data_class.clas.getCanonicalName() + "' required class but got instance object of class '" + this.instance_object.getClass().getCanonicalName() + "'");
         }
-        this.instancesIDMap = new HashMap<Object, Integer>();
+        this.instances_id_map = new HashMap<Object, Integer>();
         
-        this.isNull = instanceObject == null;
+        this.is_null = instance_object == null;
         
-        this.membersMapList = new HashMap<>();
-        this.tablesMapList = new HashMap<>();
-        this.fieldsMapList = new HashMap<>();
+        this.member_list_map = new HashMap<>();
+        this.table_list_map = new HashMap<>();
+        this.field_list_map = new HashMap<>();
 
-        this.membersMapMap = new HashMap<>();
-        this.tablesMapMap = new HashMap<>();
-        this.fieldsMapMap = new HashMap<>();
+        this.member_instance_list_map = new HashMap<>();
+        this.table_instance_list_map = new HashMap<>();
+        this.field_instance_list_map = new HashMap<>();
         
         if (traverse == false) {
             this.instances = new ArrayList<>();
             return;
         }
         
-        if (isList(dataClass.field)) {
-            this.instances = (ArrayList<Object>) this.instanceObject;
-        } else if (isArray(dataClass.field)) {
-            this.instances = new ArrayList<Object>(Arrays.asList((Object[]) this.instanceObject));
+        if (isList(data_class.field)) {
+            this.instances = (ArrayList<Object>) this.instance_object;
+        } else if (isArray(data_class.field)) {
+            this.instances = new ArrayList<Object>(Arrays.asList((Object[]) this.instance_object));
         } else {
-            this.instances = new ArrayList<Object>(Arrays.asList(new Object[]{this.instanceObject}));
+            this.instances = new ArrayList<Object>(Arrays.asList(new Object[]{this.instance_object}));
         }
         
         //If class is not in the package use it field name
         //Dig only inside own package
-        if (this.dataClass.clas.getPackage().getName().startsWith(this.dataClass.packageName) == false
-                /*&& this.dataClass.metadataAnnotation.table() == false*/) {
+        if (this.data_class.clas.getPackage().getName().startsWith(this.data_class.package_name) == false
+                /*&& this.data_class.metadataAnnotation.table() == false*/) {
             return;
         }
         
-        this.sequenceNumber.createSequence(this.dataClass.clas);
+        this.sequence_number.createSequence(this.data_class.clas);
         for (Object instance : this.instances) {
-            this.instancesIDMap.put(instance, this.sequenceNumber.nextSequence(this.dataClass.clas));
+            this.instances_id_map.put(instance, this.sequence_number.nextSequence(this.data_class.clas));
             ArrayList<DataInstance> membersList = new ArrayList<>();
             ArrayList<DataInstance> tablesList = new ArrayList<>();
             ArrayList<DataInstance> fieldsList = new ArrayList<>();
@@ -179,17 +179,17 @@ public class DataInstance {
             HashMap<String, DataInstance> tablesMap = new HashMap<>();
             HashMap<String, DataInstance> fieldsMap = new HashMap<>();
             
-            for (DataClass newDataClass : this.dataClass.membersList) {
+            for (DataClass newDataClass : this.data_class.member_list) {
                 Object newInstanceObject = newDataClass.field.get(instance);
-                DataInstance newDataInstance = new DataInstance(this.state, this.databaseName, newDataClass, this, instance, newInstanceObject, this.sequenceNumber, true);
+                DataInstance newDataInstance = new DataInstance(this.state, this.database_name, newDataClass, this, instance, newInstanceObject, this.sequence_number, true);
                 membersList.add(newDataInstance);
-                membersMap.put(newDataInstance.dataClass.name, newDataInstance);
-                if (newDataInstance.dataClass.isTable) {//Table
+                membersMap.put(newDataInstance.data_class.name, newDataInstance);
+                if (newDataInstance.data_class.isTable) {//Table
                     tablesList.add(newDataInstance);
-                    tablesMap.put(newDataInstance.dataClass.name, newDataInstance);
+                    tablesMap.put(newDataInstance.data_class.name, newDataInstance);
                 } else {//Field
                     fieldsList.add(newDataInstance);
-                    fieldsMap.put(newDataInstance.dataClass.name, newDataInstance);
+                    fieldsMap.put(newDataInstance.data_class.name, newDataInstance);
                 }
             }
             this.addMemeber(instance, membersList, tablesList, fieldsList, membersMap, tablesMap, fieldsMap);
@@ -202,12 +202,12 @@ public class DataInstance {
     
     private void changeState(DataInstance dataInstance, State state, Boolean propagateToChildren) throws Exception {
         this.state = state;
-        if (dataInstance.isNull == true) {
+        if (dataInstance.is_null == true) {
             return;
         }
         for (Object object : dataInstance.instances) {
-            if (dataInstance.membersMapList.size() > 0) {
-                for (DataInstance memberDataInstance : dataInstance.membersMapList.get(object)) {
+            if (dataInstance.member_list_map.size() > 0) {
+                for (DataInstance memberDataInstance : dataInstance.member_list_map.get(object)) {
                     changeState(memberDataInstance, state, propagateToChildren);
                 }
             }
@@ -215,12 +215,12 @@ public class DataInstance {
     }
     
     public Object getInstanceObject() {
-        return this.instanceObject;
+        return this.instance_object;
     }
     
     public void addInstanceObject(Object instance, Integer childID) throws Exception {
         this.instances.add(instance);
-        this.instancesIDMap.put(instance, /*sequenceNumber.nextSequence()*/childID);
+        this.instances_id_map.put(instance, /*sequence_number.nextSequence()*/childID);
         ArrayList<DataInstance> membersList = new ArrayList<>();
         ArrayList<DataInstance> tablesList = new ArrayList<>();
         ArrayList<DataInstance> fieldsList = new ArrayList<>();
@@ -228,40 +228,40 @@ public class DataInstance {
         HashMap<String, DataInstance> membersMap = new HashMap<>();
         HashMap<String, DataInstance> tablesMap = new HashMap<>();
         HashMap<String, DataInstance> fieldsMap = new HashMap<>();
-        /*for (DataClass newDataClass : this.dataClass.membersList) {
+        /*for (DataClass newDataClass : this.data_class.membersList) {
             Object newInstanceObject = newDataClass.field.get(instance);
-            DataInstance newDataInstance = new DataInstance(newDataClass, this, instance, newInstanceObject/*, sequenceNumber*//*, false);
+            DataInstance newDataInstance = new DataInstance(newDataClass, this, instance, newInstanceObject/*, sequence_number*//*, false);
             membersList.add(newDataInstance);
-            membersMap.put(newDataInstance.dataClass.name, newDataInstance);
-            if (newDataInstance.dataClass.isTable) {//Table
+            membersMap.put(newDataInstance.data_class.name, newDataInstance);
+            if (newDataInstance.data_class.isTable) {//Table
                 tablesList.add(newDataInstance);
-                tablesMap.put(newDataInstance.dataClass.name, newDataInstance);
+                tablesMap.put(newDataInstance.data_class.name, newDataInstance);
             } else {//Field
                 fieldsList.add(newDataInstance);
-                fieldsMap.put(newDataInstance.dataClass.name, newDataInstance);
+                fieldsMap.put(newDataInstance.data_class.name, newDataInstance);
             }
         }*/
         this.addMemeber(instance, membersList, tablesList, fieldsList, membersMap, tablesMap, fieldsMap);
     }
     
-    public void addChildInstanceObject(State childState, DataClass newDataClass, Object parentInstanceObject, Object newInstanceObject, SequenceNumber<Integer> sequenceNumber, Boolean traverse) throws Exception {
-        ArrayList<DataInstance> membersList = this.membersMapList.get(parentInstanceObject);
-        ArrayList<DataInstance> tablesList = this.tablesMapList.get(parentInstanceObject);
-        ArrayList<DataInstance> fieldsList = this.fieldsMapList.get(parentInstanceObject);
+    public void addChildInstanceObject(State childState, DataClass newDataClass, Object parentInstanceObject, Object newInstanceObject, SequenceNumber<Integer> sequence_number, Boolean traverse) throws Exception {
+        ArrayList<DataInstance> membersList = this.member_list_map.get(parentInstanceObject);
+        ArrayList<DataInstance> tablesList = this.table_list_map.get(parentInstanceObject);
+        ArrayList<DataInstance> fieldsList = this.field_list_map.get(parentInstanceObject);
         
-        HashMap<String, DataInstance> membersMap = this.membersMapMap.get(parentInstanceObject);
-        HashMap<String, DataInstance> tablesMap = this.tablesMapMap.get(parentInstanceObject);
-        HashMap<String, DataInstance> fieldsMap = this.fieldsMapMap.get(parentInstanceObject);
+        HashMap<String, DataInstance> membersMap = this.member_instance_list_map.get(parentInstanceObject);
+        HashMap<String, DataInstance> tablesMap = this.table_instance_list_map.get(parentInstanceObject);
+        HashMap<String, DataInstance> fieldsMap = this.field_instance_list_map.get(parentInstanceObject);
         
-        DataInstance newDataInstance = new DataInstance(childState, this.databaseName, newDataClass, this, parentInstanceObject, newInstanceObject, sequenceNumber, traverse);
+        DataInstance newDataInstance = new DataInstance(childState, this.database_name, newDataClass, this, parentInstanceObject, newInstanceObject, sequence_number, traverse);
         membersList.add(newDataInstance);
-        membersMap.put(newDataInstance.dataClass.name, newDataInstance);
-        if (newDataInstance.dataClass.isTable) {//Table
+        membersMap.put(newDataInstance.data_class.name, newDataInstance);
+        if (newDataInstance.data_class.isTable) {//Table
             tablesList.add(newDataInstance);
-            tablesMap.put(newDataInstance.dataClass.name, newDataInstance);
+            tablesMap.put(newDataInstance.data_class.name, newDataInstance);
         } else {//Field
             fieldsList.add(newDataInstance);
-            fieldsMap.put(newDataInstance.dataClass.name, newDataInstance);
+            fieldsMap.put(newDataInstance.data_class.name, newDataInstance);
         }
     }
     
@@ -272,29 +272,29 @@ public class DataInstance {
             HashMap<String, DataInstance> membersMap,
             HashMap<String, DataInstance> tablesMap,
             HashMap<String, DataInstance> fieldsMap) {
-        this.membersMapList.put(instance, membersList);
-        this.tablesMapList.put(instance, tablesList);
-        this.fieldsMapList.put(instance, fieldsList);
+        this.member_list_map.put(instance, membersList);
+        this.table_list_map.put(instance, tablesList);
+        this.field_list_map.put(instance, fieldsList);
         
-        this.membersMapMap.put(instance, membersMap);
-        this.tablesMapMap.put(instance, tablesMap);
-        this.fieldsMapMap.put(instance, fieldsMap);
+        this.member_instance_list_map.put(instance, membersMap);
+        this.table_instance_list_map.put(instance, tablesMap);
+        this.field_instance_list_map.put(instance, fieldsMap);
     }
     
-    public void setCodeMap(TreeMap<String, HashMap<String, Integer>> listCodeMap) {
-        this.listCodeMap = listCodeMap;
+    public void setCodeMap(TreeMap<String, HashMap<String, Integer>> code_list_map) {
+        this.code_list_map = code_list_map;
     }
     
     public Integer getCodeID(String categoryName, String code) {
-        return listCodeMap.get(categoryName).get(code);
+        return code_list_map.get(categoryName).get(code);
     }
     
     public Boolean hasParent() {
-        return parentDataInstance != null;
+        return parent_data_instance != null;
     }
     
     public String getParentName() {
-        return parentDataInstance.dataClass.name;
+        return parent_data_instance.data_class.name;
     }
     
     private Boolean isList(Field field) throws Exception {
@@ -333,7 +333,7 @@ public class DataInstance {
     public String getFieldInstanceDatabaseString(DataLookup dataLookup) throws Exception {
         Object theObject = null;
         //Check Annotation for lookup
-        if (dataClass.metadataAnnotation.lookup() == true) {
+        if (data_class.metadata_annotation.lookup() == true) {
             //Lookup ID with String
             Object string = instances.get(0);
             if (string instanceof String) {
@@ -362,11 +362,11 @@ public class DataInstance {
             //return "\"" + zonedDateTimeAdapter.marshal((ZonedDateTime) fieldObject) + "\"" ;
             return "\"" + zonedDateTimeAdapter.toJDBCDateTime((ZonedDateTime) theObject) + "\"" ;
         } else if (theObject == null) {
-            throw new Exception("Null value passed for DB field => " + dataClass.name + " => " + runtimePath);
-            //Logger.getLogger(getClass().getName()).log(Level.SEVERE, "Null value passed for DB field => " + dataClass.name);
+            throw new Exception("Null value passed for DB field => " + data_class.name + " => " + runtime_path);
+            //Logger.getLogger(getClass().getName()).log(Level.SEVERE, "Null value passed for DB field => " + data_class.name);
             //return "null";
         }
-        throw new Exception("Unsupported Database data type => " + instanceObject.getClass().getName());
+        throw new Exception("Unsupported Database data type => " + instance_object.getClass().getName());
     }
     
     @Override
@@ -392,17 +392,17 @@ public class DataInstance {
     }
     
     private void toString(Appendable appendable, Integer indentation, DataInstance dataInstance) throws Exception {
-        if (dataClass.declaredName.equalsIgnoreCase("childTables")) {
-            dataClass.declaredName = dataClass.declaredName;
+        if (data_class.declared_name.equalsIgnoreCase("childTables")) {
+            data_class.declared_name = data_class.declared_name;
         }
-        if (dataInstance.isNull == true) {
+        if (dataInstance.is_null == true) {
             for (int i = 0; i < indentation; i++) {
                 appendable.append(" ");
             }
-            if (dataInstance.dataClass.isTable) {
-                appendable.append("T-[").append(dataInstance.dataClass.name).append(" #-0-] (no records)\"\n");
+            if (dataInstance.data_class.isTable) {
+                appendable.append("T-[").append(dataInstance.data_class.name).append(" #-0-] (no records)\"\n");
             } else {
-                appendable.append("F-[").append(dataInstance.dataClass.name).append("] (null)\"\n");
+                appendable.append("F-[").append(dataInstance.data_class.name).append("] (null)\"\n");
             }
             return;
         }
@@ -410,27 +410,27 @@ public class DataInstance {
             for (int i = 0; i < indentation; i++) {
                 appendable.append(" ");
             }
-            if (dataInstance.dataClass.isTable == true) {
-                appendable.append("T-[").append(dataInstance.dataClass.name).append(" #").append(dataInstance.instancesIDMap.get(object).toString()).append("]\n");
-            } else if (dataInstance.dataClass.isTable == false) {
-                appendable.append("F-[").append(dataInstance.dataClass.name).append("]-\"").append(ignore_field_list.contains(dataInstance.dataClass.name) == true ? "..." : object.toString()).append("\"\n");
+            if (dataInstance.data_class.isTable == true) {
+                appendable.append("T-[").append(dataInstance.data_class.name).append(" #").append(dataInstance.instances_id_map.get(object).toString()).append("]\n");
+            } else if (dataInstance.data_class.isTable == false) {
+                appendable.append("F-[").append(dataInstance.data_class.name).append("]-\"").append(ignore_field_list.contains(dataInstance.data_class.name) == true ? "..." : object.toString()).append("\"\n");
             }
-            if (object.getClass().getName().startsWith(dataInstance.dataClass.packageName) == true) {
-                if (dataInstance.fieldsMapList.size() > 0) {
-                    for (DataInstance fieldDataInstance : dataInstance.fieldsMapList.get(object)) {
+            if (object.getClass().getName().startsWith(dataInstance.data_class.package_name) == true) {
+                if (dataInstance.field_list_map.size() > 0) {
+                    for (DataInstance fieldDataInstance : dataInstance.field_list_map.get(object)) {
                         toString(appendable, indentation + 6, fieldDataInstance);
                     }
                 } else {
-                    for (DataClass fieldDataClass : dataInstance.dataClass.fieldsList) {
+                    for (DataClass fieldDataClass : dataInstance.data_class.field_list) {
                         appendable.append("F-[").append(fieldDataClass.name).append("] (null)\n");
                     }
                 }
-                if (dataInstance.tablesMapList.size() > 0) {
-                    for (DataInstance tableDataInstance : dataInstance.tablesMapList.get(object)) {
+                if (dataInstance.table_list_map.size() > 0) {
+                    for (DataInstance tableDataInstance : dataInstance.table_list_map.get(object)) {
                         toString(appendable, indentation + 6, tableDataInstance);
                     }
                 } else {
-                    for (DataClass tableDataClass : dataInstance.dataClass.tablesList) {
+                    for (DataClass tableDataClass : dataInstance.data_class.table_list) {
                         appendable.append("T-[").append(tableDataClass.name).append(" #-0-] (no records)\"\n");
                     }
                 }
@@ -439,35 +439,35 @@ public class DataInstance {
     }
     
     public void saveToDatabase(Integer dataModelId, DataLookup dataLookup, Object instanceID, DataInstance dataInstance, ArrayList<String> inserts, String databaseFieldOpenQuote, String databaseFieldCloseQuote) throws Exception {
-        if (dataInstance.isNull == true) {
+        if (dataInstance.is_null == true) {
             return;
         }
 
         StringBuilder insert = new StringBuilder();
-        for (Object instanceObject : dataInstance.instances) {
+        for (Object instance_object : dataInstance.instances) {
             insert.setLength(0);
-            if (dataInstance.dataClass.isTable == true) {
-                insert.append(saveToDatabase(dataModelId, dataLookup, instanceID, dataInstance, instanceObject, databaseFieldOpenQuote, databaseFieldCloseQuote));
+            if (dataInstance.data_class.isTable == true) {
+                insert.append(saveToDatabase(dataModelId, dataLookup, instanceID, dataInstance, instance_object, databaseFieldOpenQuote, databaseFieldCloseQuote));
                 inserts.add(insert.toString());
             }
-            for (DataInstance tableDataInstance : dataInstance.tablesMapList.get(instanceObject)) {
+            for (DataInstance tableDataInstance : dataInstance.table_list_map.get(instance_object)) {
                 saveToDatabase(dataModelId, dataLookup, instanceID, tableDataInstance, inserts, databaseFieldOpenQuote, databaseFieldCloseQuote);
             }
         }
     }
 
-    private String saveToDatabase(Integer dataModelId, DataLookup dataLookup, Object instanceID, DataInstance dataInstance, Object instanceObject, String databaseFieldOpenQuote, String databaseFieldCloseQuote) throws Exception {
+    private String saveToDatabase(Integer dataModelId, DataLookup dataLookup, Object instanceID, DataInstance dataInstance, Object instance_object, String databaseFieldOpenQuote, String databaseFieldCloseQuote) throws Exception {
 
-        if (dataInstance.dataClass.isTable == false) {
+        if (dataInstance.data_class.isTable == false) {
             throw new Exception("toSQL takes table element only");
         }
 
         StringBuilder sql = new StringBuilder();
-        String instanceObjectJSON = gson.toJson(instanceObject).replaceAll("\"", "\"\"");
-        sql.append("INSERT INTO `").append(databaseName).append("`.`").append(dataInstance.dataClass.declaredName).append("`");
+        String instance_objectJSON = gson.toJson(instance_object).replaceAll("\"", "\"\"");
+        sql.append("INSERT INTO `").append(database_name).append("`.`").append(dataInstance.data_class.declared_name).append("`");
         sql.append("(`model_id`,`model_instance_id`,`child_id`,`parent_id`,`declared_field_name`,`class_name`,`json_object`,");
-        for (DataInstance fieldDataInstance : dataInstance.fieldsMapList.get(instanceObject)) {
-            sql.append(databaseFieldOpenQuote).append(fieldDataInstance.dataClass.declaredName).append(databaseFieldCloseQuote).append(",");
+        for (DataInstance fieldDataInstance : dataInstance.field_list_map.get(instance_object)) {
+            sql.append(databaseFieldOpenQuote).append(fieldDataInstance.data_class.declared_name).append(databaseFieldCloseQuote).append(",");
         }
         sql.deleteCharAt(sql.length() - 1);
         sql.append(") VALUES (");
@@ -477,9 +477,9 @@ public class DataInstance {
         } else if (instanceID instanceof String) {
             sql.append("'").append(instanceID).append("',");
         }
-        sql.append(dataInstance.instancesIDMap.get(instanceObject)).append(",").append(dataInstance.hasParent() == null ? "null" : dataInstance.parentID).append(",'").append(dataInstance.dataClass.declaredName).append("','").append(dataInstance.dataClass.name).append("','").append(instanceObjectJSON).append("',");
-        for (DataInstance fieldDataInstance : dataInstance.fieldsMapList.get(instanceObject)) {
-            if (fieldDataInstance.isNull == true) {
+        sql.append(dataInstance.instances_id_map.get(instance_object)).append(",").append(dataInstance.hasParent() == null ? "null" : dataInstance.parent_id).append(",'").append(dataInstance.data_class.declared_name).append("','").append(dataInstance.data_class.name).append("','").append(instance_objectJSON).append("',");
+        for (DataInstance fieldDataInstance : dataInstance.field_list_map.get(instance_object)) {
+            if (fieldDataInstance.is_null == true) {
                 sql.append("null,");
             } else if (fieldDataInstance.instances.size() == 1) {
                 sql.append(fieldDataInstance.getFieldInstanceDatabaseString(dataLookup)).append(",");

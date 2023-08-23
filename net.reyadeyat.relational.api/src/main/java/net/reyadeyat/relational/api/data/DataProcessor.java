@@ -534,7 +534,7 @@ public class DataProcessor<Model> {
             throw new Exception("DataModel is null");
         }
         if (isDataModelInstanceRegistered(data_model)== false) {
-            throw new Exception("DataModel '" + this.data_class.packageName + "' is not registered yer , first call either registerDataModelInstance or loadDataModelFromDatabase ");
+            throw new Exception("DataModel '" + this.data_class.package_name + "' is not registered yer , first call either registerDataModelInstance or loadDataModelFromDatabase ");
         }
         /*DataInstance dataInstance = dataModelDataInstanceMap.get(data_model);
         ArrayList<String> selects = new ArrayList<String>();

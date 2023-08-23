@@ -43,6 +43,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -616,12 +617,12 @@ public class MetadataMiner {
         declaredField.set(object, value);
     }
     
-    public static void deleteDataModel(JDBCSource model_jdbc_source, Integer model_id, Integer model_instance_id) throws Exception {
+    public static void deleteDataModel(JDBCSource model_jdbc_source, ModelDefinition model_definition) throws Exception {
             try (Connection model_database_connection = model_jdbc_source.getConnection(false)) {
                 HashMap<Integer, ArrayList<Integer>> model_instance_map = new HashMap<>();
                 String select_model_instance = "SELECT `model_instance_id`, `model_id` FROM `model_instance` WHERE `model_id`=?";
                 try ( PreparedStatement select_model_instance_stmt = model_database_connection.prepareStatement(select_model_instance)) {
-                    select_model_instance_stmt.setInt(1, model_id);
+                    select_model_instance_stmt.setInt(1, model_definition.model_id);
                     ResultSet rs = select_model_instance_stmt.executeQuery();
                     if (rs.next()) {
                         Integer _model_id = rs.getInt("model_id");
@@ -631,9 +632,8 @@ public class MetadataMiner {
                         }
                         model_instance_map.get(_model_id).add(_model_instance_id);
                     } else {
-                        model_instance_map.put(model_id, new ArrayList<Integer>());
-                        model_instance_map.get(model_id).add(0);
-                        model_instance_id = 0;
+                        return;
+                        //throw new Exception("Delete error: Model Definition ["+model_definition.model_name+" - "+model_definition.model_id+"/"+model_definition.model_instance_sequence_last_value+" - "+model_definition.model_version+"] is not exist");
                     }
                 } catch (Exception ex) {
                     throw ex;
@@ -645,44 +645,50 @@ public class MetadataMiner {
                     Integer selected_model_id = model_instance_entry.getKey();
                     ArrayList<Integer> instance_id_list = (ArrayList<Integer>) model_instance_entry.getValue();
                     for (Integer instance_id : instance_id_list) {
-                        if (model_id.equals(selected_model_id) == false) {
+                        if (model_definition.model_id.equals(selected_model_id) == false) {
                             continue;
                         }
-                        if (model_instance_id.equals(0) == false && model_instance_id.equals(instance_id) == false) {
+                        if (Objects.equals(Integer.parseInt(model_definition.model_instance_sequence_last_value), instance_id) == false) {
                             continue;
                         }
-                        delete_sql = "DELETE FROM `model`.`referenced_key_field` WHERE `model_id`=? AND `model_instance_id`=?";
+                        delete_sql = "DELETE FROM `model`.`referenced_key_field_list` WHERE `model_id`=? AND `model_instance_id`=?";
                         deleteDataModelInstance(model_database_connection, delete_sql, selected_model_id, instance_id);
-                        delete_sql = "DELETE FROM `model`.`foreign_key_field` WHERE `model_id`=? AND `model_instance_id`=?";
+                        delete_sql = "DELETE FROM `model`.`foreign_key_field_list` WHERE `model_id`=? AND `model_instance_id`=?";
                         deleteDataModelInstance(model_database_connection, delete_sql, selected_model_id, instance_id);
-                        delete_sql = "DELETE FROM `model`.`foreign_key` WHERE `model_id`=? AND `model_instance_id`=?";
+                        delete_sql = "DELETE FROM `model`.`foreign_key_list` WHERE `model_id`=? AND `model_instance_id`=?";
                         deleteDataModelInstance(model_database_connection, delete_sql, selected_model_id, instance_id);
-                        delete_sql = "DELETE FROM `model`.`primary_key_field` WHERE `model_id`=? AND `model_instance_id`=?";
+                        delete_sql = "DELETE FROM `model`.`primary_key_field_list` WHERE `model_id`=? AND `model_instance_id`=?";
                         deleteDataModelInstance(model_database_connection, delete_sql, selected_model_id, instance_id);
-                        delete_sql = "DELETE FROM `model`.`primary_key` WHERE `model_id`=? AND `model_instance_id`=?";
+                        delete_sql = "DELETE FROM `model`.`primary_key_list` WHERE `model_id`=? AND `model_instance_id`=?";
                         deleteDataModelInstance(model_database_connection, delete_sql, selected_model_id, instance_id);
-                        delete_sql = "DELETE FROM `model`.`field` WHERE `model_id`=? AND `model_instance_id`=?";
+                        delete_sql = "DELETE FROM `model`.`field_list` WHERE `model_id`=? AND `model_instance_id`=?";
                         deleteDataModelInstance(model_database_connection, delete_sql, selected_model_id, instance_id);
-                        delete_sql = "DELETE FROM `model`.`child_table` WHERE `model_id`=? AND `model_instance_id`=?";
+                        delete_sql = "DELETE FROM `model`.`child_table_list` WHERE `model_id`=? AND `model_instance_id`=?";
                         deleteDataModelInstance(model_database_connection, delete_sql, selected_model_id, instance_id);
-                        delete_sql = "DELETE FROM `model`.`table` WHERE `model_id`=? AND `model_instance_id`=?";
+                        
+                        //String table_data_structures_name = model_definition.modeled_table_data_structures_class.substring(model_definition.modeled_table_data_structures_class.lastIndexOf(".")+1, model_definition.modeled_table_data_structures_class.length()-1);
+                        String table_data_structures_name = "table_data_structures";
+                        delete_sql = "DELETE FROM `model`.`"+table_data_structures_name+"` WHERE `model_id`=? AND `model_instance_id`=?";
                         deleteDataModelInstance(model_database_connection, delete_sql, selected_model_id, instance_id);
-                        delete_sql = "DELETE FROM `model`.`database` WHERE `model_id`=? AND `model_instance_id`=?";
+                        
+                        delete_sql = "DELETE FROM `model`.`table_list` WHERE `model_id`=? AND `model_instance_id`=?";
+                        deleteDataModelInstance(model_database_connection, delete_sql, selected_model_id, instance_id);
+                        delete_sql = "DELETE FROM `model`.`database_list` WHERE `model_id`=? AND `model_instance_id`=?";
                         deleteDataModelInstance(model_database_connection, delete_sql, selected_model_id, instance_id);
                         delete_sql = "DELETE FROM `model`.`enterprise` WHERE `model_id`=? AND `model_instance_id`=?";
                         deleteDataModelInstance(model_database_connection, delete_sql, selected_model_id, instance_id);
 
                         delete_sql = "DELETE FROM `model`.model_sequence WHERE `model_id`=? AND `model_instance_id`=?";
-                        deleteDataModel(model_database_connection, delete_sql, model_id, instance_id);
+                        deleteDataModel(model_database_connection, delete_sql, model_definition.model_id, instance_id);
                         delete_sql = "DELETE FROM `model`.model_instance WHERE `model_id`=? AND `model_instance_id`=?";
-                        deleteDataModel(model_database_connection, delete_sql, model_id, instance_id);
+                        deleteDataModel(model_database_connection, delete_sql, model_definition.model_id, instance_id);
 
                         deleted_instance_list.add(instance_id);
                     }
                 }
-                if (model_instance_map.size() > 0 && model_instance_map.get(model_id).size() == deleted_instance_list.size()) {
+                if (model_instance_map.size() > 0 && model_instance_map.get(model_definition.model_id).size() == deleted_instance_list.size()) {
                     delete_sql = "DELETE FROM `model`.`model` WHERE `model_id`=?";
-                    deleteDataModel(model_database_connection, delete_sql, model_id);
+                    deleteDataModel(model_database_connection, delete_sql, model_definition.model_id);
                 }
 
                 model_database_connection.commit();

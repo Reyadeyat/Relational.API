@@ -160,6 +160,7 @@ public class TestModelingRequest extends ModelingRequest {
         "model_instance_sequence_type_id": 1,
         "model_name": "parental",
         "model_version": 0.0.000001",
+        "model_instance_sequence_last_value": "0",
         "model_class_path": "net.reyadeyat.relational.api.model.Enterprise",
         "model_data_lookup_category": "MySQL Data Type",
         "modeled_database_url": "jdbc:mysql://localhost:33060/parental",
@@ -215,6 +216,7 @@ public class TestModelingRequest extends ModelingRequest {
         "model_instance_sequence_type_id": 1,
         "model_name": "%s",
         "model_version": 0.0.000001",
+        "model_instance_sequence_last_value": "0",
         "model_class_path": "net.reyadeyat.relational.api.model.Enterprise",
         "model_data_lookup_category": "MySQL Data Type",
         "modeled_database_url": "jdbc:mysql://localhost:33060/parental",
@@ -260,12 +262,29 @@ public class TestModelingRequest extends ModelingRequest {
         "service_name": "parental_service",
         "default_datasource_name": "%s",
         "database_name": "%s",
-        "model_id": "500",
+        
         "model_datasource_name": "model",
         "data_datasource_name": "%s",
-        "secret_key": "1234567890"
+        "secret_key": "1234567890",
+                                                                   
+        "model_id": 500,
+        "model_instance_sequence_type_id": 1,
+        "model_name": "%s",
+        "model_version": 0.0.000001",
+        "model_instance_sequence_last_value": "0",
+        "model_class_path": "net.reyadeyat.relational.api.model.Enterprise",
+        "model_data_lookup_category": "MySQL Data Type",
+        "modeled_database_url": "jdbc:mysql://localhost:33060/parental",
+        "modeled_database_url_user_name": "remote",
+        "modeled_database_url_user_password": "123456",
+        "modeled_database_schem": "",
+        "modeled_database_name": "%s",
+        "modeled_database_field_open_quote": "`",
+        "modeled_database_field_close_quote": "`",
+
+        "modeled_table_data_structures_class": "net.reyadeyat.relational.test.api.UserDefinedTableDataStructures"
     }
-    """.formatted(data_database, data_database, data_database);
+    """.formatted(data_database, data_database, data_database, data_database, data_database);
     
     private static String model_version = "0.0.0.0001";
 
