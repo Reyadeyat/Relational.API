@@ -47,26 +47,6 @@ import java.util.regex.Pattern;
 public class Table {
     public String name;
     public Integer rows;
-    @DontJsonAnnotation
-    transient public String java_data_structure_class;
-    @DontJsonAnnotation
-    transient public String typescript_data_structure_class;
-    @DontJsonAnnotation
-    transient public String typescript_request_send_response;
-    @DontJsonAnnotation
-    transient public String typescript_form_component_ts;
-    @DontJsonAnnotation
-    transient public String typescript_form_component_html;
-    @DontJsonAnnotation
-    transient public String typescript_table_component_ts;
-    @DontJsonAnnotation
-    transient public String typescript_table_component_html;
-    @DontJsonAnnotation
-    transient public String http_requests;
-    @DontJsonAnnotation
-    transient public String database_servlet_class;
-    @DontJsonAnnotation
-    transient public String database_servlet_uri;
     
     @DontJsonAnnotation
     transient public TableDataStructures table_data_structures;
@@ -82,24 +62,28 @@ public class Table {
     transient public Boolean case_sensitive_sql;
     transient public Database database;
     transient public ArrayList<ArrayList<Table>> paths;
-    transient public ArrayList<ArrayList<Table>> parentPaths;
-    transient public ArrayList<ArrayList<Table>> cyclicReferencePaths;
+    transient public ArrayList<ArrayList<Table>> parent_paths;
+    transient public ArrayList<ArrayList<Table>> cyclic_reference_paths;
     transient public TreeMap<String, Field> field_map;
     
     transient public DataLookup data_lookup;
     transient private static ArrayList<String> lang_suffix_list = new ArrayList<>(Arrays.asList(new String[]{"_ar", "_en"}));
     
-    /**no-arg default constructor for jaxb marshalling*/
-    public Table(TableDataStructures table_data_structures) {
-        this.table_data_structures = table_data_structures;
+    public Table() {
         field_list = new ArrayList<Field>();
         primary_key_list = new ArrayList<PrimaryKey>();
         foreign_key_list = new ArrayList<ForeignKey>();
         child_table_list = new ArrayList<ChildTable>();
         paths = new ArrayList<ArrayList<Table>>();
-        parentPaths = new ArrayList<ArrayList<Table>>();
-        cyclicReferencePaths = new ArrayList<ArrayList<Table>>();
+        parent_paths = new ArrayList<ArrayList<Table>>();
+        cyclic_reference_paths = new ArrayList<ArrayList<Table>>();
         field_map = new TreeMap<String, Field>();
+    }
+    
+    /**no-arg default constructor for jaxb marshalling*/
+    public Table(TableDataStructures table_data_structures) {
+        this();
+        this.table_data_structures = table_data_structures;
     }
     
     public Table(String name, Boolean case_sensitive_sql, Integer rows, DataLookup data_lookup, TableDataStructures table_data_structures) {
@@ -150,505 +134,7 @@ public class Table {
     }
     
     public void generateModelDataStructures() throws Exception {
-        String class_name = getModelClassName(name, false);
-        String class_name_spaced = getModelClassName(name, true);
-        generateJavaDataStructureClass(class_name);
-        generateTypescriptDataStructureClass(class_name);
-        generateTypescriptFormComponent(class_name);
-        generateDatabaseServletClass(class_name, class_name_spaced);
-        
-        Gson gson = JsonUtil.gsonPretty();
-        generateHttpRequests(gson);
-        JsonUtil.reclaimGsonPretty(gson);
-        
         this.table_data_structures.generateModelDataStructures(this);
-    }
-    
-    private void generateJavaDataStructureClass(String class_name) throws Exception {
-        String author_name = "AUTHOR_NAME";
-        String author_email = "AUTHOR_EMAIL";
-        String java_class_header = 
-        "package $PACKAGE_NAME;\n" +
-"\n" +
-"/**\n" +
-" *\n" +
-" * @author "+author_name+"\n" +
-" * <a href=\""+author_email+"\">"+author_email+"</a>\n" +
-" */\n";
-        StringBuilder java_data_structure_class = new StringBuilder(java_class_header);
-        StringBuilder java_data_structure_class_constructor_arguments = new StringBuilder();
-        StringBuilder java_data_structure_class_constructor_method = new StringBuilder();
-        replace(java_data_structure_class, "$PACKAGE_NAME", database.java_package_name);
-        java_data_structure_class.append("public class ").append(class_name).append(" {\n");
-        for (Field field : field_list) {
-            String java_datatype = this.data_lookup.lookupJavaDataType(field.data_type_name);
-            java_data_structure_class.append("    public ").append(java_datatype).append(" ").append(field.name).append(";\n");
-            java_data_structure_class_constructor_arguments.append("\n        ").append(java_datatype).append(" ").append(field.name).append(",");
-            java_data_structure_class_constructor_method.append("        this.").append(field.name).append(" = ").append(field.name).append(";\n");
-        }
-        for (ForeignKey foreign_key : foreign_key_list) {
-            for (Map.Entry<ForeignKeyField, ReferencedKeyField> entry : foreign_key.foreign_key_referenced_key_map.entrySet()) {
-                ForeignKeyField foreignKeyField = entry.getKey();
-                ReferencedKeyField referenced_key_field = entry.getValue();
-                String foreign_table_name = foreign_key.referenced_key_table_name;
-                String foreign_class_name = getModelClassName(foreign_key.referenced_key_table_name, false);
-                String var_name = getModelClassVariableName(foreign_class_name);
-                java_data_structure_class.append("    public ").append(foreign_class_name).append(" ").append(var_name).append(";\n");
-                java_data_structure_class_constructor_arguments.append("\n        ").append(foreign_class_name).append(" ").append(var_name).append(",");
-                java_data_structure_class_constructor_method.append("        this.").append(var_name).append(" = ").append(var_name).append(";\n");
-            }
-        }
-        java_data_structure_class_constructor_arguments = java_data_structure_class_constructor_arguments.length() > 0 ? java_data_structure_class_constructor_arguments.deleteCharAt(java_data_structure_class_constructor_arguments.length()-1) : java_data_structure_class_constructor_arguments;
-        java_data_structure_class.append("\n    public ").append(class_name).append("(").append(java_data_structure_class_constructor_arguments).append("\n    ) {\n")
-                .append(java_data_structure_class_constructor_method).append("    }\n}\n");
-        this.java_data_structure_class = java_data_structure_class.toString();
-    }
-    
-    private void generateTypescriptDataStructureClass(String class_name) throws Exception {
-        StringBuilder typescript_data_structure_class = new StringBuilder();
-        StringBuilder typescript_data_structure_class_constructor_arguments = new StringBuilder();
-        StringBuilder typescript_data_structure_class_constructor_method = new StringBuilder();
-        StringBuilder typescript_data_structure_class_equals = new StringBuilder();
-        StringBuilder typescript_data_structure_class_equals_body = new StringBuilder();
-        StringBuilder typescript_data_structure_class_from_json = new StringBuilder();
-        StringBuilder typescript_data_structure_class_from_json_object_list = new StringBuilder();
-        StringBuilder typescript_data_structure_class_from_json_object_list_arguments = new StringBuilder();
-        StringBuilder typescript_data_structure_class_to_json = new StringBuilder();
-        StringBuilder typescript_request_send_response_builder = new StringBuilder(request_send_response);
-        StringBuilder typescript_request_send_response_select_fields = new StringBuilder();
-        StringBuilder typescript_request_send_response_insert_update_delete_fields = new StringBuilder();
-        StringUtil.replaceAll(typescript_request_send_response_builder, "$TABLE_NAME", name);
-        StringUtil.replaceAll(typescript_request_send_response_builder, "$TABLE_CLASS", class_name);
-        typescript_data_structure_class.append("export class ").append(class_name).append(" extends RecordControl {\n");
-        typescript_data_structure_class_constructor_method.append("\t\tsuper();\n");
-        typescript_data_structure_class_equals.append("    equals(").append(name).append(": ").append(class_name).append(") {\n        return ").append(name).append(" != null");
-        typescript_data_structure_class_from_json.append("    static fromJSON(json: any) : ").append(class_name).append(" {\n").append("        return new ").append(class_name).append("(\n");
-        typescript_data_structure_class_from_json_object_list.append(") : ").append(class_name).append(" {\n").append("        return new ").append(class_name).append("(\n");
-        typescript_data_structure_class_from_json_object_list_arguments.append("    static fromJSONObjectList(json: any, ");
-        typescript_data_structure_class_to_json.append("    toJSON() : any {\n").append("        //return JSON.stringify(this);\n").append("        return {\n\t\t\tis_checked: this.is_checked,\n\t\t\tfree_text: this.free_text,\n");
-        HashMap<String, ArrayList<String>> i18n_map = new HashMap<String, ArrayList<String>>();
-        for (Field field : field_list) {
-            String java_datatype = this.data_lookup.lookupJavaDataType(field.data_type_name);
-            String typescript_datatype = this.data_lookup.lookupTypescriptDataType(field.data_type_name);
-            typescript_data_structure_class.append("    ").append(field.name).append("?: ").append(typescript_datatype).append(";\n");
-            typescript_data_structure_class_constructor_arguments.append("\n        ").append(field.name).append("?: ").append(typescript_datatype).append(",");
-            typescript_data_structure_class_constructor_method.append("        this.").append(field.name).append(" = ").append(field.name).append(";\n");
-            typescript_request_send_response_select_fields.append("\t\t\t\t\"").append(field.name).append("\",\n");
-            typescript_request_send_response_insert_update_delete_fields.append("\t\t\t\t\t").append(field.name).append(": ").append(name).append(".").append(field.name).append(",\n");
-            if (field.primary_key == true) {
-                typescript_data_structure_class_equals_body.append("&& this.").append(field.name).append(" == ").append(name).append(".").append(field.name).append("\n");
-            }
-            
-            if (typescript_datatype.equalsIgnoreCase("Date")) {
-                if (java_datatype.equalsIgnoreCase("Date") || java_datatype.equalsIgnoreCase("Timestamp")) {
-                    typescript_data_structure_class_from_json.append("            new Date(json.").append(field.name).append("),\n");
-                    typescript_data_structure_class_from_json_object_list.append("            new Date(json.").append(field.name).append("),\n");
-                } else if (java_datatype.equalsIgnoreCase("Time")) {
-                    typescript_data_structure_class_from_json.append("            new Date(new Date().toISOString().substring(0,10)+' '+json.").append(field.name).append("),\n");
-                    typescript_data_structure_class_from_json_object_list.append("            new Date(new Date().toISOString().substring(0,10)+' '+json.").append(field.name).append("),\n");
-                }
-            } else {
-                typescript_data_structure_class_from_json.append("            json.").append(field.name).append(",\n");
-                typescript_data_structure_class_from_json_object_list.append("            json.").append(field.name).append(",\n");
-            }
-            
-            if (typescript_datatype.equalsIgnoreCase("Date")) {
-                typescript_data_structure_class_to_json.append("            ").append(field.name).append(": this.").append(field.name).append(".toISOString(),\n");
-            } else {
-                typescript_data_structure_class_to_json.append("            ").append(field.name).append(": this.").append(field.name).append(",\n");
-            }
-            
-            for (String lang_suffix : lang_suffix_list) {
-                if (field.name.endsWith(lang_suffix) == true) {
-                    String var_name = field.name.substring(0, field.name.length()-3) + "_i18";
-                    ArrayList<String> string_i18n_list = i18n_map.get(var_name);
-                    if (string_i18n_list == null) {
-                        string_i18n_list = new ArrayList<String>();
-                        i18n_map.put(var_name, string_i18n_list);
-                    }
-                    string_i18n_list.add(field.name);
-                }
-            }
-        }
-        typescript_data_structure_class_equals_body = typescript_data_structure_class_equals_body.length() > 0 ? typescript_data_structure_class_equals_body.deleteCharAt(typescript_data_structure_class_equals_body.length()-1).insert(0, "\n        ").append(";\n") : typescript_data_structure_class_equals_body;
-        typescript_data_structure_class_equals.append(typescript_data_structure_class_equals_body);
-        typescript_data_structure_class_equals.append("    }\n");
-        typescript_request_send_response_select_fields.deleteCharAt(typescript_request_send_response_select_fields.length()-2);
-        typescript_request_send_response_insert_update_delete_fields.deleteCharAt(typescript_request_send_response_insert_update_delete_fields.length()-2);
-        StringUtil.replaceAll(typescript_request_send_response_builder, "$SELECT_FIELDS", typescript_request_send_response_select_fields.toString());
-        StringUtil.replaceAll(typescript_request_send_response_builder, "$INSERT_UPDATE_DELETE_FIELDS", typescript_request_send_response_insert_update_delete_fields.toString());
-        for (Map.Entry<String, ArrayList<String>> i18n_entry: i18n_map.entrySet()) {
-            String var_name = i18n_entry.getKey();
-            ArrayList<String> i18n_var_name_list = i18n_entry.getValue();
-            typescript_data_structure_class.append("    ").append(var_name).append("?: ").append("StringI18").append(";\n");
-            typescript_data_structure_class_constructor_method.append("        this.").append(var_name).append(" = new StringI18(");
-            for (String i18n_var_name : i18n_var_name_list) {
-                typescript_data_structure_class_constructor_method.append(i18n_var_name).append(", ");
-            }
-            typescript_data_structure_class_constructor_method = typescript_data_structure_class_constructor_method.length() > 0 ? typescript_data_structure_class_constructor_method.delete(typescript_data_structure_class_constructor_method.length()-2, typescript_data_structure_class_constructor_method.length()) : typescript_data_structure_class_constructor_method;
-            typescript_data_structure_class_constructor_method.append(");\n");
-        }
-        for (ForeignKey foreign_key : foreign_key_list) {
-            for (Map.Entry<ForeignKeyField, ReferencedKeyField> entry : foreign_key.foreign_key_referenced_key_map.entrySet()) {
-                ForeignKeyField foreignKeyField = entry.getKey();
-                ReferencedKeyField referenced_key_field = entry.getValue();
-                String foreign_table_name = foreign_key.referenced_key_table_name;
-                String foreign_class_type_name = getModelClassName(foreign_key.referenced_key_table_name, false);
-                //String var_name = getModelClassVariableName(foreign_class_type_name);
-                String var_name_field = referenced_key_field.name.toLowerCase().endsWith("_id") == true ? referenced_key_field.name.substring(0, referenced_key_field.name.length()-3) : referenced_key_field.name;
-                String var_name = getModelClassVariableName(var_name_field);
-                typescript_data_structure_class.append("    ").append(var_name).append("?: ").append(foreign_class_type_name).append(" | null;\n");
-                typescript_data_structure_class_constructor_arguments.append("\n        ").append(var_name).append("?: ").append(foreign_class_type_name).append(" | null,");
-                typescript_data_structure_class_constructor_method.append("        this.").append(var_name).append(" = ").append(var_name).append(";\n");
-                typescript_data_structure_class_from_json.append("            null,\n");
-                typescript_data_structure_class_from_json_object_list.append("            ").append(var_name).append(",\n");
-                typescript_data_structure_class_from_json_object_list_arguments.append(var_name).append(": ").append(foreign_class_type_name).append(" | null, ");
-            }
-        }
-        
-        /*Complex objects of typescript class are rarely stringified */
-        typescript_data_structure_class_from_json = typescript_data_structure_class_from_json.length() > 0 ? typescript_data_structure_class_from_json.delete(typescript_data_structure_class_from_json.length()-2, typescript_data_structure_class_from_json.length()) : typescript_data_structure_class_from_json;
-        typescript_data_structure_class_from_json_object_list = typescript_data_structure_class_from_json_object_list.length() > 0 ? typescript_data_structure_class_from_json_object_list.delete(typescript_data_structure_class_from_json_object_list.length()-2, typescript_data_structure_class_from_json_object_list.length()) : typescript_data_structure_class_from_json_object_list;
-        typescript_data_structure_class_from_json_object_list_arguments = typescript_data_structure_class_from_json_object_list_arguments.length() > 0 ? typescript_data_structure_class_from_json_object_list_arguments.delete(typescript_data_structure_class_from_json_object_list_arguments.length()-2, typescript_data_structure_class_from_json_object_list_arguments.length()) : typescript_data_structure_class_from_json_object_list_arguments;
-        typescript_data_structure_class_to_json = typescript_data_structure_class_to_json.length() > 0 ? typescript_data_structure_class_to_json.delete(typescript_data_structure_class_to_json.length()-2, typescript_data_structure_class_to_json.length()) : typescript_data_structure_class_to_json;
-        typescript_data_structure_class_from_json.append("\n        );\n").append("    }\n");
-        typescript_data_structure_class_from_json_object_list.append("\n        );\n").append("    }\n");
-        typescript_data_structure_class_from_json_object_list = typescript_data_structure_class_from_json_object_list_arguments.append(typescript_data_structure_class_from_json_object_list);
-        typescript_data_structure_class_to_json.append("\n        };\n").append("    }\n");
-        
-        typescript_data_structure_class_constructor_arguments = typescript_data_structure_class_constructor_arguments.length() > 0 ? typescript_data_structure_class_constructor_arguments.deleteCharAt(typescript_data_structure_class_constructor_arguments.length()-1) : typescript_data_structure_class_constructor_arguments;
-        typescript_data_structure_class.append("\n    constructor(").append(typescript_data_structure_class_constructor_arguments).append("\n    ) {\n")
-                .append(typescript_data_structure_class_constructor_method).append("    \n    }\n    \n")
-                .append(typescript_data_structure_class_equals_body.length() == 0 ? "" : typescript_data_structure_class_equals).append("    \n")
-                .append(typescript_data_structure_class_from_json).append("    \n")
-                .append(typescript_data_structure_class_from_json_object_list).append("    \n")
-                .append(typescript_data_structure_class_to_json).append("    \n")
-                .append("}\n");
-        this.typescript_data_structure_class = typescript_data_structure_class.toString();
-        this.typescript_request_send_response = typescript_request_send_response_builder.toString();
-    }
-    
-    private void generateTypescriptFormComponent(String class_name) throws Exception {
-        
-        StringBuilder typescript_form_component_ts_builder = new StringBuilder(form_component_ts);
-        StringBuilder typescript_form_component_html_builder = new StringBuilder(form_component_html);
-        StringBuilder typescript_form_field_control_class_members_builder = new StringBuilder();
-        StringBuilder typescript_form_foreign_field_control_class_members_builder = new StringBuilder();
-        StringBuilder typescript_form_foreign_field_array_class_members_builder = new StringBuilder();
-        StringBuilder typescript_form_field_control_definition_builder = new StringBuilder();
-        StringBuilder typescript_form_foreign_field_control_definition_builder = new StringBuilder();
-        StringBuilder typescript_form_foreign_field_array_definition_builder = new StringBuilder();
-        StringBuilder typescript_form_field_control_builder = new StringBuilder();
-        StringBuilder typescript_form_foreign_field_control_builder = new StringBuilder();
-        StringBuilder typescript_form_field_html_text_box_control_builder = new StringBuilder();
-        StringBuilder typescript_form_field_html_date_box_control_builder = new StringBuilder();
-        StringBuilder typescript_form_foreign_field_html_check_box_control_builder = new StringBuilder();
-        StringBuilder typescript_form_foreign_field_html_list_box_control_builder = new StringBuilder();
-        StringBuilder typescript_form_foreign_field_check_box_builder = new StringBuilder();
-        
-        StringBuilder typescript_table_component_ts_builder = new StringBuilder(table_component_ts);
-        StringBuilder typescript_table_component_html_builder = new StringBuilder(table_component_html);
-        StringBuilder typescript_table_field_list_builder = new StringBuilder();
-        StringBuilder typescript_table_foreign_field_list_builder = new StringBuilder();
-        StringBuilder typescript_table_field_html_primary_key_icon_control_builder = new StringBuilder();
-        StringBuilder typescript_table_field_html_i18_control_builder = new StringBuilder();
-        StringBuilder typescript_table_foreign_field_html_i18_control_builder = new StringBuilder();
-        
-        HashMap<String, HashMap<String, String>> i18n_map = new HashMap<String, HashMap<String, String>>();
-        for (Field field : field_list) {
-            String java_datatype = this.data_lookup.lookupJavaDataType(field.data_type_name);
-            String typescript_datatype = this.data_lookup.lookupTypescriptDataType(field.data_type_name);
-            if (field.foreign_reference == true && field.primary_key == true) {
-                typescript_table_field_html_primary_key_icon_control_builder.append(typescript_table_field_html_primary_key_icon_control.replaceAll("\\$FIELD_NAME", field.name).replaceAll("\\$TABLE_NAME", name).replaceAll("\\$TABLE_CLASS", class_name)).append(nl);
-            }
-            
-            String control_name = field.name;
-            if (field.foreign_reference == true && field.primary_key == false) {
-                int index = field.name.lastIndexOf("_id");
-                if (index > -1) {
-                    control_name = control_name.substring(0, index) + "_list_option";
-                }
-            }
-            typescript_form_field_control_class_members_builder.append("\t").append(typescript_form_field_control_class_members.replaceAll("\\$FIELD_NAME", control_name)).append(nl);
-            typescript_form_field_control_definition_builder.append("\t").append(typescript_form_field_control_definition.replaceAll("\\$FIELD_NAME", control_name)).append(nl);
-            typescript_form_field_control_builder.append("\t\t\t").append(typescript_form_field_control.replaceAll("\\$FIELD_NAME", control_name)).append(nl);
-            
-            typescript_table_field_list_builder.append("\t\t\"").append(field.name).append("\",").append(nl);
-            
-            if (typescript_datatype.equalsIgnoreCase("Date")) {
-                if (java_datatype.equalsIgnoreCase("Date")) {
-                    typescript_form_field_html_date_box_control_builder.append(typescript_form_field_html_date_box_control.replaceAll("\\$TABLE_NAME", name).replaceAll("\\$FIELD_NAME", field.name)).append(nl);
-                } else if (java_datatype.equalsIgnoreCase("Time") || java_datatype.equalsIgnoreCase("Timestamp")) {
-                    typescript_form_field_html_text_box_control_builder.append(typescript_form_field_html_text_box_control.replaceAll("\\$TABLE_NAME", name).replaceAll("\\$FIELD_NAME", field.name).replaceAll("\\$FIELD_HTML_TYPE", typescript_datatype).replaceAll("\\$FIELD_IS_NOT_NULL", String.valueOf(!field.nullable).toLowerCase()).replaceAll("\\$PRIMARY_KEY_TEXT_BOX", "")).append(nl);
-                }
-            } else {
-                if (field.primary_key == true) {
-                    typescript_form_field_html_text_box_control_builder.append(typescript_form_field_html_text_box_control.replaceAll("\\$TABLE_NAME", name).replaceAll("\\$FIELD_NAME", field.name).replaceAll("\\$FIELD_HTML_TYPE", typescript_datatype).replaceAll("\\$FIELD_IS_NOT_NULL", String.valueOf(false).toLowerCase()).replaceAll("\\$PRIMARY_KEY_TEXT_BOX", "[readonly]=\"true\" [disabled]=\"true\"")).append(nl);
-                } else {
-                    typescript_form_field_html_text_box_control_builder.append(typescript_form_field_html_text_box_control.replaceAll("\\$TABLE_NAME", name).replaceAll("\\$FIELD_NAME", field.name).replaceAll("\\$FIELD_HTML_TYPE", typescript_datatype.equalsIgnoreCase("Boolean") ? "checkbox" : typescript_datatype).replaceAll("\\$FIELD_IS_NOT_NULL", String.valueOf(!field.nullable).toLowerCase()).replaceAll("\\$PRIMARY_KEY_TEXT_BOX", "")).append(nl);
-                }
-            }
-            
-            for (String lang_suffix : lang_suffix_list) {
-                if (field.name.endsWith(lang_suffix) == true) {
-                    String field_i18_var_name = field.name.substring(0, field.name.length()-3) + "_i18";
-                    HashMap<String, String> string_i18n_map = i18n_map.get(field_i18_var_name);
-                    if (string_i18n_map == null) {
-                        string_i18n_map = new HashMap<String, String>();
-                        i18n_map.put(field_i18_var_name, string_i18n_map);
-                    }
-                    string_i18n_map.put("$FIELD_NAME", field_i18_var_name);
-                    string_i18n_map.put("$TABLE_NAME", name);
-                    string_i18n_map.put("$TABLE_CLASS", class_name);
-                }
-            }
-        }
-        for (Map.Entry<String, HashMap<String, String>> i18n_entry: i18n_map.entrySet()) {
-            String var_name = i18n_entry.getKey();
-            HashMap<String, String> string_i18n_map = i18n_entry.getValue();
-            typescript_table_field_list_builder.append("\t\t\"").append(var_name).append("\",").append(nl);
-            typescript_table_field_html_i18_control_builder.append(typescript_table_field_html_i18_control.replaceAll("\\$FIELD_NAME", string_i18n_map.get("$FIELD_NAME")).replaceAll("\\$TABLE_NAME", string_i18n_map.get("$TABLE_NAME")).replaceAll("\\$TABLE_CLASS", string_i18n_map.get("$TABLE_CLASS"))).append(nl);
-        }
-        
-        for (ForeignKey foreign_key : foreign_key_list) {
-            for (Map.Entry<ForeignKeyField, ReferencedKeyField> entry : foreign_key.foreign_key_referenced_key_map.entrySet()) {
-                ForeignKeyField foreignKeyField = entry.getKey();
-                ReferencedKeyField referenced_key_field = entry.getValue();
-                String foreign_table_name = foreign_key.referenced_key_table_name;
-                String foreign_class_type_name = getModelClassName(foreign_key.referenced_key_table_name, false);
-                //String var_name = getModelClassVariableName(foreign_class_type_name);
-                String var_name_field = referenced_key_field.name.toLowerCase().endsWith("_id") == true ? referenced_key_field.name.substring(0, referenced_key_field.name.length()-3) : referenced_key_field.name;
-                String foreign_field_var_name = getModelClassVariableName(var_name_field);
-                
-                typescript_form_foreign_field_control_class_members_builder.append("\t").append(typescript_form_foreign_field_control_class_members.replaceAll("\\$FOREIGN_FIELD_NAME", foreign_field_var_name)).append(nl);
-                typescript_form_foreign_field_array_class_members_builder.append("\t").append(typescript_form_foreign_field_array_class_members.replaceAll("\\$FOREIGN_FIELD_NAME", foreign_field_var_name)).append(nl);
-                
-                typescript_form_foreign_field_control_definition_builder.append("\t").append(typescript_form_foreign_field_control_definition.replaceAll("\\$FOREIGN_TABLE_NAME", foreign_table_name).replaceAll("\\$FOREIGN_FIELD_NAME", foreign_field_var_name)).append(nl);
-                typescript_form_foreign_field_array_definition_builder.append("\t").append(typescript_form_foreign_field_array_definition.replaceAll("\\$FOREIGN_TABLE_NAME", foreign_table_name).replaceAll("\\$FOREIGN_FIELD_NAME", foreign_field_var_name)).append(nl);
-                
-                typescript_form_foreign_field_control_builder.append("\t").append(typescript_form_foreign_field_control.replaceAll("\\$FOREIGN_TABLE_NAME", foreign_table_name).replaceAll("\\$FOREIGN_FIELD_NAME", foreign_field_var_name)).append(nl);
-                
-                typescript_form_foreign_field_html_check_box_control_builder.append(typescript_form_foreign_field_html_check_box_control.replaceAll("\\$FOREIGN_TABLE_NAME", foreign_table_name).replaceAll("\\$FOREIGN_FIELD_NAME", foreign_field_var_name)).append(nl);
-                typescript_form_foreign_field_html_list_box_control_builder.append(typescript_form_foreign_field_html_list_box_control.replaceAll("\\$FOREIGN_TABLE_NAME", foreign_table_name).replaceAll("\\$FOREIGN_FIELD_NAME", foreign_field_var_name)).append(nl);
-                
-                typescript_form_foreign_field_check_box_builder.append(typescript_form_foreign_field_check_box.replaceAll("\\$FOREIGN_TABLE_NAME", foreign_table_name).replaceAll("\\$FOREIGN_TABLE_CLASS", foreign_class_type_name)).append(nl);
-                
-                String referenced_key_field_name = referenced_key_field.name.toLowerCase().endsWith("_id") == true ? referenced_key_field.name.substring(0, referenced_key_field.name.lastIndexOf("_id")) : referenced_key_field.name;
-                typescript_table_foreign_field_list_builder.append("\t\t\"").append(referenced_key_field_name).append("\",").append(nl);
-
-                typescript_table_field_list_builder.append("\t\t\"").append(foreign_field_var_name).append("\",").append(nl);
-                typescript_table_foreign_field_html_i18_control_builder.append(typescript_table_foreign_field_html_i18_control.replaceAll("\\$TABLE_NAME", name).replaceAll("\\$FOREIGN_FIELD_NAME", foreign_field_var_name).replaceAll("\\$FOREIGN_TABLE_NAME", foreign_table_name).replaceAll("\\$FOREIGN_TABLE_CLASS", foreign_class_type_name)).append(nl);
-            }
-        }
-        
-        typescript_table_field_list_builder = typescript_table_field_list_builder.length() > 0 ? typescript_table_field_list_builder.deleteCharAt(typescript_table_field_list_builder.length()-2) : typescript_table_field_list_builder;
-        typescript_table_foreign_field_list_builder = typescript_table_foreign_field_list_builder.length() > 0 ? typescript_table_foreign_field_list_builder.deleteCharAt(typescript_table_foreign_field_list_builder.length()-2) : typescript_table_foreign_field_list_builder;
-        
-        /*Complex objects of typescript class are rarely stringified */
-        typescript_form_component_ts_builder.insert(0, "\n\n----------- $TABLE_NAME Form Controls ---------------------\n\n");
-        StringUtil.replaceAll(typescript_form_component_ts_builder, "$TABLE_NAME", name);
-        StringUtil.replaceAll(typescript_form_component_ts_builder, "$TABLE_CLASS", class_name);
-        StringUtil.replaceAll(typescript_form_component_ts_builder, "$TYPESCRIPT_FORM_FIELD_CONTROL_CLASS_MEMBERS", typescript_form_field_control_class_members_builder.toString());
-        StringUtil.replaceAll(typescript_form_component_ts_builder, "$TYPESCRIPT_FORM_FOREIGN_FIELD_CONTROL_CLASS_MEMBERS", typescript_form_foreign_field_control_class_members_builder.toString());
-        StringUtil.replaceAll(typescript_form_component_ts_builder, "$TYPESCRIPT_FORM_FOREIGN_FIELD_ARRAY_CLASS_MEMBERS", typescript_form_foreign_field_array_class_members_builder.toString());
-        StringUtil.replaceAll(typescript_form_component_ts_builder, "$TYPESCRIPT_FORM_FIELD_CONTROL_DEFINITION", typescript_form_field_control_definition_builder.toString());
-        StringUtil.replaceAll(typescript_form_component_ts_builder, "$TYPESCRIPT_FORM_FOREIGN_FIELD_CONTROL_DEFINITION", typescript_form_foreign_field_control_definition_builder.toString());
-        StringUtil.replaceAll(typescript_form_component_ts_builder, "$TYPESCRIPT_FORM_FOREIGN_FIELD_ARRAY_DEFINITION", typescript_form_foreign_field_array_definition_builder.toString());
-        StringUtil.replaceAll(typescript_form_component_ts_builder, "$TYPESCRIPT_FORM_FOREIGN_FIELD_CONTROL_DEFINITION", typescript_form_foreign_field_control_definition_builder.toString());
-        StringUtil.replaceAll(typescript_form_component_ts_builder, "$TYPESCRIPT_FORM_FIELD_CONTROL", typescript_form_field_control_builder.toString());
-        StringUtil.replaceAll(typescript_form_component_ts_builder, "$TYPESCRIPT_FORM_FOREIGN_FIELD_CONTROL", typescript_form_foreign_field_control_builder.toString());
-        StringUtil.replaceAll(typescript_form_component_ts_builder, "$TYPESCRIPT_FORM_FOREIGN_FIELD_CHECK_BOX", typescript_form_foreign_field_check_box_builder.toString());
-        typescript_form_component_html_builder.append(nl).append("\n\n------------------ $TABLE_NAME Form HTML Controls ---------------\n\n");
-        StringUtil.replaceAll(typescript_form_component_html_builder, "$TABLE_NAME", name);
-        StringUtil.replaceAll(typescript_form_component_html_builder, "$TABLE_CLASS", class_name);
-        StringUtil.replaceAll(typescript_form_component_html_builder, "$TYPESCRIPT_FORM_FIELD_HTML_TEXT_BOX_CONTROL", typescript_form_field_html_text_box_control_builder.toString());
-        StringUtil.replaceAll(typescript_form_component_html_builder, "$TYPESCRIPT_FORM_FIELD_HTML_DATE_BOX_CONTROL", typescript_form_field_html_date_box_control_builder.toString());
-        StringUtil.replaceAll(typescript_form_component_html_builder, "$TYPESCRIPT_FORM_FOREIGN_FIELD_HTML_CHECK_BOX_CONTROL", typescript_form_foreign_field_html_check_box_control_builder.toString());
-        StringUtil.replaceAll(typescript_form_component_html_builder, "$TYPESCRIPT_FORM_FOREIGN_FIELD_HTML_LIST_BOX_CONTROL", typescript_form_foreign_field_html_list_box_control_builder.toString());
-        
-        this.typescript_form_component_ts = typescript_form_component_ts_builder.toString();
-        this.typescript_form_component_html = typescript_form_component_html_builder.toString();
-        
-        typescript_table_component_ts_builder.insert(0, "\n\n----------- $TABLE_NAME MAT Table Controls ---------------------\n\n");
-        StringUtil.replaceAll(typescript_table_component_ts_builder, "$TABLE_NAME", name);
-        StringUtil.replaceAll(typescript_table_component_ts_builder, "$TABLE_CLASS", class_name);
-        StringUtil.replaceAll(typescript_table_component_ts_builder, "$FIELD_LIST", typescript_table_field_list_builder.toString());
-        StringUtil.replaceAll(typescript_table_component_ts_builder, "$FOREIGN_FIELD_LIST", typescript_table_foreign_field_list_builder.toString());
-        //StringUtil.replaceAll(typescript_table_component_ts_builder, "$TYPESCRIPT_FORM_FIELD_CONTROL_DEFINITION", typescript_table_field_control_definition_builder.toString());
-        //StringUtil.replaceAll(typescript_table_component_ts_builder, "$TYPESCRIPT_FORM_FOREIGN_FIELD_CONTROL_DEFINITION", typescript_table_foreign_field_control_definition_builder.toString());
-        //StringUtil.replaceAll(typescript_table_component_ts_builder, "$TYPESCRIPT_FORM_FIELD_CONTROL", typescript_table_field_control_builder.toString());
-        //StringUtil.replaceAll(typescript_table_component_ts_builder, "$TYPESCRIPT_FORM_FOREIGN_FIELD_CONTROL", typescript_table_foreign_field_control_builder.toString());
-        typescript_table_component_html_builder.append(nl).append("------------------ $TABLE_NAME MAT Table HTML Controls ---------------").append(nl).append(nl);
-        StringUtil.replaceAll(typescript_table_component_html_builder, "$TABLE_NAME", name);
-        StringUtil.replaceAll(typescript_table_component_html_builder, "$TABLE_CLASS", class_name);
-        StringUtil.replaceAll(typescript_table_component_html_builder, "$TYPESCRIPT_TABLE_FIELD_HTML_PRIMARY_KEY_ICON_CONTROL", typescript_table_field_html_primary_key_icon_control_builder.toString());
-        StringUtil.replaceAll(typescript_table_component_html_builder, "$TYPESCRIPT_TABLE_FIELD_HTML_I18_CONTROL", typescript_table_field_html_i18_control_builder.toString());
-        StringUtil.replaceAll(typescript_table_component_html_builder, "$TYPESCRIPT_TABLE_FOREIGN_FIELD_HTML_I18_CONTROL", typescript_table_foreign_field_html_i18_control_builder.toString());
-        
-        this.typescript_table_component_ts = typescript_table_component_ts_builder.toString();
-        this.typescript_table_component_html = typescript_table_component_html_builder.toString();
-    }
-    
-    private void generateDatabaseServletClass(String class_name, String class_name_spaced) throws Exception {
-        String user_package = "AUTHOR_PACKAGE";
-        String author_name = "AUTHOR_NAME";
-        String author_email = "AUTHOR_EMAIL";
-        String servlet_class = 
-        "package $PACKAGE_NAME;\n" +
-"\n" +
-"import "+user_package+".database.FieldType;\n" +
-"import "+user_package+".servlet.DatabaseServlet;\n" +
-"import jakarta.servlet.annotation.WebServlet;\n" +
-"\n" +
-"/**\n" +
-" *\n" +
-" * @author "+author_name+"\n" +
-" * <a href=\"mailto:"+author_email+"\">"+author_email+"</a>\n" +
-" */\n" +
-"@WebServlet(\"$SERVLET_CONTEXT\")\n" +
-"public class $CLASS_NAME extends DatabaseServlet {\n" +
-"    \n" +
-"    @Override\n" +
-"    protected void doInit() throws Exception {\n" +
-"        defineServlet(\"$CLASS_NAME_SPACED\", \"$DATA_SOURCE_NAME\", \"$DATABASE_NAME\", \"$TABLE_NAME\");//, true, false);\n" +
-"        defineTransactions(\"insert\", \"select\", \"update\", \"delete\");\n" +
-"        $FIELDS\n" +
-"        $FOREIGN_KEYS\n" +
-"    }\n" +
-"}";
-    
-        StringBuilder database_servlet_class = new StringBuilder(servlet_class);
-        this.database_servlet_uri = "/"+name;
-        replace(database_servlet_class, "$PACKAGE_NAME", database.java_package_name);
-        replace(database_servlet_class, "$SERVLET_CONTEXT", "/"+name);
-        replace(database_servlet_class, "$CLASS_NAME", class_name);
-        replace(database_servlet_class, "$CLASS_NAME_SPACED", class_name_spaced);
-        replace(database_servlet_class, "$DATA_SOURCE_NAME", database.name);
-        replace(database_servlet_class, "$DATABASE_NAME", database.name);
-        replace(database_servlet_class, "$TABLE_NAME", name);
-        for (Field field : field_list) {
-            String java_datatype = this.data_lookup.lookupJavaDataType(field.data_type_name);
-            String typescript_datatype = this.data_lookup.lookupTypescriptDataType(field.data_type_name);
-            StringBuilder field_method = new StringBuilder(this.field_method);
-            replace(field_method, "$FIELD_ALIAS", field.name);
-            replace(field_method, "$FIELD_TYPE", java_datatype);
-            replace(field_method, "$FIELD_NULLABLE", field.nullable.toString());
-            replace(field_method, "$FIELD_NAME", field.name);
-            if (field.primary_key == true) {
-                if (field.auto_increment == true) {
-                    field_method.append(".setPrimaryKeyAI()");
-                } else if (typescript_datatype.equalsIgnoreCase("number")) {
-                    field_method.append(".setPrimaryKeyMI()");
-                } else {
-                    field_method.append(".setPrimaryKey()");
-                }
-            }
-            if (field.data_type_name.equalsIgnoreCase("VARCHAR")) {
-                field_method.append(".setTexLengthRange(4, ").append(field.size).append(")");
-            }
-            field_method.append(";\n        ");
-            insertBefore(database_servlet_class, "$FIELDS", field_method.toString());
-        }
-        for (ForeignKey foreign_key : foreign_key_list) {
-            String var_name = foreign_key.foreign_key_table_name.replaceAll("(.)([A-Z])", "$1_$2").trim().toLowerCase();
-            for (Map.Entry<ForeignKeyField, ReferencedKeyField> entry : foreign_key.foreign_key_referenced_key_map.entrySet()) {
-                ForeignKeyField foreignKeyField = entry.getKey();
-                ReferencedKeyField referenced_key_field = entry.getValue();
-                String foreign_table_name = foreign_key.referenced_key_table_name;
-                StringBuilder foreign_key_method = new StringBuilder(this.foreign_key_method);
-                replace(foreign_key_method , "$FOREIGN_KEY_NAME", foreign_key.name);
-                replace(foreign_key_method , "$TABLE_FIELD_NAME", referenced_key_field.name);
-                replace(foreign_key_method , "$REFERENCE_TABLE_NAME", foreign_key.referenced_key_table_name);
-                replace(foreign_key_method , "$REFERENCE_TABLE_FIELD_NAME", foreignKeyField.name);
-                foreign_key_method.append(";\n        ");
-                insertBefore(database_servlet_class, "$FOREIGN_KEYS", foreign_key_method.toString());
-            }
-        }
-        delete(database_servlet_class, "$FIELDS");
-        delete(database_servlet_class, "$FOREIGN_KEYS");
-        this.database_servlet_class = database_servlet_class.toString();
-    }
-    
-    private void generateHttpRequests(Gson gson) throws Exception {
-        StringBuilder http_requests_builder = new StringBuilder();
-        JsonObject insert_request_json = gson.fromJson(insert_request, JsonObject.class);
-        JsonArray insert_values = insert_request_json.get("values").getAsJsonArray();
-        JsonObject insert_field_list = new JsonObject();
-        insert_values.add(insert_field_list);
-        
-        JsonObject select_request_json = gson.fromJson(select_request, JsonObject.class);
-        JsonArray select_select = select_request_json.get("select").getAsJsonArray();
-        JsonObject select_where = select_request_json.get("where").getAsJsonObject();
-        //JsonObject select_where_clause = where.get("clause").getAsJsonObject();
-        JsonArray select_values = select_where.get("values").getAsJsonArray();
-        
-        JsonObject update_request_json = gson.fromJson(update_request, JsonObject.class);
-        JsonArray update_values = update_request_json.get("values").getAsJsonArray();
-        JsonObject update_where = update_request_json.get("where").getAsJsonObject();
-        //JsonObject update_where_clause = where.get("clause").getAsJsonObject();
-        JsonArray update_where_fields = update_where.get("field_list").getAsJsonArray();
-        JsonObject update_field_list = new JsonObject();
-        update_values.add(update_field_list);
-        
-        JsonObject delete_request_json = gson.fromJson(delete_request, JsonObject.class);
-        JsonArray delete_values = delete_request_json.get("values").getAsJsonArray();
-        JsonObject delete_where = delete_request_json.get("where").getAsJsonObject();
-        //JsonObject delete_where_clause = delete_where.get("clause").getAsJsonObject();
-        JsonArray delete_where_fields = delete_where.get("field_list").getAsJsonArray();
-        JsonObject delete_field_list = new JsonObject();
-        delete_values.add(delete_field_list);
-        
-        for (Field field : field_list) {
-            
-            insert_field_list.addProperty(field.name, field.data_type_name);
-            
-            select_select.add(field.name);
-            if (field.primary_key == true) {
-                select_where.addProperty("clause", field.name + ">?");
-                select_values.add(field.data_type_name);
-            }
-            
-            update_field_list.addProperty(field.name, field.data_type_name);
-            if (field.primary_key == true) {
-                update_where.addProperty("clause", field.name + "=?");
-                update_where_fields.add(field.name);
-            }
-            
-            delete_field_list.addProperty(field.name, field.data_type_name);
-            if (field.primary_key == true) {
-                delete_where.addProperty("clause", field.name + "=?");
-                delete_where_fields.add(field.name);
-            }
-            
-        }
-        http_requests_builder.append(gson.toJson(insert_request_json)).append(nl).append(nl);
-        http_requests_builder.append(gson.toJson(select_request_json)).append(nl).append(nl);
-        http_requests_builder.append(gson.toJson(update_request_json)).append(nl).append(nl);
-        http_requests_builder.append(gson.toJson(delete_request_json)).append(nl).append(nl);
-        this.http_requests = http_requests_builder.toString();
-    }
-    
-    public String getModelClassName(String model_class_name, Boolean space) {
-        Pattern p = Pattern.compile( "(^([a-z])|_([a-zA-Z]))" );
-        Matcher m = p.matcher(model_class_name);
-        StringBuffer sb = new StringBuffer();
-        while (m.find()) {
-            m.appendReplacement(sb, m.group(1).toUpperCase());
-        }
-        m.appendTail(sb);
-        return sb.toString().replaceAll("_", space == true ? " " : "");
-    }
-    
-    public String getModelClassVariableName(String model_class_name) {
-        return model_class_name.replaceAll("(.)([A-Z])", "$1_$2").trim().toLowerCase();
-    }
-    
-    public String getJavaDataStructureClass() {
-        return java_data_structure_class;
-    }
-    
-    public String getTypescriptDataStructureClass() {
-        return typescript_data_structure_class;
     }
     
     public boolean isFieldPrimaryKey(String field_name) {
@@ -730,7 +216,7 @@ public class Table {
         }
     }
     
-    public void toStringTableTree(Appendable appendable, Integer level, Integer shift, ArrayList<Table> tablesPath) throws Exception {
+    public void toStringTableTree(Appendable appendable, Integer level, Integer shift, ArrayList<Table> tables_path) throws Exception {
         appendable.append("\n");
         for (int i = 0; i < level * shift; i++) {
             /*if (i%4 == 0) {
@@ -744,35 +230,38 @@ public class Table {
         for (int i = 0; i < shift - 1; i++) {
             appendable.append(".");
         }
-        appendable.append("[").append(String.valueOf(tablesPath.size())).append("]:[");
-        for (int i=0; i < tablesPath.size(); i++) {
-            Table t = tablesPath.get(i);
+        appendable.append("[").append(String.valueOf(tables_path.size())).append("]:[");
+        for (int i=0; i < tables_path.size(); i++) {
+            Table t = tables_path.get(i);
             appendable.append(t.name);appendable.append(".");
         }
         appendable.append("]:[").append(String.valueOf(child_table_list.size())).append("]");
         for (ChildTable child_table : child_table_list) {
-            if (tablesPath.contains(child_table.table)) {
+            if (tables_path.contains(child_table.table)) {
                 appendable.append(" [Cyclic Child `" + child_table.parentTable.name + "` To Parent `" + child_table.table.name + "` Reference] - Stop Tree Traversing");
             } else {
-                ArrayList<Table> tablesPathClone = (ArrayList<Table>) tablesPath.clone();
-                tablesPathClone.add(child_table.table);
-                child_table.table.toStringTableTree(appendable, level + 1, shift, tablesPathClone);
+                ArrayList<Table> tables_pathClone = (ArrayList<Table>) tables_path.clone();
+                tables_pathClone.add(child_table.table);
+                child_table.table.toStringTableTree(appendable, level + 1, shift, tables_pathClone);
             }
         }
     }
     
-    public void compileTablePaths(ArrayList<Table> tablesPath, ArrayList<ArrayList<Table>> returnedTablesPaths, Boolean is_building_model) throws Exception {
-        if (tablesPath.size() > 0) {
-            parentPaths.add((ArrayList<Table>) tablesPath.clone());
+    public void compileTablePaths(ArrayList<Table> tables_path, ArrayList<ArrayList<Table>> returnedTablesPaths, Boolean is_building_model) throws Exception {
+        if (tables_path.size() > 0) {
+            if (parent_paths == null) {
+                parent_paths = parent_paths;
+            }
+            parent_paths.add((ArrayList<Table>) tables_path.clone());
         }
-        tablesPath.add(this);
-        returnedTablesPaths.add(tablesPath);
+        tables_path.add(this);
+        returnedTablesPaths.add(tables_path);
         for (ChildTable child_table : child_table_list) {
-            if (tablesPath.contains(child_table.table)) {
-                cyclicReferencePaths.add((ArrayList<Table>) tablesPath.clone());
+            if (tables_path.contains(child_table.table)) {
+                cyclic_reference_paths.add((ArrayList<Table>) tables_path.clone());
             } else {
-                ArrayList<Table> tablesPathClone = (ArrayList<Table>) tablesPath.clone();
-                child_table.table.compileTablePaths(tablesPathClone, returnedTablesPaths, is_building_model);
+                ArrayList<Table> tables_pathClone = (ArrayList<Table>) tables_path.clone();
+                child_table.table.compileTablePaths(tables_pathClone, returnedTablesPaths, is_building_model);
                 /*if ((case_sensitive_sql == true && name.equals("sys_measurement_system"))
                         || (case_sensitive_sql == false && name.equalsIgnoreCase("sys_measurement_system"))){
                     name = name;
@@ -780,9 +269,9 @@ public class Table {
             }
         }
         for (int i = 0; i < returnedTablesPaths.size(); i++) {
-            ArrayList<Table> returnedPath = returnedTablesPaths.get(i);
-            if (returnedPath.contains(this)) {
-                paths.add(returnedPath);
+            ArrayList<Table> returned_path = returnedTablesPaths.get(i);
+            if (returned_path.contains(this)) {
+                paths.add(returned_path);
             }
         }
         

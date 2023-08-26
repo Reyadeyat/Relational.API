@@ -261,6 +261,7 @@ public class JsonResultset {
             case Types.REAL:
             case Types.DOUBLE:
             case Types.FLOAT:
+            case Types.BIGINT:
                 record.addProperty(field_label, (Number) field_value);
                 break;
             case Types.DATE:

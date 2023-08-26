@@ -71,6 +71,13 @@ public class UserDefinedTableDataStructures implements TableDataStructures {
     transient private static String nl = "\n";
     transient private static ArrayList<String> lang_suffix_list = new ArrayList<>(Arrays.asList(new String[]{"_ar", "_en"}));
 
+    public UserDefinedTableDataStructures() {}
+    
+    @Override
+    public String toString() {
+        return this.getClass().getSimpleName();
+    }
+    
     @Override
     public void generateModelDataStructures(Table table) throws Exception {
         String class_name = getModelClassName(table.name, false);

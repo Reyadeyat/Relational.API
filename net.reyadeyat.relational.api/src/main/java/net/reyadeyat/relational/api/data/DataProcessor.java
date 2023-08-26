@@ -107,8 +107,8 @@ public class DataProcessor<Model> {
             Iterator<DataModel<Model>> iterator = dataModelDataInstanceMap.keySet().iterator();
             while (iterator.hasNext()) {
                 DataModel<Model> tempDataModel = iterator.next();
-                DataInstance dataInstance = dataModelDataInstanceMap.get(tempDataModel);
-                appendable.append(dataInstance.toString());
+                DataInstance data_instance = dataModelDataInstanceMap.get(tempDataModel);
+                appendable.append(data_instance.toString());
             }
         } catch (Exception exception) {
             throw new RuntimeException(exception);
@@ -123,10 +123,10 @@ public class DataProcessor<Model> {
         appendable.append(this.data_model.getModelDefinition().model_name);
         appendable.append("\n");
 
-        //DataInstance dataInstance = dataModelDataInstanceMap.get(data_model);
+        //DataInstance data_instance = dataModelDataInstanceMap.get(data_model);
         SequenceNumber<Integer> sequenceNumber = new SequenceNumber<Integer>(0, 1, false);
-        DataInstance dataInstance = new DataInstance(DataInstance.State.NEW, data_model.getModelDefinition().modeled_database_name, this.data_class, null, null, data_model.getInstance(), sequenceNumber, true);
-        dataInstance.toString(appendable);
+        DataInstance data_instance = new DataInstance(DataInstance.State.NEW, data_model.getModelDefinition().modeled_database_name, this.data_class, null, null, data_model.getInstance(), sequenceNumber, true);
+        data_instance.toString(appendable);
     }
     
     public Integer selectModelIdFromDatabase(String modeled_database_name) throws Exception {
@@ -303,7 +303,7 @@ public class DataProcessor<Model> {
                     sequenceNumber.initSequence(this.data_class.clas, instance_last_value);
 
                     //Prpeare DataInstance
-                    DataInstance dataInstance = new DataInstance(DataInstance.State.NEW, model_jdbc_source.getDatabaseName(), this.data_class, null, null, instanceObject, sequenceNumber, true);
+                    DataInstance data_instance = new DataInstance(DataInstance.State.NEW, model_jdbc_source.getDatabaseName(), this.data_class, null, null, instanceObject, sequenceNumber, true);
                     instanceID = sequenceNumber.getSequenceState(this.data_class.clas);
 
                     String update_model_sql = "UPDATE `model`.`model` SET `model_instance_sequence_last_value` = ? WHERE `model_id` = ?";
@@ -357,7 +357,7 @@ public class DataProcessor<Model> {
                                 if (sequenceRows != null && sequenceRows.length > 0) {
                                     //Save ModelInstance
                                     ArrayList<String> modelInserts = new ArrayList<String>();
-                                    dataInstance.saveToDatabase(dataModelId, this.data_lookup, instanceID, dataInstance, modelInserts, database_field_open_quote, database_field_close_quote);
+                                    data_instance.saveToDatabase(dataModelId, this.data_lookup, instanceID, data_instance, modelInserts, database_field_open_quote, database_field_close_quote);
                                     int modelRows = 0;
                                     try (Connection unlocked_data_model_connection = model_jdbc_source.getConnection(false)) {
                                         try (Statement modelStatement = unlocked_data_model_connection.createStatement()) {
@@ -409,8 +409,8 @@ public class DataProcessor<Model> {
                             data_model_resultset.close();
                             data_stmt.close();
                             //Cache
-                            dataInstance.changeState(DataInstance.State.LOADED, true);
-                            dataModelDataInstanceMap.put(data_model, dataInstance);
+                            data_instance.changeState(DataInstance.State.LOADED, true);
+                            dataModelDataInstanceMap.put(data_model, data_instance);
                         }
                         if (locked_data_model_connection.isClosed() == false && locked_data_model_connection.getAutoCommit() == false) {
                             locked_data_model_connection.commit();
@@ -534,11 +534,11 @@ public class DataProcessor<Model> {
             throw new Exception("DataModel is null");
         }
         if (isDataModelInstanceRegistered(data_model)== false) {
-            throw new Exception("DataModel '" + this.data_class.packageName + "' is not registered yer , first call either registerDataModelInstance or loadDataModelFromDatabase ");
+            throw new Exception("DataModel '" + this.data_class.package_name + "' is not registered yer , first call either registerDataModelInstance or loadDataModelFromDatabase ");
         }
-        /*DataInstance dataInstance = dataModelDataInstanceMap.get(data_model);
+        /*DataInstance data_instance = dataModelDataInstanceMap.get(data_model);
         ArrayList<String> selects = new ArrayList<String>();
-        Object instanceObject = dataInstance.update(this.dataLookup, instanceID, loadMethod, selects);
+        Object instanceObject = data_instance.update(this.dataLookup, instanceID, loadMethod, selects);
         
         DataModel<Model> data_model = (DataModel<Model>) this.data_model_class.getConstructor().newInstance();
         Method methodGetDeclaredField = this.data_model_class.getDeclaredMethod("getDeclaredField");

@@ -137,23 +137,27 @@ public abstract class ModelingRequest implements ModelHandler {
         JDBCSource model_jdbc_source = getJDBCSource(model_datasource_name);
         JDBCSource data_jdbc_source = getJDBCSource(data_datasource_name);
         
+        Gson gson = JsonUtil.gson();
+        ModelDefinition model_definition;
+        try {
+            model_definition = gson.fromJson(service_transaction_request, ModelDefinition.class);
+        } catch (Exception exception) {
+            JsonUtil.reclaimGson(gson);
+            throw exception;
+        }
+        JsonUtil.reclaimGson(gson);
+        
+        if (model_definition == null) {
+            throw new Exception("Model Definition is null!");
+        }
+
         JsonArray generating_time_elements = new JsonArray();
         long t1 = System.nanoTime();
         if (transaction.equalsIgnoreCase("delete")) {
-            MetadataMiner.deleteDataModel(model_jdbc_source, model_id, 0);
+            MetadataMiner.deleteDataModel(model_jdbc_source, model_definition);
         } else if (transaction.equalsIgnoreCase("build")) {
-            Gson gson = JsonUtil.gson();
-            ModelDefinition model_definition;
-            try {
-                model_definition = gson.fromJson(service_transaction_request, ModelDefinition.class);
-            } catch (Exception exception) {
-                JsonUtil.reclaimGson(gson);
-                throw exception;
-            }
-            JsonUtil.reclaimGson(gson);
-            MetadataMiner.deleteDataModel(model_jdbc_source, model_id, 0);
+            MetadataMiner.deleteDataModel(model_jdbc_source, model_definition);
             ArrayList<String> table_list = new ArrayList<>();
-            //data_database, data_model_database, model_database, data_lookup_category, model_version, model_database_schem, model_database_field_open_quote, model_database_field_close_quote;
             MetadataMiner databaseMetadata = new MetadataMiner(model_id, java_package_name, model_jdbc_source, data_jdbc_source, table_list, model_definition, secret_key, interface_implementation);
             generating_time_elements = new JsonArray();
             //PrintWriter writer = new PrintWriter(Writer.nullWriter());
@@ -164,28 +168,7 @@ public abstract class ModelingRequest implements ModelHandler {
             Integer model_instance_id = 1;
             DataClass.LoadMethod loadMethod = DataClass.LoadMethod.REFLECTION;
             DataLookup data_lookup = null;
-            ModelDefinition model_definition = null;
             try (Connection model_database_connection = model_jdbc_source.getConnection(false)) {
-                String select_model = "SELECT `model_id`, `model_instance_sequence_type_id`, `model_instance_sequence_last_value`, `model_name`, `model_version`, `model_class_path`, `model_data_lookup_category`, `modeled_database_url`, `modeled_database_url_user_name`, CAST(AES_DECRYPT(FROM_BASE64(`modeled_database_url_user_password`), ?) AS CHAR) AS `modeled_database_url_user_password`, `modeled_database_schem`, `modeled_database_name`, `modeled_database_field_open_quote`, `modeled_database_field_close_quote` FROM `"+model_jdbc_source.getDatabaseName()+"`.`model` WHERE `model_id`=?";
-                try (PreparedStatement stmt = model_database_connection.prepareStatement(select_model)) {
-                    stmt.setString(1, secret_key);
-                    stmt.setInt(2, model_id);
-                    try (ResultSet rs = stmt.executeQuery()) {
-                        ArrayList<ModelDefinition> data_model_definition_list = JsonResultset.resultset(rs, ModelDefinition.class);
-                        if (data_model_definition_list == null || data_model_definition_list.size() == 0) {
-                            error_list.add("Data Model ID '"+model_id+"' is not exist");
-                        } else {
-                            model_definition = data_model_definition_list.get(0);
-                        }
-                        rs.close();
-                    } catch (Exception ex) {
-                        throw ex;
-                    }
-                    stmt.close();
-                } catch (Exception ex) {
-                    throw ex;
-                }
-                
                 if (model_definition != null) {
                     String sql = "SELECT `enum_name`, `enum_element_id`, `enum_element_code`, `enum_element_java_datatype`, `enum_element_typescript_datatype` FROM `"+model_jdbc_source.getDatabaseName()+"`.`lookup_enum` INNER JOIN `"+model_jdbc_source.getDatabaseName()+"`.`lookup_enum_element` ON `lookup_enum`.`enum_id` = `lookup_enum_element`.`enum_id` WHERE `lookup_enum`.`enum_name`=? ORDER BY `enum_name`, `enum_element_code`";
                     try (PreparedStatement stmt = model_database_connection.prepareStatement(sql)) {
@@ -203,17 +186,20 @@ public abstract class ModelingRequest implements ModelHandler {
             } catch (Exception exception) {
                 throw exception;
             }
-            if (model_definition != null) {
-                DataProcessor<Enterprise> dataProcessor = new DataProcessor<Enterprise>(EnterpriseModel.class, Enterprise.class, model_jdbc_source, model_definition, data_lookup, interface_implementation);
-                EnterpriseModel<Enterprise> enterprise_model = (EnterpriseModel<Enterprise>) dataProcessor.loadModelFromDatabase(model_id, model_instance_id, loadMethod);
-                PrintWriter writer = new PrintWriter(response_output_stream);
-                writer.println("----------- START Database Model ------------");
-                dataProcessor.toString(writer, enterprise_model);
-                writer.println("-----------  END Database Model   ------------");
-                writer.println("----------- START Database Data Structures ------------");
-                MetadataMiner.printModelDataStructures(model_jdbc_source, model_id, 1, writer, print_style);
-                writer.println("-----------  END Database Data Structures  ------------");
+            
+            if (data_lookup == null) {
+                throw new Exception("Data Lookup is null!");
             }
+            
+            DataProcessor<Enterprise> dataProcessor = new DataProcessor<Enterprise>(EnterpriseModel.class, Enterprise.class, model_jdbc_source, model_definition, data_lookup, interface_implementation);
+            EnterpriseModel<Enterprise> enterprise_model = (EnterpriseModel<Enterprise>) dataProcessor.loadModelFromDatabase(model_id, model_instance_id, loadMethod);
+            PrintWriter writer = new PrintWriter(response_output_stream);
+            writer.println("----------- START Database Model ------------");
+            dataProcessor.toString(writer, enterprise_model);
+            writer.println("-----------  END Database Model   ------------");
+            writer.println("----------- START Database Data Structures ------------");
+            MetadataMiner.printModelDataStructures(model_jdbc_source, model_id, 1, writer, print_style);
+            writer.println("-----------  END Database Data Structures  ------------");
         }
         
         long t2 = System.nanoTime();
