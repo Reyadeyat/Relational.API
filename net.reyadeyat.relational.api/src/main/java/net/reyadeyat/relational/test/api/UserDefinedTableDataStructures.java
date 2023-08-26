@@ -74,6 +74,11 @@ public class UserDefinedTableDataStructures implements TableDataStructures {
     public UserDefinedTableDataStructures() {}
     
     @Override
+    public String toString() {
+        return this.getClass().getSimpleName();
+    }
+    
+    @Override
     public void generateModelDataStructures(Table table) throws Exception {
         String class_name = getModelClassName(table.name, false);
         String class_name_spaced = getModelClassName(table.name, true);

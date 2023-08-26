@@ -136,7 +136,7 @@ public class DataClass {
         this.interface_implementation.forEach(new BiConsumer<String, Class>() {
             @Override
             public void accept(String interface_name, Class class_implementation) {
-                has_interface_implementation = clas.getSimpleName().equals(class_implementation.getSimpleName());
+                has_interface_implementation = has_interface_implementation || clas.getSimpleName().equals(class_implementation.getSimpleName());
             }
         });
         if (this.clas.getPackage().getName().startsWith(this.package_name) == true
@@ -159,7 +159,9 @@ public class DataClass {
         this.class_name = this.name;
 
         //Dig only inside own package
-        if (this.clas.getPackage().getName().startsWith(this.package_name) == true) {
+        if (this.clas.getPackage().getName().startsWith(this.package_name) == true
+                || this.metadata_annotation.table() == true
+                || has_interface_implementation == true) {
             List<Field> field_list = new ArrayList<>();
             getFields(this.clas, field_list);
             for (Field newDatafield : field_list) {
@@ -180,9 +182,6 @@ public class DataClass {
     }
 
     private void getFields(Class clas, List<Field> field_list) {
-        if (clas.isInterface()) {
-            clas = interface_implementation.get(clas.getName());
-        }
         if (clas.getSuperclass().getName().equalsIgnoreCase("java.lang.Object") == false) {
             getFields(clas.getSuperclass(), field_list);
         }
@@ -361,8 +360,8 @@ public class DataClass {
             throw new Exception("object class does not equals to data class");
         }
         SequenceNumber<Integer> sequenceNumber = new SequenceNumber<Integer>(1, 1, false);
-        DataInstance dataInstance = new DataInstance(DataInstance.State.NEW, databaseName, this, null, null, instanceObject, sequenceNumber, true);
-        return dataInstance;
+        DataInstance data_instance = new DataInstance(DataInstance.State.NEW, databaseName, this, null, null, instanceObject, sequenceNumber, true);
+        return data_instance;
     }
 
     public void createDatabaseSchema(Connection connection, String databaseName, DataClass data_class, ArrayList<String> dataClasses, ArrayList<String> creates) throws Exception {
@@ -420,10 +419,10 @@ public class DataClass {
     
     public Object loadFromDatabase(Connection modelConnection, Integer model_id, String databaseName, DataLookup dataLookup, Object model_instance_id, LoadMethod loadMethod, SequenceNumber<Integer> sequence, ArrayList<String> selects) throws Exception {
         Object instanceObject = null;//this.clas.getConstructor().newInstance();
-        DataInstance dataInstance = null;//new DataInstance(this, null, null, instanceObject, false);
+        DataInstance data_instance = null;//new DataInstance(this, null, null, instanceObject, false);
         //Handle Saved Sequences
-        dataInstance = loadFromDatabase(modelConnection, model_id, databaseName, dataLookup, model_instance_id, loadMethod, selects, dataInstance, instanceObject, 1, sequence);
-        return dataInstance.instances.get(0);
+        data_instance = loadFromDatabase(modelConnection, model_id, databaseName, dataLookup, model_instance_id, loadMethod, selects, data_instance, instanceObject, 1, sequence);
+        return data_instance.instances.get(0);
     }
 
     private DataInstance loadFromDatabase(Connection connection, Integer model_id, String databaseName, DataLookup dataLookup, Object model_instance_id, LoadMethod loadMethod, ArrayList<String> selects, DataInstance parentDataInstance, Object parentInstanceObject, Integer parentID, SequenceNumber<Integer> sequence) throws Exception {
@@ -490,15 +489,15 @@ public class DataClass {
                 newDataInstance = new DataInstance(DataInstance.State.LOADED, databaseName, this, parentDataInstance, parentInstanceObject, instanceObject, sequence, true);
             }
         } else if (loadMethod == LoadMethod.REFLECTION) {
-            Object arrayInstanceObject = this.type.getConstructor().newInstance();
+            Object instance_object = this.type.getConstructor().newInstance();
             if (parentInstanceObject != null) {
-                this.field.set(parentInstanceObject, arrayInstanceObject);
+                this.field.set(parentInstanceObject, instance_object);
             }
             DataInstance recordDataInstance = null;
             if (parentInstanceObject == null) {//parent
                 recordDataInstance = new DataInstance(DataInstance.State.LOADED, databaseName, this, parentDataInstance, parentInstanceObject, this.clas.getConstructor().newInstance(), sequence, false);
             } else {
-                recordDataInstance = new DataInstance(DataInstance.State.LOADED, databaseName, this, parentDataInstance, parentInstanceObject, arrayInstanceObject, sequence, false);
+                recordDataInstance = new DataInstance(DataInstance.State.LOADED, databaseName, this, parentDataInstance, parentInstanceObject, instance_object, sequence, false);
             }
             recordDataInstance.parent_id = parentID;
             //Load Instances into list
@@ -513,17 +512,22 @@ public class DataClass {
                 Object recordInstanceObject = null;
                 if (parentInstanceObject == null) {//parent
                     recordInstanceObject = recordDataInstance.getInstanceObject();
-                } else {
+                } else if (instance_object instanceof ArrayList<?>) {
                     recordInstanceObject = this.clas.getConstructor().newInstance();
                     Method add = ArrayList.class.getDeclaredMethod("add", Object.class);
-                    add.invoke(arrayInstanceObject, recordInstanceObject);
+                    add.invoke(instance_object, recordInstanceObject);
+                } else if (this.has_interface_implementation == true) {
+                    recordInstanceObject = this.clas.getConstructor().newInstance();
+                } else {
+                    throw new Exception("Undefined Data Instance Load Behaviour.");
                 }
                 recordDataInstance.addInstanceObject(recordInstanceObject, child_id);
                 for (int y = 0; y < field_list.size(); y++) {
                     DataClass fieldDataClass = field_list.get(y);
                     Object fieldInstanceObject = null;
                     if (fieldDataClass.metadata_annotation.lookup() == true) {
-                        fieldInstanceObject = data_lookup.lookupCode((Integer) record.get(fieldDataClass.declared_name));
+                        ////fieldInstanceObject = data_lookup.lookupCode((Integer) record.get(fieldDataClass.declared_name));
+                        fieldInstanceObject = data_lookup.lookupCode(Integer.valueOf((String) record.get(fieldDataClass.declared_name)));
                         fieldDataClass.field.set(recordInstanceObject, fieldInstanceObject);
                     } else if (fieldDataClass.clas.getCanonicalName().equalsIgnoreCase("java.lang.Boolean")) {
                         fieldInstanceObject = (Boolean) record.get(fieldDataClass.declared_name);

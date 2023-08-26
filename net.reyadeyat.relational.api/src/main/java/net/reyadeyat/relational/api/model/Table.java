@@ -62,26 +62,28 @@ public class Table {
     transient public Boolean case_sensitive_sql;
     transient public Database database;
     transient public ArrayList<ArrayList<Table>> paths;
-    transient public ArrayList<ArrayList<Table>> parentPaths;
-    transient public ArrayList<ArrayList<Table>> cyclicReferencePaths;
+    transient public ArrayList<ArrayList<Table>> parent_paths;
+    transient public ArrayList<ArrayList<Table>> cyclic_reference_paths;
     transient public TreeMap<String, Field> field_map;
     
     transient public DataLookup data_lookup;
     transient private static ArrayList<String> lang_suffix_list = new ArrayList<>(Arrays.asList(new String[]{"_ar", "_en"}));
     
-    public Table() {}
-    
-    /**no-arg default constructor for jaxb marshalling*/
-    public Table(TableDataStructures table_data_structures) {
-        this.table_data_structures = table_data_structures;
+    public Table() {
         field_list = new ArrayList<Field>();
         primary_key_list = new ArrayList<PrimaryKey>();
         foreign_key_list = new ArrayList<ForeignKey>();
         child_table_list = new ArrayList<ChildTable>();
         paths = new ArrayList<ArrayList<Table>>();
-        parentPaths = new ArrayList<ArrayList<Table>>();
-        cyclicReferencePaths = new ArrayList<ArrayList<Table>>();
+        parent_paths = new ArrayList<ArrayList<Table>>();
+        cyclic_reference_paths = new ArrayList<ArrayList<Table>>();
         field_map = new TreeMap<String, Field>();
+    }
+    
+    /**no-arg default constructor for jaxb marshalling*/
+    public Table(TableDataStructures table_data_structures) {
+        this();
+        this.table_data_structures = table_data_structures;
     }
     
     public Table(String name, Boolean case_sensitive_sql, Integer rows, DataLookup data_lookup, TableDataStructures table_data_structures) {
@@ -214,7 +216,7 @@ public class Table {
         }
     }
     
-    public void toStringTableTree(Appendable appendable, Integer level, Integer shift, ArrayList<Table> tablesPath) throws Exception {
+    public void toStringTableTree(Appendable appendable, Integer level, Integer shift, ArrayList<Table> tables_path) throws Exception {
         appendable.append("\n");
         for (int i = 0; i < level * shift; i++) {
             /*if (i%4 == 0) {
@@ -228,35 +230,38 @@ public class Table {
         for (int i = 0; i < shift - 1; i++) {
             appendable.append(".");
         }
-        appendable.append("[").append(String.valueOf(tablesPath.size())).append("]:[");
-        for (int i=0; i < tablesPath.size(); i++) {
-            Table t = tablesPath.get(i);
+        appendable.append("[").append(String.valueOf(tables_path.size())).append("]:[");
+        for (int i=0; i < tables_path.size(); i++) {
+            Table t = tables_path.get(i);
             appendable.append(t.name);appendable.append(".");
         }
         appendable.append("]:[").append(String.valueOf(child_table_list.size())).append("]");
         for (ChildTable child_table : child_table_list) {
-            if (tablesPath.contains(child_table.table)) {
+            if (tables_path.contains(child_table.table)) {
                 appendable.append(" [Cyclic Child `" + child_table.parentTable.name + "` To Parent `" + child_table.table.name + "` Reference] - Stop Tree Traversing");
             } else {
-                ArrayList<Table> tablesPathClone = (ArrayList<Table>) tablesPath.clone();
-                tablesPathClone.add(child_table.table);
-                child_table.table.toStringTableTree(appendable, level + 1, shift, tablesPathClone);
+                ArrayList<Table> tables_pathClone = (ArrayList<Table>) tables_path.clone();
+                tables_pathClone.add(child_table.table);
+                child_table.table.toStringTableTree(appendable, level + 1, shift, tables_pathClone);
             }
         }
     }
     
-    public void compileTablePaths(ArrayList<Table> tablesPath, ArrayList<ArrayList<Table>> returnedTablesPaths, Boolean is_building_model) throws Exception {
-        if (tablesPath.size() > 0) {
-            parentPaths.add((ArrayList<Table>) tablesPath.clone());
+    public void compileTablePaths(ArrayList<Table> tables_path, ArrayList<ArrayList<Table>> returnedTablesPaths, Boolean is_building_model) throws Exception {
+        if (tables_path.size() > 0) {
+            if (parent_paths == null) {
+                parent_paths = parent_paths;
+            }
+            parent_paths.add((ArrayList<Table>) tables_path.clone());
         }
-        tablesPath.add(this);
-        returnedTablesPaths.add(tablesPath);
+        tables_path.add(this);
+        returnedTablesPaths.add(tables_path);
         for (ChildTable child_table : child_table_list) {
-            if (tablesPath.contains(child_table.table)) {
-                cyclicReferencePaths.add((ArrayList<Table>) tablesPath.clone());
+            if (tables_path.contains(child_table.table)) {
+                cyclic_reference_paths.add((ArrayList<Table>) tables_path.clone());
             } else {
-                ArrayList<Table> tablesPathClone = (ArrayList<Table>) tablesPath.clone();
-                child_table.table.compileTablePaths(tablesPathClone, returnedTablesPaths, is_building_model);
+                ArrayList<Table> tables_pathClone = (ArrayList<Table>) tables_path.clone();
+                child_table.table.compileTablePaths(tables_pathClone, returnedTablesPaths, is_building_model);
                 /*if ((case_sensitive_sql == true && name.equals("sys_measurement_system"))
                         || (case_sensitive_sql == false && name.equalsIgnoreCase("sys_measurement_system"))){
                     name = name;
@@ -264,9 +269,9 @@ public class Table {
             }
         }
         for (int i = 0; i < returnedTablesPaths.size(); i++) {
-            ArrayList<Table> returnedPath = returnedTablesPaths.get(i);
-            if (returnedPath.contains(this)) {
-                paths.add(returnedPath);
+            ArrayList<Table> returned_path = returnedTablesPaths.get(i);
+            if (returned_path.contains(this)) {
+                paths.add(returned_path);
             }
         }
         

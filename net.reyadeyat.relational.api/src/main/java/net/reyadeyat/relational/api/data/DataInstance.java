@@ -164,7 +164,8 @@ public class DataInstance {
         //If class is not in the package use it field name
         //Dig only inside own package
         if (this.data_class.clas.getPackage().getName().startsWith(this.data_class.package_name) == false
-                /*&& this.data_class.metadataAnnotation.table() == false*/) {
+            && this.data_class.metadata_annotation.table() == false
+            && this.data_class.has_interface_implementation == false) {
             return;
         }
         
@@ -200,14 +201,14 @@ public class DataInstance {
         changeState(this, state, propagateToChildren);
     }
     
-    private void changeState(DataInstance dataInstance, State state, Boolean propagateToChildren) throws Exception {
+    private void changeState(DataInstance data_instance, State state, Boolean propagateToChildren) throws Exception {
         this.state = state;
-        if (dataInstance.is_null == true) {
+        if (data_instance.is_null == true) {
             return;
         }
-        for (Object object : dataInstance.instances) {
-            if (dataInstance.member_list_map.size() > 0) {
-                for (DataInstance memberDataInstance : dataInstance.member_list_map.get(object)) {
+        for (Object object : data_instance.instances) {
+            if (data_instance.member_list_map.size() > 0) {
+                for (DataInstance memberDataInstance : data_instance.member_list_map.get(object)) {
                     changeState(memberDataInstance, state, propagateToChildren);
                 }
             }
@@ -218,9 +219,9 @@ public class DataInstance {
         return this.instance_object;
     }
     
-    public void addInstanceObject(Object instance, Integer childID) throws Exception {
+    public void addInstanceObject(Object instance, Integer child_id) throws Exception {
         this.instances.add(instance);
-        this.instances_id_map.put(instance, /*sequence_number.nextSequence()*/childID);
+        this.instances_id_map.put(instance, child_id);
         ArrayList<DataInstance> membersList = new ArrayList<>();
         ArrayList<DataInstance> tablesList = new ArrayList<>();
         ArrayList<DataInstance> fieldsList = new ArrayList<>();
@@ -391,46 +392,46 @@ public class DataInstance {
         }
     }
     
-    private void toString(Appendable appendable, Integer indentation, DataInstance dataInstance) throws Exception {
+    private void toString(Appendable appendable, Integer indentation, DataInstance data_instance) throws Exception {
         if (data_class.declared_name.equalsIgnoreCase("childTables")) {
             data_class.declared_name = data_class.declared_name;
         }
-        if (dataInstance.is_null == true) {
+        if (data_instance.is_null == true) {
             for (int i = 0; i < indentation; i++) {
                 appendable.append(" ");
             }
-            if (dataInstance.data_class.isTable) {
-                appendable.append("T-[").append(dataInstance.data_class.name).append(" #-0-] (no records)\"\n");
+            if (data_instance.data_class.isTable) {
+                appendable.append("T-[").append(data_instance.data_class.name).append(" #-0-] (no records)\"\n");
             } else {
-                appendable.append("F-[").append(dataInstance.data_class.name).append("] (null)\"\n");
+                appendable.append("F-[").append(data_instance.data_class.name).append("] (null)\"\n");
             }
             return;
         }
-        for (Object object : dataInstance.instances) {
+        for (Object object : data_instance.instances) {
             for (int i = 0; i < indentation; i++) {
                 appendable.append(" ");
             }
-            if (dataInstance.data_class.isTable == true) {
-                appendable.append("T-[").append(dataInstance.data_class.name).append(" #").append(dataInstance.instances_id_map.get(object).toString()).append("]\n");
-            } else if (dataInstance.data_class.isTable == false) {
-                appendable.append("F-[").append(dataInstance.data_class.name).append("]-\"").append(ignore_field_list.contains(dataInstance.data_class.name) == true ? "..." : object.toString()).append("\"\n");
+            if (data_instance.data_class.isTable == true) {
+                appendable.append("T-[").append(data_instance.data_class.name).append(" #").append(data_instance.instances_id_map.get(object).toString()).append("]\n");
+            } else if (data_instance.data_class.isTable == false) {
+                appendable.append("F-[").append(data_instance.data_class.name).append("]-\"").append(ignore_field_list.contains(data_instance.data_class.name) == true ? "..." : object.toString()).append("\"\n");
             }
-            if (object.getClass().getName().startsWith(dataInstance.data_class.package_name) == true) {
-                if (dataInstance.field_list_map.size() > 0) {
-                    for (DataInstance fieldDataInstance : dataInstance.field_list_map.get(object)) {
+            if (object.getClass().getName().startsWith(data_instance.data_class.package_name) == true) {
+                if (data_instance.field_list_map.size() > 0) {
+                    for (DataInstance fieldDataInstance : data_instance.field_list_map.get(object)) {
                         toString(appendable, indentation + 6, fieldDataInstance);
                     }
                 } else {
-                    for (DataClass fieldDataClass : dataInstance.data_class.field_list) {
+                    for (DataClass fieldDataClass : data_instance.data_class.field_list) {
                         appendable.append("F-[").append(fieldDataClass.name).append("] (null)\n");
                     }
                 }
-                if (dataInstance.table_list_map.size() > 0) {
-                    for (DataInstance tableDataInstance : dataInstance.table_list_map.get(object)) {
+                if (data_instance.table_list_map.size() > 0) {
+                    for (DataInstance tableDataInstance : data_instance.table_list_map.get(object)) {
                         toString(appendable, indentation + 6, tableDataInstance);
                     }
                 } else {
-                    for (DataClass tableDataClass : dataInstance.data_class.table_list) {
+                    for (DataClass tableDataClass : data_instance.data_class.table_list) {
                         appendable.append("T-[").append(tableDataClass.name).append(" #-0-] (no records)\"\n");
                     }
                 }
@@ -438,35 +439,35 @@ public class DataInstance {
         }
     }
     
-    public void saveToDatabase(Integer dataModelId, DataLookup dataLookup, Object instanceID, DataInstance dataInstance, ArrayList<String> inserts, String databaseFieldOpenQuote, String databaseFieldCloseQuote) throws Exception {
-        if (dataInstance.is_null == true) {
+    public void saveToDatabase(Integer dataModelId, DataLookup dataLookup, Object instanceID, DataInstance data_instance, ArrayList<String> inserts, String databaseFieldOpenQuote, String databaseFieldCloseQuote) throws Exception {
+        if (data_instance.is_null == true) {
             return;
         }
 
         StringBuilder insert = new StringBuilder();
-        for (Object instance_object : dataInstance.instances) {
+        for (Object instance_object : data_instance.instances) {
             insert.setLength(0);
-            if (dataInstance.data_class.isTable == true) {
-                insert.append(saveToDatabase(dataModelId, dataLookup, instanceID, dataInstance, instance_object, databaseFieldOpenQuote, databaseFieldCloseQuote));
+            if (data_instance.data_class.isTable == true) {
+                insert.append(saveToDatabase(dataModelId, dataLookup, instanceID, data_instance, instance_object, databaseFieldOpenQuote, databaseFieldCloseQuote));
                 inserts.add(insert.toString());
             }
-            for (DataInstance tableDataInstance : dataInstance.table_list_map.get(instance_object)) {
+            for (DataInstance tableDataInstance : data_instance.table_list_map.get(instance_object)) {
                 saveToDatabase(dataModelId, dataLookup, instanceID, tableDataInstance, inserts, databaseFieldOpenQuote, databaseFieldCloseQuote);
             }
         }
     }
 
-    private String saveToDatabase(Integer dataModelId, DataLookup dataLookup, Object instanceID, DataInstance dataInstance, Object instance_object, String databaseFieldOpenQuote, String databaseFieldCloseQuote) throws Exception {
+    private String saveToDatabase(Integer dataModelId, DataLookup dataLookup, Object instanceID, DataInstance data_instance, Object instance_object, String databaseFieldOpenQuote, String databaseFieldCloseQuote) throws Exception {
 
-        if (dataInstance.data_class.isTable == false) {
+        if (data_instance.data_class.isTable == false) {
             throw new Exception("toSQL takes table element only");
         }
 
         StringBuilder sql = new StringBuilder();
         String instance_objectJSON = gson.toJson(instance_object).replaceAll("\"", "\"\"");
-        sql.append("INSERT INTO `").append(database_name).append("`.`").append(dataInstance.data_class.declared_name).append("`");
+        sql.append("INSERT INTO `").append(database_name).append("`.`").append(data_instance.data_class.declared_name).append("`");
         sql.append("(`model_id`,`model_instance_id`,`child_id`,`parent_id`,`declared_field_name`,`class_name`,`json_object`,");
-        for (DataInstance fieldDataInstance : dataInstance.field_list_map.get(instance_object)) {
+        for (DataInstance fieldDataInstance : data_instance.field_list_map.get(instance_object)) {
             sql.append(databaseFieldOpenQuote).append(fieldDataInstance.data_class.declared_name).append(databaseFieldCloseQuote).append(",");
         }
         sql.deleteCharAt(sql.length() - 1);
@@ -477,8 +478,8 @@ public class DataInstance {
         } else if (instanceID instanceof String) {
             sql.append("'").append(instanceID).append("',");
         }
-        sql.append(dataInstance.instances_id_map.get(instance_object)).append(",").append(dataInstance.hasParent() == null ? "null" : dataInstance.parent_id).append(",'").append(dataInstance.data_class.declared_name).append("','").append(dataInstance.data_class.name).append("','").append(instance_objectJSON).append("',");
-        for (DataInstance fieldDataInstance : dataInstance.field_list_map.get(instance_object)) {
+        sql.append(data_instance.instances_id_map.get(instance_object)).append(",").append(data_instance.hasParent() == null ? "null" : data_instance.parent_id).append(",'").append(data_instance.data_class.declared_name).append("','").append(data_instance.data_class.name).append("','").append(instance_objectJSON).append("',");
+        for (DataInstance fieldDataInstance : data_instance.field_list_map.get(instance_object)) {
             if (fieldDataInstance.is_null == true) {
                 sql.append("null,");
             } else if (fieldDataInstance.instances.size() == 1) {
