@@ -39,6 +39,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 import net.reyadeyat.relational.api.jdbc.JDBCSource;
 import net.reyadeyat.relational.api.model.Enterprise;
@@ -145,8 +146,11 @@ public class Table {
         
         transaction_type_list = JsonUtil.getJsonString(table_tree, "transaction_type_list", false);
         valid_transaction_type_list = new ArrayList<String>(Arrays.<String>asList(transaction_type_list.trim().split("\\s*,\\s*")));
+        this.table_name = this.table_tree.get("table_name").getAsString();
         
         safe_update = true;
+        
+        initializeTable(model_id, error_list);
         
         init(error_list);
         
@@ -154,8 +158,6 @@ public class Table {
             return;
         }
         
-        this.table_name = this.table_tree.get("table_name").getAsString();
-        initializeTable(model_id);
         child_table_list = new ArrayList<Table>();
         JsonArray table_children_list = this.table_tree.get("children") == null ? null : this.table_tree.get("children").getAsJsonArray();
         if (table_children_list != null && table_children_list.size() > 0) {
@@ -197,9 +199,12 @@ public class Table {
         update_fields = new ArrayList<>();
         select_statement_groupby = new ArrayList<>();
 
-        ArrayList<Field> tabel_fields = getFields();
-        HashMap<Integer, Field> ttorder = new HashMap<Integer, Field>();
-        for (Field f : tabel_fields) {
+        ArrayList<Field> tabel_field_list = getFields();
+        
+        //Build Table Field List
+        
+        HashMap<Integer, Field> order_by = new HashMap<Integer, Field>();
+        for (Field f : tabel_field_list) {
             if (f.isPrimaryKey() == true) {
                 primary_keys.add(f);
             }
@@ -210,7 +215,7 @@ public class Table {
                 primary_keys_auto_increment_fields.add(f);
             }
             if (f.isOrderBy() == true) {
-                ttorder.put(f.getOrderByOrder(), f);
+                order_by.put(f.getOrderByOrder(), f);
             }
             if (f.isAllowedTo(Field.INSERT) == true) {
                 insert_fields.add(f);
@@ -230,13 +235,13 @@ public class Table {
         valid_select_fields = (select_fields.size() == 0 ? null : fieldAliasToCsv(select_fields));
         valid_update_fields = (update_fields.size() == 0 ? null : fieldAliasToCsv(update_fields));
 
-        if (ttorder != null && ttorder.size() > 0) {
-            select_statement_orderby = new ArrayList<Field>(ttorder.size());
-            Set<Integer> keys = ttorder.keySet();
+        if (order_by != null && order_by.size() > 0) {
+            select_statement_orderby = new ArrayList<Field>(order_by.size());
+            Set<Integer> keys = order_by.keySet();
             ArrayList<Integer> tkeys = new ArrayList<Integer>(keys);
             Collections.sort(tkeys);
             for (Integer i : tkeys) {
-                select_statement_orderby.add(ttorder.get(i));
+                select_statement_orderby.add(order_by.get(i));
             }
         }
 
@@ -329,8 +334,8 @@ public class Table {
                         insert_statement_select = null;
                     } else {
                         sb.append("SELECT ");
-                        for (int i = 0; i < tabel_fields.size(); i++) {
-                            Field f = tabel_fields.get(i);
+                        for (int i = 0; i < tabel_field_list.size(); i++) {
+                            Field f = tabel_field_list.get(i);
                             if (f.getTable().equalsIgnoreCase(table_name) == true) {
                                 sb.append(" ").append(f.getSelect(null)).append(",");
                             }
@@ -2137,10 +2142,10 @@ public class Table {
             return;
         }
         
-        selectGson(record_processor, record_handler);
+        selectRecordSet(record_processor, record_handler);
     }
     
-    public void selectGson(RecordProcessor record_processor, RecordHandler record_handler) throws Exception {
+    public void selectRecordSet(RecordProcessor record_processor, RecordHandler record_handler) throws Exception {
         long t1, t2, t3, t4;
         t1 = System.nanoTime();
         JsonObject json = record_processor.getTableRequest();
@@ -2255,7 +2260,7 @@ public class Table {
                     table_view.add("children", child_view_list);
                     for (int i = 0; i < child_table_list.size(); i++) {
                         Table child_table = child_table_list.get(i);
-                        child_table.selectGson(record_processor.getChildTableRecordProcessor(child_table.table_name), record_handler);
+                        child_table.selectRecordSet(record_processor.getChildTableRecordProcessor(child_table.table_name), record_handler);
                         JsonObject child_view = record_processor.getDatabaseView();
                         child_view_list.add(child_view);
                     }
@@ -2770,7 +2775,7 @@ public class Table {
         }
     }
     
-    private void initializeTable(Integer model_id) throws Exception {
+    private void initializeTable(Integer model_id, JsonArray error_list) throws Exception {
         EnterpriseModel<Enterprise> enterprise_model = data_model_map.get(model_id);
         net.reyadeyat.relational.api.model.Table database_table = enterprise_model.getInstance().getDatabase(database_name).getTable(table_name);
         for(net.reyadeyat.relational.api.model.Field table_field: database_table.field_list) {
@@ -2900,11 +2905,22 @@ public class Table {
     
     public void process(String table_name, JsonObject table_request, OutputStream response_output_stream, RecordHandler record_handler) throws Exception {
         RecordProcessor record_processor = new RecordProcessor(table_name, table_request, response_output_stream);
-        String transactionType = (table_request.get("transaction") == null ? null : table_request.get("transaction").getAsString());
-        if (transactionType == null || transaction_type_list.contains(transactionType) == false) {
-            record_processor.addError("Bad Request, invalid transaction [" + transactionType + "] - valid transactions are [" + transaction_type_list + "]");
-            return;
+        Map<String, JsonElement> table_map = table_request.asMap();
+        for (Map.Entry<String, JsonElement> request: table_map.entrySet()) {
+            String transaction_type = request.getKey();
+            if (transaction_type == null || transaction_type_list.contains(transaction_type) == false) {
+                record_processor.addError("Bad Request, invalid transaction [" + transaction_type + "] - valid transactions are [" + transaction_type_list + "]");
+                return;
+            }
+            if (transaction_type.equalsIgnoreCase("select")) {
+                select(record_processor, record_handler);
+            } else if (transaction_type.equalsIgnoreCase("update")) {
+                
+            } else if (transaction_type.equalsIgnoreCase("insert")) {
+                
+            } else if (transaction_type.equalsIgnoreCase("delete")) {
+                
+            }
         }
-        validateDeleteCommand(record_processor);
     }
 }

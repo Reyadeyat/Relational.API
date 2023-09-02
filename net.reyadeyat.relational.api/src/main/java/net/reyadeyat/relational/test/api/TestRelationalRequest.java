@@ -311,42 +311,6 @@ public class TestRelationalRequest extends RelationalRequest {
               }
             }
             """;
-
-    private static String model_service = """
-            {
-              "service_name": "parental_service",
-              "default_datasource_name": "parental",
-              "database_name": "parental",
-              "model_id": "500",
-              "model_datasource_name": "model",
-              "data_datasource_name": "parental",
-              "secret_key": "1234567890",
-              "table_tree": [
-                {
-                  "table_name": "table_a",
-                  "children": [
-                    {
-                      "table_name": "table_a_a",
-                      "children": []
-                    },
-                    {
-                      "table_name": "table_a_b",
-                      "children": [
-                        {
-                          "table_name": "table_a_b_a",
-                          "children": []
-                        }
-                      ]
-                    },
-                    {
-                      "table_name": "table_a_c",
-                      "children": []
-                    }
-                  ]
-                }
-              ]
-            }
-            """;
     
     private static String request_service_definition_json_text = """
         {
@@ -357,8 +321,7 @@ public class TestRelationalRequest extends RelationalRequest {
             "model_datasource_name": "model",
             "data_datasource_name": "parental",
             "secret_key": "1234567890",
-            "table_tree": "table_a",
-            "table_a": {
+            "table_tree": {
                 "table_name": "table_a",
                 "transaction_type_list": "insert,select,update,delete",
                 "children": [

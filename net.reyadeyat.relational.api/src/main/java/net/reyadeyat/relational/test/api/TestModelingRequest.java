@@ -25,7 +25,9 @@ import java.io.FileOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.TreeMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.sql.DataSource;
@@ -55,6 +57,28 @@ public class TestModelingRequest extends ModelingRequest {
      * @param args the command line arguments
      */
     public static void main(String[] args) {
+        CompositObject c1 = new CompositObject(1, "1");
+        CompositObject c2 = new CompositObject(2, "2");
+        CompositObject c3 = new CompositObject(3, "3");
+        CompositObject c4 = new CompositObject(4, "4");
+        CompositObject c5 = new CompositObject(5, "5");
+        TreeMap<CompositObject, String> tree = new TreeMap(new Comparator<CompositObject>() {
+            @Override
+            public int compare(CompositObject o1, CompositObject o2) {
+                return CompositObject.compare(o1, o2);
+            }
+        });
+        tree.put(c1, "C1");
+        tree.put(c2, "C2");
+        tree.put(c3, "C3");
+        tree.put(c4, "C4");
+        tree.put(c5, "C5");
+        
+        CompositObject cx = new CompositObject(3, "3");
+        
+        String value = tree.get(cx);
+        System.out.println(value);
+        
         try {
             Connection jdbc_connection = data_jdbc_source.getConnection(true);
             Integer security_flag = SECURITY_FLAG_ASSERT_VALID_FIELD_NAMES | SECURITY_FLAG_RETURN_DESCRIPTIVE_RESPONSE_MESSAGE | SECURITY_FLAG_RETURN_GENERATED_ID;
