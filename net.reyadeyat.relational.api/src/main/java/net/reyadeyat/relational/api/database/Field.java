@@ -19,8 +19,7 @@ package net.reyadeyat.relational.api.database;
 
 import net.reyadeyat.relational.api.util.BooleanParser;
 import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 import java.sql.Date;
 import java.sql.Time;
 import java.sql.Timestamp;
@@ -29,6 +28,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Map;
 
 /**
  * 
@@ -55,7 +55,7 @@ public class Field implements Cloneable, Comparable<Field> {
     private HashMap<Integer, FieldDefaultValue> default_value;
     private HashMap<Integer, FieldProcessor> processor;//Integer = operation
 
-    private final FieldType fieldType;
+    private final FieldType field_type;
     private PrimartKeyType pt;
     private String table;
     private String table_alias;
@@ -83,13 +83,12 @@ public class Field implements Cloneable, Comparable<Field> {
     private String variable_formula;
     private Boolean orderby;
     private Integer orderbyOrder;
-    private Boolean isForeignKey, isInnerJoin;
-    private ArrayList<String> errors;
+    private Boolean is_foreign_key, is_inner_join;
     private ArrayList<String> formula_parts;
 
     private String overwriteWhereCondition;
 
-    static final private String FNIND = "Field name is not defined";
+    static final private JsonPrimitive FNIND = new JsonPrimitive("Field name is not defined");
 
     //final static private DateTimeFormatter dtfDT = DateTimeFormatter.ISO_DATE_TIME;
     final static private SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
@@ -98,7 +97,7 @@ public class Field implements Cloneable, Comparable<Field> {
     //final static private SimpleDateFormat stzf = new SimpleDateFormat("yyyy-MM-ddTHH:mm:ss.SSSZ");//YYYY-MM-DDThh:mm:ss.SSSZ
     final static private SimpleDateFormat stzf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");//YYYY-MM-DDThh:mm:ss.SSSZ
 
-    public Field(Integer index, Boolean nullable, Boolean group, FieldType fieldType, String table, String table_alias, String name, String alias) {
+    public Field(Integer index, String name, String alias, Boolean nullable, Boolean group, FieldType field_type, String table, String table_alias, JsonArray table_error_list) {
         if (operation_list.size() == 0) {
             operation_list.add(SELECT);
             operation_list.add(UPDATE);
@@ -107,7 +106,7 @@ public class Field implements Cloneable, Comparable<Field> {
             operation_list.add(WHERE);
             operation_list.add(HAVING);
         }
-        this.fieldType = fieldType;
+        this.field_type = field_type;
         this.index = index;
         this.pt = PrimartKeyType.NotPrimaryKey;
         this.table = table;
@@ -127,36 +126,35 @@ public class Field implements Cloneable, Comparable<Field> {
         this.mindts = this.maxdts = null;
         this.is_variable = false;
         this.orderby = this.unique_any = this.unique_all = false;
-        this.isForeignKey = isInnerJoin = false;
+        this.is_foreign_key = is_inner_join = false;
         SQL_MASK = SELECT | UPDATE | INSERT;
         SQL_MANDATORY_MASK = 0;
         SQL_IGNORED_MASK = 0;
 
         this.default_value = new HashMap<Integer, FieldDefaultValue>();
         this.processor = new HashMap<Integer, FieldProcessor>();
-        errors = new ArrayList<String>();
 
         if (name == null /*|| name.length() == 0*/) {
-            errors.add("Field name is null");
+            table_error_list.add("Field name is null");
         }
 
         if (nullable == null) {
-            errors.add("Field '" + name + "' nullability is not defined");
+            table_error_list.add("Field '" + name + "' nullability is not defined");
         }
 
         if (group == null) {
-            errors.add("Field '" + name + "' grouping is not defined");
+            table_error_list.add("Field '" + name + "' grouping is not defined");
         }
 
         if (table == null || table.length() == 0) {
-            errors.add("Field '" + name + "' table is not defined");
+            table_error_list.add("Field '" + name + "' table is not defined");
         }
 
         if (alias == null || alias.length() == 0) {
-            errors.add("Field '" + name + "' alias is not defined");
+            table_error_list.add("Field '" + name + "' alias is not defined");
         }
 
-        if (errors != null && errors.size() > 0) {
+        if (table_error_list != null && table_error_list.size() > 0) {
             return;
         }
 
@@ -172,14 +170,14 @@ public class Field implements Cloneable, Comparable<Field> {
         return this;
     }
 
-    public Field defineSelectFormula(String select_formula) {
+    public Field defineSelectFormula(String select_formula, JsonArray error_list) {
         this.select_formula = select_formula;
         //disallow(Field.INSERT);
         //disallow(Field.UPDATE);
         if (alias != null && select_formula != null && select_formula.isBlank() == false && alias.isBlank() == false) {
             select = this.select_formula + " AS " + this.statementAalias;
-            if (errors.contains(FNIND) == true) {
-                errors.remove(FNIND);
+            if (error_list.contains(FNIND) == true) {
+                error_list.remove(FNIND);
             }
         }
 
@@ -200,7 +198,7 @@ public class Field implements Cloneable, Comparable<Field> {
         return this.is_variable;
     }
 
-    public Field setAsVariable(String variable_id, String variable_default_value, String formula) throws Exception {
+    public Field setAsVariable(String variable_id, String variable_default_value, String formula, JsonArray error_list) throws Exception {
         this.is_variable = true;
         this.variable_id = variable_id;
         this.variable_default_value = variable_default_value;
@@ -209,8 +207,8 @@ public class Field implements Cloneable, Comparable<Field> {
         //disallow(Field.UPDATE);
         if (alias != null && alias.isBlank() == false) {
             select = " AS " + this.statementAalias;
-            if (errors.contains(FNIND) == true) {
-                errors.remove(FNIND);
+            if (error_list.contains(FNIND) == true) {
+                error_list.remove(FNIND);
             }
         } else {
             throw new Exception("Variable '"+variable_id+"' doesn't has proper alias '"+this.alias+"'.");
@@ -246,14 +244,6 @@ public class Field implements Cloneable, Comparable<Field> {
         return this.update_formula;
     }
 
-    public Boolean hasErrors() {
-        return errors != null && errors.size() > 0;
-    }
-
-    public ArrayList<String> getErrors() {
-        return errors;
-    }
-
     public String toString() {
         return select;
     }
@@ -274,23 +264,23 @@ public class Field implements Cloneable, Comparable<Field> {
         return pt == PrimartKeyType.PrimaryKeyMI;
     }
 
-    public Field setPrimaryKey() throws Exception {
+    public Field setPrimaryKey(JsonArray error_list) throws Exception {
         this.pt = PrimartKeyType.PrimaryKey;
-        this.disallow(UPDATE);
+        this.disallow(UPDATE, error_list);
         return this;
     }
 
-    public Field setPrimaryKeyAI() throws Exception {
+    public Field setPrimaryKeyAI(JsonArray error_list) throws Exception {
         this.pt = PrimartKeyType.PrimaryKeyAI;
-        this.disallow(INSERT);
-        this.disallow(UPDATE);
+        this.disallow(INSERT, error_list);
+        this.disallow(UPDATE, error_list);
         return this;
     }
 
-    public Field setPrimaryKeyMI() throws Exception {
+    public Field setPrimaryKeyMI(JsonArray error_list) throws Exception {
         this.pt = PrimartKeyType.PrimaryKeyMI;
         //this.disallow(INSERT);
-        this.disallow(UPDATE);
+        this.disallow(UPDATE, error_list);
         return this;
     }
 
@@ -326,17 +316,17 @@ public class Field implements Cloneable, Comparable<Field> {
         return orderby;
     }
 
-    public Field allow(Integer operation) {
+    public Field allow(Integer operation, JsonArray error_list) {
         if (isValidSqlOperation(operation) == false) {
-            errors.add("Field '" + alias + "' 'allow' passed a wrong operation code[" + operation + "]");
+            error_list.add("Field '" + alias + "' 'allow' passed a wrong operation code[" + operation + "]");
         }
         SQL_MASK |= operation;
         return this;
     }
 
-    public Field disallow(Integer operation) {
+    public Field disallow(Integer operation, JsonArray error_list) {
         if (isValidSqlOperation(operation) == false) {
-            errors.add("Field '" + alias + "' 'disallow' passed a wrong operation code[" + operation + "]");
+            error_list.add("Field '" + alias + "' 'disallow' passed a wrong operation code[" + operation + "]");
         }
         SQL_MASK &= ~operation;
         return this;
@@ -360,9 +350,9 @@ public class Field implements Cloneable, Comparable<Field> {
         return requested_operation_list;
     }
 
-    public Field setMandatoryFor(Integer operation) {
+    public Field setMandatoryFor(Integer operation, JsonArray error_list) {
         if (isValidSqlOperation(operation) == false) {
-            errors.add("Field '" + alias + "' 'setMandatoryFor' passed a wrong operation code[" + operation + "]");
+            error_list.add("Field '" + alias + "' 'setMandatoryFor' passed a wrong operation code[" + operation + "]");
         }
         SQL_MANDATORY_MASK |= operation;
         return this;
@@ -372,9 +362,9 @@ public class Field implements Cloneable, Comparable<Field> {
         return (SQL_MANDATORY_MASK & operation) != 0;
     }
     
-    public Field setIgnoredFor(Integer operation) {
+    public Field setIgnoredFor(Integer operation, JsonArray error_list) {
         if (isValidSqlOperation(operation) == false) {
-            errors.add("Field '" + alias + "' 'setMandatoryFor' passed a wrong operation code[" + operation + "]");
+            error_list.add("Field '" + alias + "' 'setMandatoryFor' passed a wrong operation code[" + operation + "]");
         }
         SQL_IGNORED_MASK |= operation;
         return this;
@@ -388,78 +378,78 @@ public class Field implements Cloneable, Comparable<Field> {
         return this.default_value.containsKey(operation);
     }
 
-    public Field setDefaultValueFor(Integer operation, Object value) throws Exception {
+    public Field setDefaultValueFor(Integer operation, Object value, JsonArray error_list) throws Exception {
         if (isValidSqlOperation(operation) == false) {
-            errors.add("Field '" + alias + "' 'setDefaultValue' passed a wrong operation code[" + operation + "]");
+            error_list.add("Field '" + alias + "' 'setDefaultValue' passed a wrong operation code[" + operation + "]");
         }
-        this.default_value.put(operation, new FieldDefaultValue(this.fieldType, value, false));
+        this.default_value.put(operation, new FieldDefaultValue(this.field_type, value, false));
         return this;
     }
 
-    public Field setDefaultExpressionFor(Integer operation, String expression) throws Exception {
+    public Field setDefaultExpressionFor(Integer operation, String expression, JsonArray error_list) throws Exception {
         if (isValidSqlOperation(operation) == false) {
-            errors.add("Field '" + alias + "' 'setDefaultValue' passed a wrong operation code[" + operation + "]");
+            error_list.add("Field '" + alias + "' 'setDefaultValue' passed a wrong operation code[" + operation + "]");
         }
         ArrayList<Integer> operation_list = this.getRequestedOperations(operation);
         for (Integer op : operation_list) {
-            this.default_value.put(op, new FieldDefaultValue(this.fieldType, expression, true));
+            this.default_value.put(op, new FieldDefaultValue(this.field_type, expression, true));
         }
         return this;
     }
 
-    public Object getDefaultValueFor(Integer operation) throws Exception {
+    public Object getDefaultValueFor(Integer operation, JsonArray error_list) throws Exception {
         if (isValidSqlOperation(operation) == false) {
-            errors.add("Field '" + alias + "' 'setDefaultValue' passed a wrong operation code[" + operation + "]");
+            error_list.add("Field '" + alias + "' 'setDefaultValue' passed a wrong operation code[" + operation + "]");
         }
         return this.default_value.get(operation).getValue();
     }
 
-    public String getDefaultSQLValueFor(Integer operation) throws Exception {
+    public String getDefaultSQLValueFor(Integer operation, JsonArray error_list) throws Exception {
         if (isValidSqlOperation(operation) == false) {
-            errors.add("Field '" + alias + "' 'setDefaultValue' passed a wrong operation code[" + operation + "]");
+            error_list.add("Field '" + alias + "' 'setDefaultValue' passed a wrong operation code[" + operation + "]");
         }
         return this.default_value.get(operation).getSQLValue();
     }
 
-    public Field setProcessor(Integer operation, FieldProcessor fieldProcessor) throws Exception {
+    public Field setProcessor(Integer operation, FieldProcessor fieldProcessor, JsonArray error_list) throws Exception {
         if (isValidSqlOperation(operation) == false) {
-            errors.add("Field '" + alias + "' 'setDefaultValue' passed a wrong operation code[" + operation + "]");
+            error_list.add("Field '" + alias + "' 'setDefaultValue' passed a wrong operation code[" + operation + "]");
         }
         this.processor.put(operation, fieldProcessor);
         return this;
     }
 
-    public String getPreProcessedValue(Integer operation, String value, JsonArray errorList) throws Exception {
+    public String getPreProcessedValue(Integer operation, String value, JsonArray error_list) throws Exception {
         if (isValidSqlOperation(operation) == false) {
-            errors.add("Field '" + alias + "' 'setDefaultValue' passed a wrong operation code[" + operation + "]");
+            error_list.add("Field '" + alias + "' 'setDefaultValue' passed a wrong operation code[" + operation + "]");
         }
         if (this.processor.size() == 0 || this.processor.get(operation) == null) {
             return value;
         }
-        return this.processor.get(operation).preProcessedValue(this, operation, value, errorList);
+        return this.processor.get(operation).preProcessedValue(this, operation, value, error_list);
     }
 
-    public Object getPostProcessedValue(Integer operation, Object value, JsonArray errorList) throws Exception {
+    public Object getPostProcessedValue(Integer operation, Object value, JsonArray error_list) throws Exception {
         if (isValidSqlOperation(operation) == false) {
-            errors.add("Field '" + alias + "' 'setDefaultValue' passed a wrong operation code[" + operation + "]");
+            error_list.add("Field '" + alias + "' 'setDefaultValue' passed a wrong operation code[" + operation + "]");
         }
         if (this.processor.size() == 0 || this.processor.get(operation) == null) {
             return value;
         }
-        return this.processor.get(operation).postProcessedValue(this, operation, value, errorList);
+        return this.processor.get(operation).postProcessedValue(this, operation, value, error_list);
     }
 
-    public Boolean isForeignKey() {
-        return isForeignKey;
+    public Boolean is_foreign_key() {
+        return is_foreign_key;
     }
 
     public Field setForeignKey() {
-        isForeignKey = true;
+        is_foreign_key = true;
         return this;
     }
 
     public Field setInnerJoin() {
-        isInnerJoin = true;
+        is_inner_join = true;
         return this;
     }
 
@@ -506,15 +496,14 @@ public class Field implements Cloneable, Comparable<Field> {
         return select;
     }
 
-    public String getSelect(JsonObject variable) throws Exception {
-        if (variable == null) {
+    public String getSelect(Map<String, String> variable_map) throws Exception {
+        if (variable_map == null) {
             return select;
         }
-        JsonElement variable_element = variable.get(this.alias);
-        if (variable_element == null) {
+        String variable_value = variable_map.get(this.alias);
+        if (variable_value == null) {
             return getQuotable(getFieldString(getFieldObject(variable_default_value))) + select;
         }
-        String variable_value = variable_element.getAsString();
         if (this.variable_formula != null && this.variable_formula.length() > 0) {
             return this.variable_formula.replace("?", getQuotable(getFieldString(getFieldObject(variable_value)))) + select;
         }
@@ -573,13 +562,13 @@ public class Field implements Cloneable, Comparable<Field> {
     public Field setDateTimeRange(Timestamp mindts, Timestamp maxdts) throws Exception {
         this.mindts = mindts;
         this.maxdts = maxdts;
-        if (fieldType == FieldType.Date) {
+        if (field_type == FieldType.Date) {
             this.dtf_mindts = getSqlDate((java.sql.Date) Date.from(this.mindts.toInstant()));
             this.dtf_maxdts = getSqlDate((java.sql.Date) Date.from(this.mindts.toInstant()));
-        } else if (fieldType == FieldType.Time) {
+        } else if (field_type == FieldType.Time) {
             this.dtf_mindts = getSqlTime((java.sql.Time) Time.from(this.mindts.toInstant()));
             this.dtf_maxdts = getSqlTime((java.sql.Time) Time.from(this.maxdts.toInstant()));
-        } else if (fieldType == FieldType.Timestamp) {
+        } else if (field_type == FieldType.Timestamp) {
             this.dtf_mindts = getSqlTimestamp(this.mindts);
             this.dtf_maxdts = getSqlTimestamp(this.maxdts);
         }
@@ -590,8 +579,8 @@ public class Field implements Cloneable, Comparable<Field> {
         if (field_value == null) {
             return null;
         } else if (field_value instanceof String) {
-            if (fieldType != FieldType.String && fieldType != FieldType.Set) {
-                throw new Exception("Field '" + alias + "' of type '" + fieldType.toString() + "' can't accepts value '" + field_value + "' of type 'String'");
+            if (field_type != FieldType.String && field_type != FieldType.Set) {
+                throw new Exception("Field '" + alias + "' of type '" + field_type.toString() + "' can't accepts value '" + field_value + "' of type 'String'");
             }
             return String.valueOf(field_value);
         } else if (field_value instanceof Long) {
@@ -649,35 +638,35 @@ public class Field implements Cloneable, Comparable<Field> {
         try {
             if (field_value == null) {
                 return null;
-            } else if (fieldType == FieldType.String) {
+            } else if (field_type == FieldType.String) {
                 return field_value;
-            } else if (fieldType == FieldType.Set) {
+            } else if (field_type == FieldType.Set) {
                 for (String entry : set) {
                     if (entry.equals(entry) == true) {
                         return field_value;
                     }
                 }
-            } else if (fieldType == FieldType.Long) {
+            } else if (field_type == FieldType.Long) {
                 return Long.parseLong(field_value);
-            } else if (fieldType == FieldType.Integer) {
+            } else if (field_type == FieldType.Integer) {
                 return Integer.parseInt(field_value);
-            } else if (fieldType == FieldType.Double || fieldType == FieldType.BigDecimal) {
+            } else if (field_type == FieldType.Double || field_type == FieldType.BigDecimal) {
                 return Double.parseDouble(field_value);
-            } else if (fieldType == FieldType.Boolean) {
+            } else if (field_type == FieldType.Boolean) {
                 //return Boolean.parseBoolean(field_value);
                 return BooleanParser.parse(field_value);
-            } else if (fieldType == FieldType.Date) {
+            } else if (field_type == FieldType.Date) {
                 return getSqlDate(field_value);
-            } else if (fieldType == FieldType.Time) {
+            } else if (field_type == FieldType.Time) {
                 return getSqlTime(field_value);
-            } else if (fieldType == FieldType.Timestamp) {
+            } else if (field_type == FieldType.Timestamp) {
                 return getSqlTimestamp(field_value);
             }
         } catch (Exception ex) {
-            throw new Exception("getFieldObject Formt Exception for field '"+name+" AS "+alias+"' passed unhandeled instance of type " + fieldType.toString() + " => " + field_value);
+            throw new Exception("getFieldObject Formt Exception for field '"+name+" AS "+alias+"' passed unhandeled instance of type " + field_type.toString() + " => " + field_value);
         }
 
-        throw new Exception("getFieldObject field '"+name+" AS "+alias+"' passed unhandeled instance of type " + fieldType.toString() + " => " + field_value);
+        throw new Exception("getFieldObject field '"+name+" AS "+alias+"' passed unhandeled instance of type " + field_type.toString() + " => " + field_value);
     }
 
     static public Object getFieldObject(String field_value, String dataType) throws Exception {
@@ -784,19 +773,19 @@ public class Field implements Cloneable, Comparable<Field> {
             return true;
         }*/
         error.setLength(0);
-        error.append("Field '" + this.alias + "' check value '" + string + "' againest [" + fieldType.toString() + "] data type, result => ");
+        error.append("Field '" + this.alias + "' check value '" + string + "' againest [" + field_type.toString() + "] data type, result => ");
         if (string == null) {
             if (nullable == false) {
                 error.append("Field '" + this.alias + "' can't be 'null' value");
             }
             return nullable;
-        } else if (fieldType == FieldType.String) {
+        } else if (field_type == FieldType.String) {
             if (string.length() < mins && string.length() > maxs) {
                 error.append(" - [String] length out of range (" + this.mins + "," + this.maxs + ")");
                 return false;
             }
             return true;
-        } else if (fieldType == FieldType.Integer) {
+        } else if (field_type == FieldType.Integer) {
             try {
                 Integer i = Integer.valueOf(string);
                 if (minn != null && maxn != null && (i < minn.intValue() || i > maxn.intValue())) {
@@ -808,7 +797,7 @@ public class Field implements Cloneable, Comparable<Field> {
                 error.append(" - [Integer] value parsing exception ['" + x.getMessage() + "']");
                 return false;
             }
-        } else if (fieldType == FieldType.Long) {
+        } else if (field_type == FieldType.Long) {
             try {
                 Long l = Long.valueOf(string);
                 if (minn != null && maxn != null && (l < minn.intValue() || l > maxn.intValue())) {
@@ -820,7 +809,7 @@ public class Field implements Cloneable, Comparable<Field> {
                 error.append(" - [Long] value parsing exception ['" + x.getMessage() + "']");
                 return false;
             }
-        } else if (fieldType == FieldType.Double || fieldType == FieldType.BigDecimal) {
+        } else if (field_type == FieldType.Double || field_type == FieldType.BigDecimal) {
             try {
                 Double d = Double.valueOf(string);
                 if (minn != null && maxn != null && (d < minn.intValue() || d > maxn.intValue())) {
@@ -832,7 +821,7 @@ public class Field implements Cloneable, Comparable<Field> {
                 error.append(" - [Double] value parsing exception ['" + x.getMessage() + "']");
                 return false;
             }
-        } else if (fieldType == FieldType.Boolean) {
+        } else if (field_type == FieldType.Boolean) {
             try {
                 //Boolean b = Boolean.valueOf(string);
                 Boolean b = BooleanParser.parse(string);
@@ -841,7 +830,7 @@ public class Field implements Cloneable, Comparable<Field> {
                 error.append(" - [Boolean] value parsing exception ['" + x.getMessage() + "']");
                 return false;
             }
-        } else if (fieldType == FieldType.Date) {
+        } else if (field_type == FieldType.Date) {
             try {
                 Date d = getSqlDate(string);
                 if (mindts != null && maxdts != null && (d.getTime() < mindts.getTime() || d.getTime() > maxdts.getTime())) {
@@ -853,7 +842,7 @@ public class Field implements Cloneable, Comparable<Field> {
                 error.append(" - [Date] value parsing exception ['" + x.getMessage() + "']");
                 return false;
             }
-        } else if (fieldType == FieldType.Time) {
+        } else if (field_type == FieldType.Time) {
             try {
                 Time t = getSqlTime(string);
                 if (mindts != null && maxdts != null && (t.getTime() < mindts.getTime() || t.getTime() > maxdts.getTime())) {
@@ -865,7 +854,7 @@ public class Field implements Cloneable, Comparable<Field> {
                 error.append(" - [Time] value parsing exception ['" + x.getMessage() + "']");
                 return false;
             }
-        } else if (fieldType == FieldType.Timestamp) {
+        } else if (field_type == FieldType.Timestamp) {
             try {
                 Timestamp ts = getSqlTimestamp(string);
                 if (mindts != null && maxdts != null && (ts.getTime() < mindts.getTime() || ts.getTime() > maxdts.getTime())) {
@@ -877,7 +866,7 @@ public class Field implements Cloneable, Comparable<Field> {
                 error.append(" - [Timestamp] value parsing exception ['" + x.getMessage() + "']");
                 return false;
             }
-        } else if (fieldType == FieldType.TimeZone) {
+        } else if (field_type == FieldType.TimeZone) {
             try {
                 Timestamp ts = getSqlTimeZone(string);
                 if (mindts != null && maxdts != null && (ts.getTime() < mindts.getTime() || ts.getTime() > maxdts.getTime())) {
@@ -889,7 +878,7 @@ public class Field implements Cloneable, Comparable<Field> {
                 error.append(" - [TimeZone] value parsing exception ['" + x.getMessage() + "']");
                 return false;
             }
-        } else if (fieldType == FieldType.Set) {
+        } else if (field_type == FieldType.Set) {
             for (String entry : set) {
                 if (entry.equals(string) == true) {
                     return true;
@@ -897,27 +886,27 @@ public class Field implements Cloneable, Comparable<Field> {
             }
             return false;
         }
-        throw new Exception("Undefined field type '" + fieldType + "'");
+        throw new Exception("Undefined field type '" + field_type + "'");
     }
 
     public Boolean isBoolean() {
-        return fieldType.isBoolean();
+        return field_type.isBoolean();
     }
 
     public Boolean isNumeric() {
-        return fieldType.isNumeric();
+        return field_type.isNumeric();
     }
 
     public Boolean isText() {
-        return fieldType.isText();
+        return field_type.isText();
     }
     
     public Boolean isQuotable() {
-        return fieldType.isQuotable();
+        return field_type.isQuotable();
     }
 
     public Boolean isDateTime() {
-        return fieldType.isDateTime();
+        return field_type.isDateTime();
     }
 
     public Boolean isGroup() {
@@ -925,7 +914,7 @@ public class Field implements Cloneable, Comparable<Field> {
     }
 
     public String getQuotable(String value) {
-        return fieldType.isQuotable() == true ? "'" + value.replace("'", "''") + "'" : value;
+        return field_type.isQuotable() == true ? "'" + value.replace("'", "''") + "'" : value;
     }
 
     public Boolean parseBoolean(Object value) throws Exception {

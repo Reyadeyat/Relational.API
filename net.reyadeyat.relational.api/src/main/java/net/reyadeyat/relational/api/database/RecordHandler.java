@@ -26,7 +26,7 @@ import net.reyadeyat.relational.api.jdbc.JDBCSource;
 
 /**
  * 
- * Description
+ * Description Recordset response handler
  * 
  *
  * @author Mohammad Nabil Mostafa
@@ -35,22 +35,19 @@ import net.reyadeyat.relational.api.jdbc.JDBCSource;
  * @since 2023.01.01
  */
 public interface RecordHandler {
-    public String getDefaultDatasourceName();
     public DataSource getDataSource(String datasource_name) throws Exception;
     public JDBCSource getJDBCSource(String datasource_name) throws Exception;
-    public Connection getDataSourceConnection(String datasource_name) throws Exception;
-    public Connection getJDBCSourceConnection(String datasource_name) throws Exception;
-    public Connection getDatabaseConnection(String datasurce_name) throws Exception;
-    public Boolean insertPreLogic(RecordProcessor record_processor, Connection con) throws Exception;
-    public Boolean insertPostLogic(RecordProcessor record_processor, Connection con) throws Exception;
-    public Boolean selectPreLogic(RecordProcessor record_processor, Connection con) throws Exception;
+    public Connection getDatabaseConnection(String datasource_name) throws Exception;
+    public Boolean insertPreLogic(RecordProcessor record_processor, Connection connection) throws Exception;
+    public Boolean insertPostLogic(RecordProcessor record_processor, Connection connection) throws Exception;
+    public Boolean selectPreLogic(RecordProcessor record_processor, Connection connection) throws Exception;
     public Boolean selectPerRecordLogic(RecordProcessor record_processor, ResultSet rs, JsonObject record_object) throws Exception;
     public Boolean selectPerRecordLogic(RecordProcessor record_processor, ResultSet rs, JsonArray record_list) throws Exception;
-    public Boolean selectPostLogic(RecordProcessor record_processor, Connection con, JsonObject request_database_request, JsonArray resultset_json) throws Exception;
-    public Boolean updatePreLogic(RecordProcessor record_processor, Connection con) throws Exception;
-    public Boolean updatePostLogic(RecordProcessor record_processor, Connection con) throws Exception;
-    public Boolean deletePreLogic(RecordProcessor record_processor, Connection con) throws Exception;
-    public Boolean deletePostLogic(RecordProcessor record_processor, Connection con) throws Exception;
+    public Boolean selectPostLogic(RecordProcessor record_processor, Connection connection, JsonArray resultset_json) throws Exception;
+    public Boolean updatePreLogic(RecordProcessor record_processor, Connection connection) throws Exception;
+    public Boolean updatePostLogic(RecordProcessor record_processor, Connection connection) throws Exception;
+    public Boolean deletePreLogic(RecordProcessor record_processor, Connection connection) throws Exception;
+    public Boolean deletePostLogic(RecordProcessor record_processor, Connection connection) throws Exception;
     public Boolean insertInject(RecordProcessor record_processor) throws Exception;
     public Boolean updateInject(RecordProcessor record_processor) throws Exception;
     public Boolean selectInject(RecordProcessor record_processor) throws Exception;

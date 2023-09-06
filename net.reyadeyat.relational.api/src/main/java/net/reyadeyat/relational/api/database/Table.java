@@ -39,11 +39,15 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import net.reyadeyat.relational.api.jdbc.JDBCSource;
 import net.reyadeyat.relational.api.model.Enterprise;
 import net.reyadeyat.relational.api.model.EnterpriseModel;
+import net.reyadeyat.relational.api.request.Request;
+import net.reyadeyat.relational.api.request.RequestField;
+import net.reyadeyat.relational.api.request.RequestTable;
 
 /**
  * 
@@ -56,13 +60,13 @@ import net.reyadeyat.relational.api.model.EnterpriseModel;
  * @since 2023.01.01
  */
 public class Table {
-    private String database_name;
-    private JsonObject table_tree;
-    private String table_name;
-    private HashMap<String, Field> fieldMap;
+    private String data_datasource_name;
+    private String data_database_name;
+    private RequestTable request_table;
+    private HashMap<String, Field> field_map;
     private ArrayList<Field> field_list;
-    private String selectWhereCondition;
-    private ArrayList<Field> selectWhereConditionFields;
+    private String select_where_condition;
+    private ArrayList<Field> select_where_condition_field_list;
     private String updateWhereCondition;
     private ArrayList<Field> updateWhereConditionFields;
     private HashMap<String, ForeignKey> foreignKeys;//Foreign Table, Keys
@@ -76,8 +80,6 @@ public class Table {
     private Integer countPrimaryKeyAI;
     private Integer countPrimaryKeyMI;
         
-    private ArrayList<String> errors;
-
     private ArrayList<ForeignKey> foreign_keys_list;
     private ArrayList<DependentKey> dependent_keys_list;
     private String inner_join_statement;
@@ -117,76 +119,55 @@ public class Table {
     
     private transient Table parent_table;
     private ArrayList<Table> child_table_list;
+    private HashMap<String, Table> child_table_map;
     
     private static HashMap<Integer, EnterpriseModel<Enterprise>> data_model_map = new HashMap<Integer, EnterpriseModel<Enterprise>>();
     
-    private ArrayList<String> valid_transaction_type_list;
-    private String transaction_type_list;
-    
-    public Table(String database_name, String table_name, JsonArray error_list) throws Exception {
-        this(database_name, JsonUtil.jsonStringToJsonElelement("\"table_name\":\""+table_name+"\"}").getAsJsonObject(), error_list);
-    }
-    
-    public Table(String database_name, JsonObject table_tree, JsonArray error_list) throws Exception {
-        this(null, null, database_name, table_tree, error_list);
-    }
-    
-    public Table(Integer model_id, Table parent_table, String database_name, JsonObject table_tree, JsonArray error_list) throws Exception {
+    public Table(String data_database_name, String data_datasource_name, Integer model_id, Table parent_table, RequestTable request_table, JsonArray table_error_list) throws Exception {
         this.parent_table = parent_table;
-        this.database_name = database_name;
-        this.table_tree = table_tree;
-        this.fieldMap = new HashMap<String, Field>();
+        this.data_database_name = data_database_name;
+        this.data_datasource_name = data_datasource_name;
+        this.request_table = request_table;
+        field_map = new HashMap<String, Field>();
         hasPrimaryKeyAI = null;
         hasPrimaryKeyMI = null;
         field_list = new ArrayList<Field>();
-        errors = new ArrayList<String>();
         join_sql_list = new ArrayList<String>();
         joinKeys = new HashMap<String, JoinKey>();
         
-        
-        transaction_type_list = JsonUtil.getJsonString(table_tree, "transaction_type_list", false);
-        valid_transaction_type_list = new ArrayList<String>(Arrays.<String>asList(transaction_type_list.trim().split("\\s*,\\s*")));
-        this.table_name = this.table_tree.get("table_name").getAsString();
-        
         safe_update = true;
         
-        initializeTable(model_id, error_list);
+        initializeTable(model_id, table_error_list);
         
-        init(error_list);
+        init(table_error_list);
         
-        if (error_list.size() > 0) {
+        if (table_error_list.size() > 0) {
             return;
         }
         
+        child_table_map = new HashMap<>();
         child_table_list = new ArrayList<Table>();
-        JsonArray table_children_list = this.table_tree.get("children") == null ? null : this.table_tree.get("children").getAsJsonArray();
-        if (table_children_list != null && table_children_list.size() > 0) {
-            for (int i = 0; i < table_children_list.size(); i++) {
-                JsonObject child_table_json = table_children_list.get(i).getAsJsonObject();
-                Table child_table = new Table(model_id, this, database_name, child_table_json, error_list);
+        if (request_table.child_request_table_list != null && request_table.child_request_table_list.size() > 0) {
+            for (int i = 0; i < request_table.child_request_table_list.size(); i++) {
+                RequestTable child_request_table = request_table.child_request_table_list.get(i);
+                Table child_table = new Table(data_database_name, data_datasource_name, model_id, this, child_request_table, table_error_list);
                 child_table_list.add(child_table);
+                child_table_map.put(child_table.request_table.table_name, child_table);
             }
         }
     }
     
     public Boolean init(JsonArray error_list) throws Exception {
         StringBuilder sb = new StringBuilder();
-        if (database_name == null) {
+        if (data_database_name == null) {
             error_list.add("Database name is not defined");
         }
 
-        if (table_name == null) {
+        if (request_table.table_name == null) {
             error_list.add("Table name is not defined");
         }
 
-        postInit();
-
-        if (hasErrors() == true) {
-            ArrayList<String> tableErrors = getErrors();
-            for (String error : tableErrors) {
-                error_list.add(error);
-            }
-        }
+        postInit(error_list);
 
         primary_keys = new ArrayList<>();
         primary_keys_manual_increment_fields = new ArrayList<>();
@@ -203,7 +184,7 @@ public class Table {
         
         //Build Table Field List
         
-        HashMap<Integer, Field> order_by = new HashMap<Integer, Field>();
+        HashMap<Integer, Field> order_by_list = new HashMap<Integer, Field>();
         for (Field f : tabel_field_list) {
             if (f.isPrimaryKey() == true) {
                 primary_keys.add(f);
@@ -215,7 +196,7 @@ public class Table {
                 primary_keys_auto_increment_fields.add(f);
             }
             if (f.isOrderBy() == true) {
-                order_by.put(f.getOrderByOrder(), f);
+                order_by_list.put(f.getOrderByOrder(), f);
             }
             if (f.isAllowedTo(Field.INSERT) == true) {
                 insert_fields.add(f);
@@ -235,13 +216,13 @@ public class Table {
         valid_select_fields = (select_fields.size() == 0 ? null : fieldAliasToCsv(select_fields));
         valid_update_fields = (update_fields.size() == 0 ? null : fieldAliasToCsv(update_fields));
 
-        if (order_by != null && order_by.size() > 0) {
-            select_statement_orderby = new ArrayList<Field>(order_by.size());
-            Set<Integer> keys = order_by.keySet();
+        if (order_by_list != null && order_by_list.size() > 0) {
+            select_statement_orderby = new ArrayList<Field>(order_by_list.size());
+            Set<Integer> keys = order_by_list.keySet();
             ArrayList<Integer> tkeys = new ArrayList<Integer>(keys);
             Collections.sort(tkeys);
             for (Integer i : tkeys) {
-                select_statement_orderby.add(order_by.get(i));
+                select_statement_orderby.add(order_by_list.get(i));
             }
         }
 
@@ -249,7 +230,7 @@ public class Table {
             error_list.add("Primary Keys are not defined field_list tableFields");
         }
 
-        if (transaction_type_list.contains("insert") == true) {
+        if (request_table.transaction_type_list.contains("insert") == true) {
             for (Field f : insert_fields) {
                 if (f.isUniqueAll()) {
                     uniqueness_fields_all.add(f);
@@ -262,13 +243,13 @@ public class Table {
                 }
             }
             sb.setLength(0);
-            if (transaction_type_list.contains("insert") == true && insert_fields.size() == 0) {
+            if (request_table.transaction_type_list.contains("insert") == true && insert_fields.size() == 0) {
                 error_list.add("no valid insert field_list defined");
-            } else if (/*insert_fields != null && */transaction_type_list.contains("insert") == false) {
+            } else if (/*insert_fields != null && */request_table.transaction_type_list.contains("insert") == false) {
                 //ignore
             } else {
                 sb.setLength(0);
-                sb.append("INSERT INTO `").append(database_name).append("`.`").append(table_name).append("` (");
+                sb.append("INSERT INTO `").append(data_database_name).append("`.`").append(request_table.table_name).append("` (");
                 for (int i = 0; i < insert_fields.size(); i++) {
                     Field field = insert_fields.get(i);
                     if (field.isPrimaryKeyAI() == false) {
@@ -296,7 +277,7 @@ public class Table {
                     sb.append(")");
                 }
                 if (hasPrimaryKeyMI() == true) {
-                    sb.append(" FROM `").append(database_name).append("`.`").append(table_name).append("`");
+                    sb.append(" FROM `").append(data_database_name).append("`.`").append(request_table.table_name).append("`");
                     Integer counter = primary_keys.size() - countPrimaryKeyMI();
                     if (counter > 0) {
                         sb.append(" WHERE");
@@ -315,7 +296,7 @@ public class Table {
                 insert_statement = sb.toString();
                 if (insert_set_statement != null) {
                     sb.setLength(0);
-                    sb.append("INSERT INTO `").append(database_name).append("`.`").append(table_name).append("` (");
+                    sb.append("INSERT INTO `").append(data_database_name).append("`.`").append(request_table.table_name).append("` (");
                     for (int i = 0; i < insert_fields.size(); i++) {
                         Field f = insert_fields.get(i);
                         if (f.isPrimaryKeyAI() == false) {
@@ -336,12 +317,12 @@ public class Table {
                         sb.append("SELECT ");
                         for (int i = 0; i < tabel_field_list.size(); i++) {
                             Field f = tabel_field_list.get(i);
-                            if (f.getTable().equalsIgnoreCase(table_name) == true) {
+                            if (f.getTable().equalsIgnoreCase(request_table.table_name) == true) {
                                 sb.append(" ").append(f.getSelect(null)).append(",");
                             }
                         }
                         sb.replace(sb.length() - 1, sb.length(), " ");
-                        sb.append("FROM `").append(database_name).append("`.`").append(table_name).append("` WHERE");
+                        sb.append("FROM `").append(data_database_name).append("`.`").append(request_table.table_name).append("` WHERE");
                         for (int i = 0; i < insert_fields.size(); i++) {
                             Field f = insert_fields.get(i);
                             if (f.isPrimaryKeyAI() == false && f.isPrimaryKeyMI() == false) {
@@ -358,7 +339,7 @@ public class Table {
                     Boolean hasUniqueness = false;
                     sb.setLength(0);
                     sb.append("SELECT ").append(getFieldsFor(Field.INSERT, true));
-                    sb.append(" FROM `").append(database_name).append("`.`").append(table_name).append("` WHERE ");
+                    sb.append(" FROM `").append(data_database_name).append("`.`").append(request_table.table_name).append("` WHERE ");
                     Integer primaryKeyIncrement = 0;
                     if (primary_keys.size() > 0) {
                         for (int i = 0; i < primary_keys.size(); i++) {
@@ -397,16 +378,16 @@ public class Table {
                 }
             }
         }
-        if (transaction_type_list.contains("select") == true) {
+        if (request_table.transaction_type_list.contains("select") == true) {
             sb.setLength(0);
-            if (transaction_type_list.contains("select") == true && select_fields.size() == 0) {
+            if (request_table.transaction_type_list.contains("select") == true && select_fields.size() == 0) {
                 error_list.add("no valid select field_list defined");
-            } else if (/*select_fields != null && */transaction_type_list.contains("select") == false) {
+            } else if (/*select_fields != null && */request_table.transaction_type_list.contains("select") == false) {
                 //ignore
             } else {
                 sb.setLength(0);
                 if (select_statement_from == null) {
-                    sb.append("`").append(database_name).append("`.`").append(table_name).append("`");
+                    sb.append("`").append(data_database_name).append("`.`").append(request_table.table_name).append("`");
                     sb.append(getInnerJoin());
                     select_statement_from = sb.length() == 0 ? null : sb.toString();
                 }
@@ -414,16 +395,16 @@ public class Table {
                 if (select_statement_from != null) {
                     sb.append("$SELECT$ FROM ").append(select_statement_from).append(" $WHERE$ $GROUPBY$ $HAVING$ $ORDERBY$");
                 } else {
-                    sb.append("$SELECT$ FROM `").append(database_name).append("`.`").append(table_name).append("` $WHERE$ $GROUPBY$ $HAVING$ $ORDERBY$");
+                    sb.append("$SELECT$ FROM `").append(data_database_name).append("`.`").append(request_table.table_name).append("` $WHERE$ $GROUPBY$ $HAVING$ $ORDERBY$");
                 }
                 select_statement = sb.toString();
             }
         }
-        if (transaction_type_list.contains("update") == true) {
+        if (request_table.transaction_type_list.contains("update") == true) {
             sb.setLength(0);
-            if (update_fields == null && transaction_type_list.contains("update") == true) {
+            if (update_fields == null && request_table.transaction_type_list.contains("update") == true) {
                 error_list.add("no valid update field_list defined");
-            } else if (/*update_fields != null && */transaction_type_list.contains("update") == false) {
+            } else if (/*update_fields != null && */request_table.transaction_type_list.contains("update") == false) {
                 //ignore
             } else {
                 /*valid_update_fields = String.join(",", update_fields);
@@ -435,7 +416,7 @@ public class Table {
                 }*/
                 //StringBuilder sb = new StringBuilder();
                 sb.setLength(0);
-                sb.append("UPDATE `").append(database_name).append("`.`").append(table_name).append("` SET $UPDATE$ $WHERE$");
+                sb.append("UPDATE `").append(data_database_name).append("`.`").append(request_table.table_name).append("` SET $UPDATE$ $WHERE$");
                 update_statement = sb.toString();
                 if (uniqueness_fields_all.size() > 0 || uniqueness_fields_any.size() > 0) {
                     Boolean hasUniqueness = false;
@@ -443,7 +424,7 @@ public class Table {
                     sb.append("SELECT ").append(getFieldsFor(Field.UPDATE, true));
                     /*Make Select shows count as a flag of uniquness
                             Group by field_list to get these uniqueness*/
-                    sb.append(" FROM `").append(database_name).append("`.`").append(table_name).append("` WHERE ");
+                    sb.append(" FROM `").append(data_database_name).append("`.`").append(request_table.table_name).append("` WHERE ");
                     if (primary_keys != null) {
                         hasUniqueness = true;
                         for (int i = 0; i < primary_keys.size(); i++) {
@@ -483,26 +464,17 @@ public class Table {
                 }
             }
         }
-        if (transaction_type_list.contains("delete") == true) {
+        if (request_table.transaction_type_list.contains("delete") == true) {
             sb.setLength(0);
-            sb.append("DELETE FROM `").append(database_name).append("`.`").append(table_name).append("` $WHERE$");
+            sb.append("DELETE FROM `").append(data_database_name).append("`.`").append(request_table.table_name).append("` $WHERE$");
             delete_statement = sb.toString();
         }
-        ArrayList<Field> field_list = getFields();
-        for (Field field : field_list) {
-            if (field.hasErrors()) {
-                ArrayList<String> errors = field.getErrors();
-                for (String error : errors) {
-                    error_list.add(error);
-                }
-            }
-        }
         
-        return error_list.size() > 0;//errors
+        return error_list.size() > 0;//error_list
     }
     
-    public void postInit() {
-        this.field_list = new ArrayList<Field>(fieldMap.values());
+    public void postInit(JsonArray error_list) {
+        this.field_list = new ArrayList<Field>(field_map.values());
         Collections.sort(this.field_list);
         if (joinKeys != null) {
             Set<String> joinKeysSet = joinKeys.keySet();
@@ -528,7 +500,7 @@ public class Table {
     }
     
     public String getTableName() {
-        return table_name;
+        return request_table.table_name;
     }
     
     public Table getTableTree() {
@@ -536,7 +508,7 @@ public class Table {
     }
     
     public Field getField(String alias) {
-        return fieldMap.get(alias);
+        return field_map.get(alias);
     }
     
     public ArrayList<Field> getFields() {
@@ -544,80 +516,67 @@ public class Table {
     }
     
     public HashMap<String, Field> getFieldMap() {
-        return fieldMap;
+        return field_map;
     }
     
-    public Boolean hasErrors() {
-        return errors.size() > 0;
-    }
-    
-    public ArrayList<String> getErrors() {
-        return errors;
-    }
-    
-    private void checkDuplicity(Field field) {
+    private void checkDuplicity(Field field, JsonArray table_error_list) {
         for (Field f : field_list) {
-            if (table_name.equalsIgnoreCase(f.getTable()) == true
+            if (request_table.table_name.equalsIgnoreCase(f.getTable()) == true
                     && f.isVariable() == false && f.hasFormulaDefined() == false && f.getName().equalsIgnoreCase(field.getName())) {
-                errors.add("Field name '" + f.getTable() + "'.'" + f.getName() + "' is duplicated");
+                table_error_list.add("Field name '" + f.getTable() + "'.'" + f.getName() + "' is duplicated");
             }
-            if (table_name.equalsIgnoreCase(f.getTable()) == true
+            if (request_table.table_name.equalsIgnoreCase(f.getTable()) == true
                     && f.isVariable() == false && f.hasFormulaDefined() == false && f.getAlias().equalsIgnoreCase(field.getAlias())) {
-                errors.add("Field alias '" + f.getTable() + "'.'" + f.getAlias() + "' is duplicated");
+                table_error_list.add("Field alias '" + f.getTable() + "'.'" + f.getAlias() + "' is duplicated");
             }
         }
     }
     
-    public Field addField(Boolean nullable, Boolean group, FieldType fieldType, String name, String alias) {
-        return addField(nullable, group, fieldType, table_name, null, name, alias);
+    public Field addField(String field_name, String field_alias, Boolean nullable, Boolean group_by, FieldType field_type, JsonArray table_error_list) {
+        return addField(field_name, field_alias, nullable, group_by, field_type, null, null, table_error_list);
     }
     
-    public Field addField(Boolean nullable, Boolean group, FieldType fieldType, String joinTable, String name, String alias) {
-        return addField(nullable, group, fieldType, joinTable, null, name, alias);
-    }
-    
-    public Field addField(Boolean nullable, Boolean group, FieldType fieldType, String joinTable, String joinTableAlias, String name, String alias) {
-        Field field = new Field(field_list.size(), nullable, group, fieldType, joinTable, joinTableAlias, name, alias);
-        /*if (name.length() == 0) {
-            field.disallow(Field.INSERT);
-            field.disallow(Field.UPDATE);
-        }*/
-        checkDuplicity(field);
+    public Field addField(String field_name, String field_alias, Boolean nullable, Boolean group_by, FieldType field_type, String join_table, String join_table_alias, JsonArray table_error_list) {
+        Field field = new Field(field_list.size(), field_name, field_alias, nullable, group_by, field_type, join_table, join_table_alias, table_error_list);
+        if (table_error_list.size() > 0) {
+            return field;
+        }
+        checkDuplicity(field, table_error_list);
         field_list.add(field);
-        fieldMap.put(alias, field);
+        field_map.put(field_alias, field);
         return field;
     }
     
     public Boolean hasSelectWhereCondition() {
-        return this.selectWhereCondition != null;
+        return this.select_where_condition != null;
     }
     
-    public void addSelectWhereCondition(String[] fieldList, String selectWhereCondition) {
-        this.selectWhereCondition = selectWhereCondition;
-        this.selectWhereConditionFields = new ArrayList<Field>();
-        for (String fieldName : fieldList) {
-            Field field = fieldMap.get(fieldName);
-            this.selectWhereConditionFields.add(field);
+    public void addSelectWhereCondition(String[] field_list, String select_where_condition) {
+        this.select_where_condition = select_where_condition;
+        this.select_where_condition_field_list = new ArrayList<Field>();
+        for (String fieldName : field_list) {
+            Field field = field_map.get(fieldName);
+            this.select_where_condition_field_list.add(field);
         }
     }
     
     public String getSelectWhereCondition() {
-        return this.selectWhereCondition;
+        return this.select_where_condition;
     }
     
     public ArrayList<Field> getSelectWhereConditionFields() {
-        return this.selectWhereConditionFields;
+        return this.select_where_condition_field_list;
     }
     
     public Boolean hasUpdateWhereCondition() {
         return this.updateWhereCondition != null;
     }
     
-    public void addUpdateWhereCondition(String[] fieldList, String updateWhereCondition) {
+    public void addUpdateWhereCondition(String[] field_list, String updateWhereCondition) {
         this.updateWhereCondition = updateWhereCondition;
         this.updateWhereConditionFields = new ArrayList<Field>();
-        for (String fieldName : fieldList) {
-            Field field = fieldMap.get(fieldName);
+        for (String fieldName : field_list) {
+            Field field = field_map.get(fieldName);
             this.updateWhereConditionFields.add(field);
         }
     }
@@ -633,16 +592,16 @@ public class Table {
     private void addForeignKey(String key, String foreign_table) {
         foreignKeys = (foreignKeys != null ? foreignKeys : new HashMap<String, ForeignKey>());
         if (foreignKeys.get(key) == null) {
-            foreignKeys.put(key, new ForeignKey(key, database_name, foreign_table));
+            foreignKeys.put(key, new ForeignKey(key, data_database_name, foreign_table));
         }
     }
     
-    public void addForeignField(String key, String foreign_table, String field_alias, String foreign_field_alias) {
-        if (fieldMap.get(field_alias) == null) {
-            errors.add("Field alias '" + field_alias + "' is not exist in table '" + table_name + "'");
+    public void addForeignField(String key, String foreign_table, String field_alias, String foreign_field_alias, JsonArray table_error_list) {
+        if (field_map.get(field_alias) == null) {
+            table_error_list.add("Field alias '" + field_alias + "' is not exist in table '" + request_table.table_name + "'");
             return;
         }
-        Field field = fieldMap.get(field_alias);
+        Field field = field_map.get(field_alias);
         addForeignKey(key, foreign_table);
         ForeignKey foreignKey = foreignKeys.get(key);
         foreignKey.addForeignField(field, foreign_field_alias);
@@ -651,19 +610,19 @@ public class Table {
     private void addDependentKey(String key, String dependent_table) {
         dependentKeys = (dependentKeys != null ? dependentKeys : new HashMap<String, DependentKey>());
         if (dependentKeys.get(key) == null) {
-            dependentKeys.put(key, new DependentKey(key, database_name, dependent_table));
+            dependentKeys.put(key, new DependentKey(key, data_database_name, dependent_table));
         }
     }
     
-    public void addDependentField(String key, String dependent_table, String field_alias, String dependent_Field_alias) {
-        if (fieldMap.get(field_alias) == null) {
-            errors.add("Field alias '" + field_alias + "' is not exist in table '" + table_name + "'");
+    public void addDependentField(String key, String dependent_table, String field_alias, String dependent_field_alias, JsonArray table_error_list) {
+        if (field_map.get(field_alias) == null) {
+            table_error_list.add("Field alias '" + field_alias + "' is not exist in table '" + request_table.table_name + "'");
             return;
         }
-        Field field = fieldMap.get(field_alias);
+        Field field = field_map.get(field_alias);
         addDependentKey(key, dependent_table);
         DependentKey dependentKey = dependentKeys.get(key);
-        dependentKey.addDependentField(field, dependent_Field_alias);
+        dependentKey.addDependentField(field, dependent_field_alias);
     }
     
     public void addJoinSQL(String join_sql) {
@@ -672,20 +631,20 @@ public class Table {
     
     private void addJoinKey(String key, String join_table, JoinKey.JoinType join_type) {
         if (joinKeys.get(key) == null) {
-            joinKeys.put(key, new JoinKey(key, database_name, table_name, join_table, join_type));
+            joinKeys.put(key, new JoinKey(key, data_database_name, request_table.table_name, join_table, join_type));
         }
     }
     
-    public void addJoinField(String key, String join_table, String field_alias, String join_field_alias) {
-        addJoinField(key, join_table, field_alias, join_field_alias, JoinKey.JoinType.INNER_JOIN);
+    public void addJoinField(String key, String join_table, String field_alias, String join_field_alias, JsonArray table_error_list) {
+        addJoinField(key, join_table, field_alias, join_field_alias, JoinKey.JoinType.INNER_JOIN, table_error_list);
     }
     
-    public void addJoinField(String key, String join_table, String field_alias, String join_field_alias, JoinKey.JoinType join_type) {
-        if (fieldMap.get(field_alias) == null) {
-            errors.add("Field alias '" + field_alias + "' is not exist in table '" + table_name + "'");
+    public void addJoinField(String key, String join_table, String field_alias, String join_field_alias, JoinKey.JoinType join_type, JsonArray table_error_list) {
+        if (field_map.get(field_alias) == null) {
+            table_error_list.add("Field alias '" + field_alias + "' is not exist in table '" + request_table.table_name + "'");
             return;
         }
-        Field field = fieldMap.get(field_alias);
+        Field field = field_map.get(field_alias);
         addJoinKey(key, join_table, join_type);
         JoinKey joinKey = joinKeys.get(key);
         joinKey.addJoinField(field, join_field_alias);
@@ -780,22 +739,22 @@ public class Table {
         return countPrimaryKeyMI;
     }
     
-    private String createRuntimeInsertStatementSelect(JsonObject variable) throws Exception {
+    private String createRuntimeInsertStatementSelect(Map<String, String> variables) throws Exception {
         StringBuilder sb = new StringBuilder();
         ArrayList<Field> tabel_fields = getFields();
         sb.append("SELECT ");
         for (int i = 0; i < tabel_fields.size(); i++) {
             Field f = tabel_fields.get(i);
-            if (f.getTable().equalsIgnoreCase(table_name) == true) {
+            if (f.getTable().equalsIgnoreCase(request_table.table_name) == true) {
                 if (f.isVariable() == false) {
                     sb.append(" ").append(f.getSelect()).append(",");
                 } else {
-                    sb.append(" ").append(f.getSelect(variable)).append(",");
+                    sb.append(" ").append(f.getSelect(variables)).append(",");
                 }
             }
         }
         sb.replace(sb.length() - 1, sb.length(), " ");
-        sb.append("FROM `").append(database_name).append("`.`").append(table_name).append("` WHERE");
+        sb.append("FROM `").append(data_database_name).append("`.`").append(request_table.table_name).append("` WHERE");
         for (int i = 0; i < insert_fields.size(); i++) {
             Field f = insert_fields.get(i);
             if (f.isPrimaryKeyAI() == false && f.isPrimaryKeyMI() == false) {
@@ -807,39 +766,39 @@ public class Table {
         return sb.toString();
     }
     
-    public void validateInserFields(JsonArray errors) {
+    public void validateInserFields(JsonArray error_list) {
         if (insert_fields == null) {
-            errors.add("Internal System Error, Contact Adminstrator, uninitialized 'insert_fields' is null");
+            error_list.add("Internal System Error, Contact Adminstrator, uninitialized 'insert_fields' is null");
         } else if (valid_insert_fields == null) {
-            errors.add("Internal System Error, Contact Adminstrator, uninitialized 'valid_insert_fields' is null");
+            error_list.add("Internal System Error, Contact Adminstrator, uninitialized 'valid_insert_fields' is null");
         } else if (insert_statement == null) {
-            errors.add("Internal System Error, Contact Adminstrator, uninitialized 'insert_statement' is null");
+            error_list.add("Internal System Error, Contact Adminstrator, uninitialized 'insert_statement' is null");
         }
     }
     
-    public void validateSelectFields(JsonArray errors) {
+    public void validateSelectFields(JsonArray error_list) {
         if (select_fields == null) {
-            errors.add("Internal System Error, Contact Adminstrator, uninitialized 'select_fields' is null");
+            error_list.add("Internal System Error, Contact Adminstrator, uninitialized 'select_fields' is null");
         } else if (valid_select_fields == null) {
-            errors.add("Internal System Error, Contact Adminstrator, uninitialized 'valid_select_fields' is null");
+            error_list.add("Internal System Error, Contact Adminstrator, uninitialized 'valid_select_fields' is null");
         } else if (select_statement == null) {
-            errors.add("Internal System Error, Contact Adminstrator, uninitialized 'select_statement' is null");
+            error_list.add("Internal System Error, Contact Adminstrator, uninitialized 'select_statement' is null");
         }
     }
     
-    public void validateUpdateFields(JsonArray errors) {
+    public void validateUpdateFields(JsonArray error_list) {
         if (update_fields == null) {
-            errors.add("Internal System Error, Contact Adminstrator, uninitialized 'update_fields' is null");
+            error_list.add("Internal System Error, Contact Adminstrator, uninitialized 'update_fields' is null");
         } else if (valid_update_fields == null) {
-            errors.add("Internal System Error, Contact Adminstrator, uninitialized 'valid_update_fields' is null");
+            error_list.add("Internal System Error, Contact Adminstrator, uninitialized 'valid_update_fields' is null");
         } else if (update_statement == null) {
-            errors.add("Internal System Error, Contact Adminstrator, uninitialized 'update_statement' is null");
+            error_list.add("Internal System Error, Contact Adminstrator, uninitialized 'update_statement' is null");
         }
     }
     
-    public void validateDeleteFields(JsonArray errors) {
+    public void validateDeleteFields(JsonArray error_list) {
         if (delete_statement == null) {
-            errors.add("Internal System Error, Contact Adminstrator, uninitialized 'delete_statement' is null");
+            error_list.add("Internal System Error, Contact Adminstrator, uninitialized 'delete_statement' is null");
         }
     }
     
@@ -864,29 +823,21 @@ public class Table {
     public Boolean mustSafeUpdate() {
         return this.safe_update;
     }
-    
-    protected Field addField(String alias, FieldType fieldType, Boolean nullable, Boolean group, String joinTable, String name) {
-        return addField(nullable, group, fieldType, joinTable, name, alias);
-    }
 
-    protected Field addField(String alias, FieldType fieldType, Boolean nullable, Boolean group, String name) {
-        return addField(nullable, group, fieldType, name, alias);
-    }
-
-    protected void addJoinKey(String key, String fieldAlias, String joinTable, String joinField) {
-        addJoinField(key, joinTable, fieldAlias, joinField);
+    protected void addJoinKey(String key, String field_alias, String joinTable, String joinField, JsonArray table_error_list) {
+        addJoinField(key, joinTable, field_alias, joinField, table_error_list);
     }
     
-    protected void addJoinKey(String key, String fieldAlias, String joinTable, String joinField, JoinKey.JoinType join_type) {
-        addJoinField(key, joinTable, fieldAlias, joinField, join_type);
+    protected void addJoinKey(String key, String field_alias, String joinTable, String joinField, JoinKey.JoinType join_type, JsonArray table_error_list) {
+        addJoinField(key, joinTable, field_alias, joinField, join_type, table_error_list);
     }
 
-    protected void addForeignKey(String key, String fieldAlias, String foreignTable, String foreignField) {
-        addForeignField(key, foreignTable, fieldAlias, foreignField);
+    protected void addForeignKey(String key, String field_alias, String foreignTable, String foreign_field, JsonArray table_error_list) {
+        addForeignField(key, foreignTable, field_alias, foreign_field, table_error_list);
     }
 
-    protected void addDependentKey(String key, String fieldAlias, String dependendTable, String dependendField) {
-        addDependentField(key, dependendTable, fieldAlias, dependendField);
+    protected void addDependentKey(String key, String field_alias, String dependendTable, String dependendField, JsonArray table_error_list) {
+        addDependentField(key, dependendTable, field_alias, dependendField, table_error_list);
     }
 
     protected Table getTable() {
@@ -897,7 +848,7 @@ public class Table {
         return getField(alias).getFieldObject(string);
     }
 
-    public Boolean validateInsertUniqueness(Connection con, JsonObject json, JsonArray errors) throws Exception {
+    public Boolean validateInsertUniqueness(Connection con, JsonObject json, JsonArray error_list) throws Exception {
         if (uniqueness_insert_statement != null) {
             JsonArray values = json.get("values").getAsJsonArray();
             for (int oo = 0; oo < values.size(); oo++) {
@@ -943,7 +894,7 @@ public class Table {
                             }
                             if (ssb.length() > 0) {
                                 ssb.delete(ssb.length() - 1, ssb.length());
-                                errors.add("Record with [Primary Keys] unique values {" + ssb.toString() + "," + sb.toString() + "} already exists");
+                                error_list.add("Record with [Primary Keys] unique values {" + ssb.toString() + "," + sb.toString() + "} already exists");
                             }
                             ssb.setLength(0);
                             //uniqueness_fields_all
@@ -955,7 +906,7 @@ public class Table {
                             }
                             if (sb.length() > 0) {
                                 sb.delete(sb.length() - 1, sb.length());
-                                errors.add("Record with [all] unique values {" + sb.toString() + "} already exists");
+                                error_list.add("Record with [all] unique values {" + sb.toString() + "} already exists");
                             }
                             //uniqueness_fields_any
                             sb.setLength(0);
@@ -966,7 +917,7 @@ public class Table {
                             }
                             if (sb.length() > 0) {
                                 sb.delete(sb.length() - 1, sb.length());
-                                errors.add("Record with [any] unique values {" + sb.toString() + "} already exists");
+                                error_list.add("Record with [any] unique values {" + sb.toString() + "} already exists");
                             }
                         }
                         rs.close();
@@ -979,10 +930,10 @@ public class Table {
                 }
             }
         }
-        return errors.size() == 0;
+        return error_list.size() == 0;
     }
 
-    public Boolean validateUpdateUniqueness(Connection con, JsonObject json, JsonArray errors) throws Exception {
+    public Boolean validateUpdateUniqueness(Connection con, JsonObject json, JsonArray error_list) throws Exception {
         if (uniqueness_update_statement != null) {
             JsonArray values = json.get("values").getAsJsonArray();
             for (int oo = 0; oo < values.size(); oo++) {
@@ -1008,7 +959,7 @@ public class Table {
                 if (mpk != null) {
                     mpk.delete(mpk.length() - 1, mpk.length());
                     mpk.append("}, check in group index[").append(oo + 1).append("]");
-                    errors.add(mpk.toString());
+                    error_list.add(mpk.toString());
                     return false;
                 }
                 try (PreparedStatement preparedInsertedSelectStmt = con.prepareStatement(uniqueness_update_statement)) {
@@ -1051,7 +1002,7 @@ public class Table {
                             ssb = (ssb.length() > 1 ? ssb.delete(ssb.length() - 1, ssb.length()) : ssb);
                             if (ssb.length() > 0) {
                                 ssb.delete(ssb.length() - 1, ssb.length());
-                                errors.add("Record with [Primary Keys] unique values {" + ssb.toString() + "," + sb.toString() + "} already exists");
+                                error_list.add("Record with [Primary Keys] unique values {" + ssb.toString() + "," + sb.toString() + "} already exists");
                             }
                             ssb.setLength(0);
                             //uniqueness_fields_all
@@ -1063,7 +1014,7 @@ public class Table {
                             }
                             if (sb.length() > 0) {
                                 sb.delete(sb.length() - 1, sb.length());
-                                errors.add("Record with [all] unique values {" + sb.toString() + "} already exists");
+                                error_list.add("Record with [all] unique values {" + sb.toString() + "} already exists");
                             }
                             //uniqueness_fields_any
                             sb.setLength(0);
@@ -1074,7 +1025,7 @@ public class Table {
                             }
                             if (sb.length() > 0) {
                                 sb.delete(sb.length() - 1, sb.length());
-                                errors.add("Record with [any] unique values {" + sb.toString() + "} already exists");
+                                error_list.add("Record with [any] unique values {" + sb.toString() + "} already exists");
                             }
                         }
                         rs.close();
@@ -1087,10 +1038,10 @@ public class Table {
                 }
             }
         }
-        return errors.size() == 0;
+        return error_list.size() == 0;
     }
 
-    public Boolean validateInsertForeignness(Connection con, JsonObject json, JsonArray errors) throws Exception {
+    public Boolean validateInsertForeignness(Connection con, JsonObject json, JsonArray error_list) throws Exception {
         ArrayList<ForeignKey> foreignKeys = getForeignKeys();
         if (foreignKeys.size() == 0) {//no need to check
             return true;
@@ -1113,10 +1064,10 @@ public class Table {
                 }
                 nullableRecords.add(nullables);
                 if (nullables > 0 && nullables != field_list.size()) {
-                    errors.add("Foreign Key '" + foreignKey.getKey() + "' for Table '" + foreignKey.getForeignTable() + "' has mixed keys {null} values check index [" + oo + "], either or null or all non-null}");
+                    error_list.add("Foreign Key '" + foreignKey.getKey() + "' for Table '" + foreignKey.getForeignTable() + "' has mixed keys {null} values check index [" + oo + "], either or null or all non-null}");
                 }
             }
-            for (int oo = 0; errors.size() == 0 && oo < values.size(); oo++) {//errors.size() == 0 to validate all records
+            for (int oo = 0; error_list.size() == 0 && oo < values.size(); oo++) {//error_list.size() == 0 to validate all records
                 if (nullableRecords.get(oo) > 0) {//If foreign key is null no need to check;
                     continue;
                 }
@@ -1137,7 +1088,7 @@ public class Table {
                     String s = sb.toString();
                     try (ResultSet rs = preparedInsertedSelectStmt.executeQuery()) {
                         if (rs.next() == false) {
-                            errors.add("Table '" + foreignKey.getForeignTable() + "' doesn't have record with {" + s + "}");
+                            error_list.add("Table '" + foreignKey.getForeignTable() + "' doesn't have record with {" + s + "}");
                         }
                         rs.close();
                     } catch (Exception sqlx) {
@@ -1149,10 +1100,10 @@ public class Table {
                 }
             }
         }
-        return errors.size() == 0;
+        return error_list.size() == 0;
     }
 
-    public Boolean validateUpdateForeignness(Connection con, JsonObject json, JsonArray errors) throws Exception {
+    public Boolean validateUpdateForeignness(Connection con, JsonObject json, JsonArray error_list) throws Exception {
         ArrayList<ForeignKey> foreignKeys = getForeignKeys();
         if (foreignKeys.size() > 0) {
             JsonArray values = json.get("values").getAsJsonArray();
@@ -1176,7 +1127,7 @@ public class Table {
                     if (checkForeignKeyUpdate == field_list.size()) {
                         skipForeignKeyCheck = true;
                     } else if (checkForeignKeyUpdate != 0) {//some field_list exists but some others doesn't
-                        errors.add("Table '" + foreignKey.getForeignTable() + "' missing '" + (field_list.size() - checkForeignKeyUpdate) + "' foreign keys '" + foreignKey.getKey() + "' keys {" + sb.toString() + "}");
+                        error_list.add("Table '" + foreignKey.getForeignTable() + "' missing '" + (field_list.size() - checkForeignKeyUpdate) + "' foreign keys '" + foreignKey.getKey() + "' keys {" + sb.toString() + "}");
                         return false;
                     }
                 }
@@ -1199,7 +1150,7 @@ public class Table {
                         String s = sb.toString();
                         try (ResultSet rs = preparedInsertedSelectStmt.executeQuery()) {
                             if (rs.next() == false) {
-                                errors.add("Table '" + foreignKey.getForeignTable() + "' doesn't have record with {" + s + "}");
+                                error_list.add("Table '" + foreignKey.getForeignTable() + "' doesn't have record with {" + s + "}");
                             }
                             rs.close();
                         } catch (Exception sqlx) {
@@ -1212,7 +1163,7 @@ public class Table {
                 }
             }
         }
-        return errors.size() == 0;
+        return error_list.size() == 0;
     }
     
     protected Boolean getBoolean(ResultSet rs, String field) throws Exception {
@@ -1247,26 +1198,7 @@ public class Table {
         return rs.getObject(field) == null ? null : rs.getString(field);
     }
 
-    protected boolean isValid(JsonObject json, String[] parameters, JsonObject errorObject) throws Exception {
-        JsonArray errorList = null;
-        for (String parameterName : parameters) {
-            JsonElement fje = json.get(parameterName);
-            String parameter = (fje.isJsonNull() ? null : fje.getAsString());
-            if (parameter == null || parameter.isBlank()) {
-                if (errorList == null) {
-                    errorList = new JsonArray();
-                }
-                errorList.add("Parameter '" + parameterName + "' is " + (parameter == null ? "null" : "\"empty\""));
-            }
-        }
-        if (errorList != null) {
-            errorObject.addProperty("major_error", "Invalid Field Name");
-            errorObject.add("error_messages", errorList);
-        }
-        return errorObject.size() == 0;
-    }
-
-    private ServiceField isValidServiceField(String serviceField, HashMap<String, Field> record, JsonArray errorList) {
+    private ServiceField isValidServiceField(RecordProcessor record_processor, String serviceField, Map<String, Field> record) {
         int pos1 = serviceField.indexOf(" AS ");
         if (pos1 == -1) {
             return null;
@@ -1279,24 +1211,25 @@ public class Table {
         String type = serviceField.substring(pos1 + 4, pos2);
         String alias = serviceField.substring(pos2 + 1);
         if (record.containsKey(alias) == true) {
-            errorList.add("Service Field '" + serviceField + "' has alias '" + alias + "' that is already defined as Table Field");
+            record_processor.addError("Service Field '" + serviceField + "' has alias '" + alias + "' that is already defined as Table Field");
             return null;
         }
-        return new ServiceField(formula, type, alias, errorList);
+        return new ServiceField(formula, type, alias, record_processor.error_list);
     }
 
-    protected boolean areValidSelectFields(ArrayList<String> field, ArrayList<ServiceField> serviceFields, HashMap<String, Field> record, ArrayList<Field> field_list, JsonArray errorList) {
+    protected boolean areValidSelectFields(RecordProcessor record_processor, List<ServiceField> serviceFields, Map<String, Field> record, List<Field> field_list) {
+        List<String> field = record_processor.request.select_list;
         for (int i = 0; i < field.size(); i++) {
             Field f = record.get(field.get(i));
             if (f != null && f.isAllowedTo(Field.SELECT) == false) {
-                errorList.add("Field '" + field.get(i) + "' is not allowed in select operation");
+                record_processor.addError("Field '" + field.get(i) + "' is not allowed in select operation");
             } else if (f == null || field_list.contains(f) == false) {
-                ServiceField sf = isValidServiceField(field.get(i), record, errorList);
+                ServiceField sf = isValidServiceField(record_processor, field.get(i), record);
                 if (sf != null) {
                     serviceFields.add(sf);
                     field.remove(i--);
                 } else {
-                    errorList.add("Field '" + field.get(i) + "' is not a valid field name");
+                    record_processor.addError("Field '" + field.get(i) + "' is not a valid field name");
                 }
             }
         }
@@ -1313,7 +1246,7 @@ public class Table {
                 }
                 if (found == false) {
                     if (f.hasDefaultValueFor(Field.SELECT) == false) {
-                        errorList.add("Field '" + f.getAlias() + "' is mandatory to be exist in select list");
+                        record_processor.addError("Field '" + f.getAlias() + "' is mandatory to be exist in select list");
                     } else if (f.hasDefaultValueFor(Field.SELECT) == true) {
                         //ignore, put default value into where 
                         //this field is requested ie. where statement
@@ -1321,27 +1254,27 @@ public class Table {
                 }
             }
         }
-        return errorList.size() == 0;
+        return record_processor.hasErrors();
     }
 
-    protected boolean areValidUpdateFieldsValues(HashMap<String, Field> field_map, JsonArray jsonRecordset, ArrayList<String> conditionalFields, ArrayList<Field> field_list, JsonArray errorList) throws Exception {
+    protected boolean areValidUpdateFieldsValues(RecordProcessor record_processor, Map<String, Field> field_map, JsonArray recordset, List<String> conditional_field_list, ArrayList<Field> field_list, JsonArray error_list) throws Exception {
         StringBuilder error = new StringBuilder();
-        for (int i = 0; i < jsonRecordset.size(); i++) {
-            JsonObject record = jsonRecordset.get(i).getAsJsonObject();
+        for (int i = 0; i < recordset.size(); i++) {
+            JsonObject record = recordset.get(i).getAsJsonObject();
             for (String fieldName : record.keySet()) {
                 Field f = field_map.get(fieldName);
                 if (f != null && f.isPrimaryKey() == false && f.isAllowedTo(Field.UPDATE) == false) {
-                    errorList.add("Field '" + fieldName + "' is not allowed in update operation");
-                } else if (f == null && conditionalFields != null && conditionalFields.contains(fieldName) == false) {
-                    errorList.add("Field '" + fieldName + "' is not a valid condition field name, check record[" + (i + 1) + "]");
-                } else if (conditionalFields == null && f == null) {
-                    errorList.add("Field '" + fieldName + "' is not a valid field name, check record[" + (i + 1) + "]");
-                } else if (conditionalFields == null && field_list.contains(f) == false) {
-                    errorList.add("Field '" + fieldName + "' is not allowed field to be updated, check record[" + (i + 1) + "]");
-                } else if (conditionalFields == null && record.get(fieldName) != null && f != null && f.isNullable() == false && record.get(fieldName).isJsonNull() == true) {
-                    errorList.add("Field '" + fieldName + "' doesn't accept null values, check record[" + (i + 1) + "]");
-                } else if (conditionalFields == null && f.isValid(Field.UPDATE, (record.get(fieldName) == null || record.get(fieldName).isJsonNull() ? null : record.get(fieldName).getAsString()), error) == false) {
-                    errorList.add(error.toString() + ", check record[" + (i + 1) + "]");
+                    record_processor.addError("Field '" + fieldName + "' is not allowed in update operation");
+                } else if (f == null && conditional_field_list != null && conditional_field_list.contains(fieldName) == false) {
+                    record_processor.addError("Field '" + fieldName + "' is not a valid condition field name, check record[" + (i + 1) + "]");
+                } else if (conditional_field_list == null && f == null) {
+                    record_processor.addError("Field '" + fieldName + "' is not a valid field name, check record[" + (i + 1) + "]");
+                } else if (conditional_field_list == null && field_list.contains(f) == false) {
+                    record_processor.addError("Field '" + fieldName + "' is not allowed field to be updated, check record[" + (i + 1) + "]");
+                } else if (conditional_field_list == null && record.get(fieldName) != null && f != null && f.isNullable() == false && record.get(fieldName).isJsonNull() == true) {
+                    record_processor.addError("Field '" + fieldName + "' doesn't accept null values, check record[" + (i + 1) + "]");
+                } else if (conditional_field_list == null && f.isValid(Field.UPDATE, (record.get(fieldName) == null || record.get(fieldName).isJsonNull() ? null : record.get(fieldName).getAsString()), error) == false) {
+                    record_processor.addError(error.toString() + ", check record[" + (i + 1) + "]");
                 }
             }
             for (Field f : field_map.values()) {
@@ -1353,21 +1286,21 @@ public class Table {
                     //defaultValue for Update
                     JsonElement fje = record.get(f.getAlias());
                     if (fje == null || fje.isJsonNull() == true) {
-                        record.addProperty(f.getAlias(), f.getDefaultSQLValueFor(Field.UPDATE));
+                        record.addProperty(f.getAlias(), f.getDefaultSQLValueFor(Field.UPDATE, error_list));
                     }
                 }
             }
-            for (int x = 0; conditionalFields != null && x < conditionalFields.size(); x++) {
-                String fieldName = conditionalFields.get(x);
+            for (int x = 0; conditional_field_list != null && x < conditional_field_list.size(); x++) {
+                String fieldName = conditional_field_list.get(x);
                 if (record.get(fieldName) == null) {
-                    errorList.add("Field '" + fieldName + "', in {where.field_list} doesn't exist in values record, check record[" + (i + 1) + "]");
+                    record_processor.addError("Field '" + fieldName + "', in {where.field_list} doesn't exist in values record, check record[" + (i + 1) + "]");
                 }
             }
         }
-        return errorList.size() == 0;
+        return record_processor.hasErrors();
     }
 
-    final static public Boolean isValidClause(Integer operation, String ii, HashMap<String, Field> r, /*ArrayList<String> vf,*/ ArrayList<Field> wf, ArrayList<String> vv, StringBuilder wc, StringBuilder hc, ArrayList<Argument> wa, ArrayList<Argument> ha, JsonArray errorList) throws Exception {
+    final static public Boolean isValidClause(RecordProcessor record_processor, Integer operation, String ii, Map<String, Field> r, List<Field> wf, List<String> vv, StringBuilder wc, StringBuilder hc, List<Argument> wa, List<Argument> ha) throws Exception {
         ArrayList<String> keyword = new ArrayList<>(Arrays.asList(new String[]{"asc", "desc", "between", "in", "like", "and", "or", "is", "null"}));
         //String symbol = "<=>(?,)";
         String symbol = "/*-+(?)'[]|<=>,;:\\\r\n\t ";
@@ -1435,7 +1368,7 @@ public class Table {
             sm = mm.get(i);
             if (r.get(sm) != null) {
                 /*if (vf.contains(sm) == false) {
-                    errorList.add("Field '" + sm + "' is not allowed to be in where clause");
+                    record_processor.addError("Field '" + sm + "' is not allowed to be in where clause");
                     return false;
                 }*/
                 Field f = r.get(sm);
@@ -1445,21 +1378,21 @@ public class Table {
                 (h ? hc : wc).append(h ? f.getHaving() : f.getSQLName()).append(" ");
                 sm = mm.get(++i);
                 if (sm == null) {
-                    errorList.add("Clause statement is incomplete");
+                    record_processor.addError("Clause statement is incomplete");
                     return false;
                 }
                 if (sm.length() == 1 && "<=>".indexOf(sm) > -1) {
                     if (mm.get(i - 1).equals("?") == false && r.get(mm.get(i - 1)) == null) {
-                        errorList.add("Invalid Mathematical operator");
+                        record_processor.addError("Invalid Mathematical operator");
                         return false;
                     } else if (sm.equals("<") && "?=>".indexOf(mm.get(i + 1)) > -1) {
                         (h ? hc : wc).append(sm);
                         if (mm.get(i + 1).equals("?")) {
                             ++vi;
                             if (vv != null && vi >= vv.size()) {
-                                errorList.add("Caluse Paramerter value index is [" + (vi + 1) + "] while value list is only [" + vv.size() + "] items");
+                                record_processor.addError("Caluse Paramerter value index is [" + (vi + 1) + "] while value list is only [" + vv.size() + "] items");
                             } else if (vv != null && f.isValid(operation, vv.get(vi), e) == false) {
-                                errorList.add(e.toString());
+                                record_processor.addError(e.toString());
                                 return false;
                             }
                             if (vv != null) {//////Needs refactoring
@@ -1473,9 +1406,9 @@ public class Table {
                                 ++i;
                                 ++vi;
                                 if (vv != null && vi >= vv.size()) {
-                                    errorList.add("Caluse Paramerter value index is [" + (vi + 1) + "] while value list is only [" + vv.size() + "] items");
+                                    record_processor.addError("Caluse Paramerter value index is [" + (vi + 1) + "] while value list is only [" + vv.size() + "] items");
                                 } else if (vv != null && f.isValid(operation, vv.get(vi), e) == false) {
-                                    errorList.add(e.toString());
+                                    record_processor.addError(e.toString());
                                     return false;
                                 }
                                 if (vv != null) {//////Needs refactoring
@@ -1485,7 +1418,7 @@ public class Table {
                                 (h ? hc : wc).append(mm.get(i-1)).append(" ? ");
                             } else if (r.get(mm.get(i + 1)) != null) {
                                 /*if (vf.contains(mm.get(i+1)) == false) {
-                                    errorList.add("Field '" + mm.get(i+1) + "' is not allowed to be in where clause");
+                                    record_processor.addError("Field '" + mm.get(i+1) + "' is not allowed to be in where clause");
                                     return false;
                                 }*/
                                 Field fl = r.get(mm.get(i + 1));
@@ -1495,7 +1428,7 @@ public class Table {
                                 (h ? hc : wc).append(sm).append(mm.get(i)).append(h ? fl.getHaving() : fl.getSQLName()).append(" ");
                                 ++i;
                             } else {
-                                errorList.add("Invalid Mathematical operator");
+                                record_processor.addError("Invalid Mathematical operator");
                                 return false;
                             }
                         }
@@ -1504,9 +1437,9 @@ public class Table {
                         if (mm.get(i + 1).equals("?")) {
                             ++vi;
                             if (vv != null && vi >= vv.size()) {
-                                errorList.add("Caluse Paramerter value index is [" + (vi + 1) + "] while value list is only [" + vv.size() + "] items");
+                                record_processor.addError("Caluse Paramerter value index is [" + (vi + 1) + "] while value list is only [" + vv.size() + "] items");
                             } else if (vv != null && f.isValid(operation, vv.get(vi), e) == false) {
-                                errorList.add(e.toString());
+                                record_processor.addError(e.toString());
                                 return false;
                             }
                             if (vv != null) {//////Needs refactoring
@@ -1521,9 +1454,9 @@ public class Table {
                                 ++i;
                                 ++vi;
                                 if (vv != null && vi >= vv.size()) {
-                                    errorList.add("Caluse Paramerter value index is [" + (vi + 1) + "] while value list is only [" + vv.size() + "] items");
+                                    record_processor.addError("Caluse Paramerter value index is [" + (vi + 1) + "] while value list is only [" + vv.size() + "] items");
                                 } else if (vv != null && f.isValid(operation, vv.get(vi), e) == false) {
-                                    errorList.add(e.toString());
+                                    record_processor.addError(e.toString());
                                     return false;
                                 }
                                 if (vv != null) {//////Needs refactoring
@@ -1532,7 +1465,7 @@ public class Table {
                                 (h ? hc : wc).append("= ? ");
                             } else if (r.get(mm.get(i + 1)) != null) {
                                 /*if (vf.contains(mm.get(i+1)) == false) {
-                                    errorList.add("Field '" + mm.get(i+1) + "' is not allowed to be in where clause");
+                                    record_processor.addError("Field '" + mm.get(i+1) + "' is not allowed to be in where clause");
                                     return false;
                                 }*/
                                 Field fl = r.get(mm.get(i + 1));
@@ -1542,7 +1475,7 @@ public class Table {
                                 (h ? hc : wc).append(sm).append("=").append(h ? fl.getHaving() : fl.getSQLName()).append(" ");
                                 ++i;
                             } else {
-                                errorList.add("Invalid Mathematical operator");
+                                record_processor.addError("Invalid Mathematical operator");
                                 return false;
                             }
                         }
@@ -1550,9 +1483,9 @@ public class Table {
                         ++i;
                         ++vi;
                         if (vv != null && vi >= vv.size()) {
-                            errorList.add("Caluse Paramerter value index is [" + (vi + 1) + "] while value list is only [" + vv.size() + "] items");
+                            record_processor.addError("Caluse Paramerter value index is [" + (vi + 1) + "] while value list is only [" + vv.size() + "] items");
                         } else if (vv != null && f.isValid(operation, vv.get(vi), e) == false) {
-                            errorList.add(e.toString());
+                            record_processor.addError(e.toString());
                             return false;
                         }
                         if (vv != null) {//////Needs refactoring
@@ -1566,7 +1499,7 @@ public class Table {
                     (h ? hc : wc).append(sm).append(i + 1 == ml ? "" : "'(.".indexOf(sm) > -1 || "'.,()".indexOf(mm.get(i + 1)) > -1 ? "" : "<>".indexOf(sm) > -1 && ">=".indexOf(mm.get(i + 1)) > -1 ? "" : " ");
                     if (mm.get(i - 1).equalsIgnoreCase("not") == false && r.get(mm.get(i - 1)) == null
                             && mm.get(i + 1).equals("(") == false) {
-                        errorList.add("Invalid IN operator");
+                        record_processor.addError("Invalid IN operator");
                         return false;
                     }
                     sm = mm.get(++i);
@@ -1574,7 +1507,7 @@ public class Table {
                     while ((sm = mm.get(++i)).equals(")") == false) {
                         String token = "?";
                         if (mm.get(i).equalsIgnoreCase(token) == false) {
-                            errorList.add("Invalid IN operator");
+                            record_processor.addError("Invalid IN operator");
                             return false;
                         }
                         if (mm.get(i+1).equals(")") == false) {
@@ -1583,9 +1516,9 @@ public class Table {
                             
                                 ++vi;
                                 if (vv != null && vi >= vv.size()) {
-                                    errorList.add("Caluse Paramerter value index is [" + (vi + 1) + "] while value list is only [" + vv.size() + "] items");
+                                    record_processor.addError("Caluse Paramerter value index is [" + (vi + 1) + "] while value list is only [" + vv.size() + "] items");
                                 } else if (vv != null && f.isValid(operation, vv.get(vi), e) == false) {
-                                    errorList.add(e.toString());
+                                    record_processor.addError(e.toString());
                                     return false;
                                 }
                                 if (vv != null) {//////Needs refactoring
@@ -1608,9 +1541,9 @@ public class Table {
                         ++i;
                         ++vi;
                         if (vv != null && vi >= vv.size()) {
-                            errorList.add("Caluse Paramerter value index is [" + (vi + 1) + "] while value list is only [" + vv.size() + "] items");
+                            record_processor.addError("Caluse Paramerter value index is [" + (vi + 1) + "] while value list is only [" + vv.size() + "] items");
                         }/* else if (vi > v.length || f.isValid(v[vi]) == false) {
-                            errorList.add("Field '" + f.getAlias() + "' value '" + v[vi] + "' is not valid " + f.ft.toString() + " data type");
+                            record_processor.addError("Field '" + f.getAlias() + "' value '" + v[vi] + "' is not valid " + f.ft.toString() + " data type");
                             return false;
                         }*/
                         if (vv != null) {//////Needs refactoring
@@ -1618,7 +1551,7 @@ public class Table {
                         }
                         (h ? hc : wc).append(" ? ");
                     } else {
-                        errorList.add("Invalid Mathematical operator");
+                        record_processor.addError("Invalid Mathematical operator");
                         return false;
                     }
                 } else if (sm.equalsIgnoreCase("between")) {
@@ -1629,13 +1562,13 @@ public class Table {
                         ++i;
                         ++vi;
                         if (vv != null && vi >= vv.size()) {
-                            errorList.add("Caluse Paramerter value index is [" + (vi + 1) + "] while value list is only [" + vv.size() + "] items");
+                            record_processor.addError("Caluse Paramerter value index is [" + (vi + 1) + "] while value list is only [" + vv.size() + "] items");
                         } else if (vv != null && f.isValid(operation, vv.get(vi), e) == false) {
-                            errorList.add(e.toString());
+                            record_processor.addError(e.toString());
                             return false;
                         }
                         if (mm.get(i + 1).equalsIgnoreCase("and") == false || mm.get(i + 2).equals("?") == false) {
-                            errorList.add("Invalid Between operator");
+                            record_processor.addError("Invalid Between operator");
                             return false;
                         }
                         if (vv != null) {//////Needs refactoring
@@ -1644,9 +1577,9 @@ public class Table {
                         ++i;
                         ++vi;
                         if (vv != null && vi >= vv.size()) {
-                            errorList.add("Caluse Paramerter value index is [" + (vi + 1) + "] while value list is only [" + vv.size() + "] items");
+                            record_processor.addError("Caluse Paramerter value index is [" + (vi + 1) + "] while value list is only [" + vv.size() + "] items");
                         } else if (vv != null && f.isValid(operation, vv.get(vi), e) == false) {
-                            errorList.add(e.toString());
+                            record_processor.addError(e.toString());
                             return false;
                         }
                         if (vv != null) {//////Needs refactoring
@@ -1655,7 +1588,7 @@ public class Table {
                         ++i;
                         (h ? hc : wc).append("AND ? ");
                     } else {
-                        errorList.add("Invalid Between operator");
+                        record_processor.addError("Invalid Between operator");
                         return false;
                     }
                 } else if (sm.equalsIgnoreCase("is")) {
@@ -1668,27 +1601,27 @@ public class Table {
                         ++i;
                         (h ? hc : wc).append("IS NOT NULL");
                     } else {
-                        errorList.add("Invalid IS Operator");
+                        record_processor.addError("Invalid IS Operator");
                         return false;
                     }
                 } else {
-                    errorList.add("Invalid Where clause");
+                    record_processor.addError("Invalid Where clause");
                     return false;
                 }
             } else if (sm.equalsIgnoreCase("and") || sm.equalsIgnoreCase("or") || sm.equals("(") || sm.equals(")") || sm.equalsIgnoreCase("not")) {
                 (h ? hc : wc).append(" ").append(sm).append(" ");
             } else if (r.get(sm) == null) {
-                errorList.add("Field '" + sm + "' is not a valid field name");
+                record_processor.addError("Field '" + sm + "' is not a valid field name");
             } else {
-                errorList.add("Invalid Where clause '" + sm + "'");
+                record_processor.addError("Invalid Where clause '" + sm + "'");
                 return false;
             }
         }
 
-        return errorList.size() == 0;
+        return record_processor.hasErrors();
     }
 
-    public boolean areValidInsertValueFields(HashMap<String, Field> record, JsonArray values, ArrayList<Field> field_list, JsonArray errorList) throws Exception {
+    public boolean areValidInsertValueFields(RecordProcessor record_processor, HashMap<String, Field> record, JsonArray values, ArrayList<Field> field_list) throws Exception {
         StringBuilder error = new StringBuilder();
         for (int i = 0; i < values.size(); i++) {
             JsonObject o = values.get(i).getAsJsonObject();
@@ -1700,17 +1633,17 @@ public class Table {
                 String fieldValue = (fje.isJsonNull() ? null : fje.getAsString());
                 Field f = record.get(fieldName);
                 if (f != null && f.isAllowedTo(Field.INSERT) == false) {
-                    errorList.add("Field '" + fieldName + "' is not allowed in insert operation");
+                    record_processor.addError("Field '" + fieldName + "' is not allowed in insert operation");
                 } else if (f == null || field_list.contains(f) == false) {
-                    errorList.add("Field '" + fieldName + "' is not a valid field name for insert operation");
+                    record_processor.addError("Field '" + fieldName + "' is not a valid field name for insert operation");
                 } else if (f.isAllowedTo(Field.INSERT) == false) {
-                    errorList.add("Field '" + fieldName + "' is not allowed to insert opertation");
+                    record_processor.addError("Field '" + fieldName + "' is not allowed to insert opertation");
                 } else if (f.isValid(Field.INSERT, fieldValue, error) == false) {
-                    errorList.add(error.toString());
+                    record_processor.addError(error.toString());
                 }
             }
         }
-        if (errorList.size() > 0) {
+        if (record_processor.hasErrors() == true) {
             return false;
         }
         for (int i = 0; i < values.size(); i++) {
@@ -1722,13 +1655,13 @@ public class Table {
                 if (f.isPrimaryKeyAI() == false && f.isPrimaryKeyMI() == false
                         && f.isAllowedTo(Field.INSERT) == true && f.isValid(Field.INSERT, fieldValue, error) == false
                         && f.hasDefaultValueFor(Field.INSERT) == false) {
-                    errorList.add(error.toString());
+                    record_processor.addError(error.toString());
                 } else if (fieldValue == null && f.hasDefaultValueFor(Field.INSERT) == true) {
-                    o.addProperty(f.getAlias(), f.getDefaultSQLValueFor(Field.INSERT));
+                    o.addProperty(f.getAlias(), f.getDefaultSQLValueFor(Field.INSERT, record_processor.error_list));
                 }
             }
         }
-        return errorList.size() == 0;
+        return record_processor.hasErrors();
     }
 
     protected boolean isValid(String[] parameters, JsonObject rcvd) throws Exception {
@@ -1759,14 +1692,14 @@ public class Table {
         return csv.toString();
     }
 
-    protected String getFieldsSelect(JsonObject variable) throws Exception {
+    protected String getFieldsSelect(Map<String, String> variables) throws Exception {
         StringBuilder csv = new StringBuilder();
         for (int i = 0; i < select_fields.size(); i++) {
             Field f = select_fields.get(i);
             if (f.isVariable() == false) {
                 csv.append(f.getSelect()).append(",");
             } else {
-                csv.append(f.getSelect(variable)).append(",");
+                csv.append(f.getSelect(variables)).append(",");
             }
         }
         if (csv.length() == 0) {
@@ -1776,33 +1709,33 @@ public class Table {
         return csv.toString();
     }
 
-    protected String getFieldsSelect(Boolean hasGroupBy, JsonObject variable, ArrayList<String> field, ArrayList<ServiceField> serviceField, JsonArray errorList) throws Exception {
+    protected String getFieldsSelect(RecordProcessor record_processor, List<Field> field_list, List<ServiceField> service_field_list) throws Exception {
         StringBuilder csv = new StringBuilder();
-        if (hasGroupBy == false || field == null || field.size() == 0) {
+        if (record_processor.hasGroupBy() == false || field_list == null || field_list.size() == 0) {
             for (int i = 0; i < select_fields.size(); i++) {
                 Field f = select_fields.get(i);
                 if (f == null) {
-                    errorList.add("Field '" + field.get(i) + "' is not a valid field name");
+                    record_processor.addError("Field '" + field_list.get(i) + "' is not a valid field name");
                 } else if (f.isVariable() == true) {
-                    csv.append(f.getSelect(variable)).append(",");
+                    csv.append(f.getSelect(record_processor.request.variable_map)).append(",");
                 } else {
                     csv.append(f.getSelect()).append(",");
                 }
             }
         } else {
-            for (int i = 0; field != null && i < field.size(); i++) {
-                Field f = getField(field.get(i));
+            for (int i = 0; i < field_list.size(); i++) {
+                Field f = field_list.get(i);
                 if (f == null) {
-                    errorList.add("Field '" + field.get(i) + "' is not a valid field name");
+                    record_processor.addError("Field '" + field_list.get(i) + "' is not a valid field name");
                 } else if (f.isVariable() == true) {
-                    csv.append(f.getSelect(variable)).append(",");
+                    csv.append(f.getSelect(record_processor.request.variable_map)).append(",");
                 } else {
                     csv.append(f.getSelect()).append(",");
                 }
             }
         }
-        for (int i = 0; serviceField != null && i < serviceField.size(); i++) {
-            csv.append(serviceField.get(i).getSelectStatement()).append(",");
+        for (int i = 0; service_field_list != null && i < service_field_list.size(); i++) {
+            csv.append(service_field_list.get(i).getSelectStatement()).append(",");
         }
         if (csv.length() == 0) {
             return "";
@@ -1823,27 +1756,27 @@ public class Table {
         return csv.toString();
     }
 
-    protected String getFieldsOrderBy(String v, String[] field, JsonArray errorList) {
+    protected String getFieldsOrderBy(RecordProcessor record_processor) {
         StringBuilder csv = new StringBuilder();
-        if (field == null || field.length == 0) {
-            for (int i = 0; select_statement_orderby != null && i < select_statement_orderby.size() && v.equalsIgnoreCase("process"); i++) {
+        if (record_processor.request.order_by_list == null || record_processor.request.order_by_list.size() == 0) {
+            for (int i = 0; select_statement_orderby != null && i < select_statement_orderby.size() && record_processor.request.response.equalsIgnoreCase("process"); i++) {
                 Field f = select_statement_orderby.get(i);
                 csv.append(f.getOrderBy()).append(",");
             }
         } else {
-            for (int i = 0; i < field.length; i++) {
-                String orderByFieldName = field[i];
+            for (int i = 0; i < record_processor.request.order_by_list.size(); i++) {
+                String orderByFieldName = record_processor.request.order_by_list.get(i);
                 char order = orderByFieldName.charAt(0);
                 if (order == '+' || order == '-') {
                     orderByFieldName = orderByFieldName.substring(1);
-                    //errorList.add("Field Orderby must start with '+' for ascending order or '-' for descending order");
+                    //record_processor.addError("Field Orderby must start with '+' for ascending order or '-' for descending order");
                     //continue;
                 } else {
                     order = '+';
                 }
                 Field f = getField(orderByFieldName);
                 if (f == null) {
-                    errorList.add("Field '" + field[i] + "' is not a valid field name");
+                    record_processor.addError("Field '" + record_processor.request.order_by_list.get(i) + "' is not a valid field name");
                 } else {
                     csv.append(f.getOrderBy()).append(order == '+' ? " ASC," : " DESC,");
                 }
@@ -1856,14 +1789,14 @@ public class Table {
         return csv.toString();
     }
 
-    protected String getFieldsGroupBy(String[] field, JsonArray errorList) {
+    protected String getFieldsGroupBy(RecordProcessor record_processor) {
         StringBuilder csv = new StringBuilder();
-        for (int i = 0; i < field.length; i++) {
-            Field f = getField(field[i]);
+        for (int i = 0; i < record_processor.request.group_by_list.size(); i++) {
+            Field f = getField(record_processor.request.group_by_list.get(i));
             if (f == null) {
-                errorList.add("Field '" + field[i] + "' is not a valid field name");
+                record_processor.addError("Field '" + record_processor.request.group_by_list.get(i) + "' is not a valid field name");
             } else if (select_statement_groupby.contains(f) == false) {
-                errorList.add("Field '" + field[i] + "' is not a valid 'Group By' field name");
+                record_processor.addError("Field '" + record_processor.request.group_by_list.get(i) + "' is not a valid 'Group By' field name");
             } else {
                 csv.append(f.getGroupBy()).append(",");
             }
@@ -1872,8 +1805,8 @@ public class Table {
             return "";
         }
         csv.delete(csv.length() - 1, csv.length());
-        if (errorList.size() > 0) {
-            errorList.add("Fields valid for 'Group By' are [" + csv.toString() + "] is not a valid GROUP BY field name");
+        if (record_processor.hasErrors() == true) {
+            record_processor.addError("Fields valid for 'Group By' are [" + csv.toString() + "] is not a valid GROUP BY field name");
         }
         return csv.toString();
     }
@@ -1890,14 +1823,14 @@ public class Table {
         return csv.toString();
     }
 
-    protected String getJsonCSV(JsonObject variable, JsonArray jsonArray, HashMap<String, Field> record) throws Exception {
+    protected String getJsonCSV(Map<String, String> variables, JsonArray csv_list, HashMap<String, Field> record) throws Exception {
         StringBuilder csv = new StringBuilder();
-        for (int i = 0; i < jsonArray.size(); i++) {
-            Field f = record.get(jsonArray.get(i).getAsString());
+        for (int i = 0; i < csv_list.size(); i++) {
+            Field f = record.get(csv_list.get(i).getAsString());
             if (f.isVariable() == false) {
                 csv.append(f.getSelect()).append(",");
             } else {
-                csv.append(f.getSelect(variable)).append(",");
+                csv.append(f.getSelect(variables)).append(",");
             }
         }
         if (csv.length() == 0) {
@@ -1911,46 +1844,67 @@ public class Table {
     /************ SELECT PROCESSOR ********************************************/
     /**************************************************************************/
     
-    public String validateSelectStatement(JsonObject json, ArrayList<Field> wf, String vt, ArrayList<String> s, ArrayList<ServiceField> ss, ArrayList<String> wv, ArrayList<Argument> ah, ArrayList<Argument> av, JsonObject w, JsonArray errors) throws Exception {
+    /*
+    long t1, t2, t3, t4;
+        t1 = System.nanoTime();
+        JsonObject json = record_processor.getTableRequest();
+        JsonArray error_list = record_processor.getErrors();
+        ArrayList<Field> wf = new ArrayList<Field>();
+        ArrayList<ServiceField> ss = new ArrayList<ServiceField>();
+        ArrayList<String> s = JsonUtil.javaStringArrayList(JsonUtil.getJsonArray(json, "select", false));
+        String vt = json.get("view").getAsString();
+        JsonObject w = json.get("where").getAsJsonObject();
+        ArrayList<String> v = w.get("values") == null || w.get("values").isJsonNull() ? null : new ArrayList<String>(Arrays.asList(JsonUtil.javaStringArray(w.get("values").getAsJsonArray())));
+        ArrayList<Argument> ah = new ArrayList<Argument>();
+        ArrayList<Argument> av = new ArrayList<Argument>();
+        
+        public String validateSelectStatement(JsonObject json, ArrayList<Field> wf, String vt, ArrayList<String> s, ArrayList<ServiceField> ss, ArrayList<String> wv, ArrayList<Argument> ah, ArrayList<Argument> av, JsonObject w, JsonArray error_list) throws Exception {
         //Validate Mandatory Paramters
         String c = w.get("clause").getAsString();
-        String[] g = json.get("groupby") == null || json.get("groupby").isJsonNull() ? null : JsonUtil.javaStringArray(json.get("groupby").getAsJsonArray());
-        String[] o = json.get("orderby") == null || json.get("orderby").isJsonNull() ? null : JsonUtil.javaStringArray(json.get("orderby").getAsJsonArray());
+        String[] g = json.get("group_by_list") == null || json.get("group_by_list").isJsonNull() ? null : JsonUtil.javaStringArray(json.get("group_by_list").getAsJsonArray());
+        String[] o = json.get("order_by_list") == null || json.get("order_by_list").isJsonNull() ? null : JsonUtil.javaStringArray(json.get("order_by_list").getAsJsonArray());
         JsonObject variable = json.getAsJsonObject("variable");
         StringBuilder ww = new StringBuilder();
         StringBuilder hh = new StringBuilder();
 
         StringBuilder query = new StringBuilder(select_statement);
+    */
+    
+    public String validateSelectStatement(RecordProcessor record_processor, ArrayList<Field> where_field_list, ArrayList<ServiceField> service_field_list, ArrayList<Argument> where_argument_list, ArrayList<Argument> having_argument_list) throws Exception {
+        StringBuilder where_clause = new StringBuilder();
+        StringBuilder having_clause = new StringBuilder();
 
-        if (areValidSelectFields(s, ss, getFieldMap(), select_fields, errors) == false) {
-            errors.add("ERROR: validateSelectStatement.areValidSelectFields");
+        StringBuilder query = new StringBuilder(select_statement);
+
+        if (areValidSelectFields(record_processor, service_field_list, getFieldMap(), select_fields) == false) {
+            record_processor.addError("ERROR: validateSelectStatement.areValidSelectFields");
             return null;
         }
 
-        if (c.replaceAll("[^?]", "").length() != wv.size()) {
-            errors.add("ERROR: validateSelectStatement.escapement");
+        if (record_processor.request.where.values != null && record_processor.request.where.clause.replaceAll("[^?]", "").length() != record_processor.request.where.values.size()) {
+            record_processor.addError("ERROR: validateSelectStatement.escapement");
             return null;
         }
 
-        if (isValidClause(Field.SELECT, c, getFieldMap(), /*select_fields,*/ wf, wv, ww, hh, ah, av, errors) == false) {
-            errors.add("ERROR: validateSelectStatement.isValidClause");
+        if (isValidClause(record_processor, Field.SELECT, record_processor.request.where.clause, getFieldMap(), where_field_list, record_processor.request.where.values, where_clause, having_clause, where_argument_list, having_argument_list) == false) {
+            record_processor.addError("ERROR: validateSelectStatement.isValidClause");
             return null;
         }
 
-        String oo = null;
-        if (o != null) {
-            oo = getFieldsOrderBy(vt, o, errors);
-            if (errors.size() > 0) {
-                errors.add("ERROR: validateSelectStatement.ORDER_BY_VALIDATION");
+        String order_by_list = null;
+        if (record_processor.request.order_by_list != null) {
+            order_by_list = getFieldsOrderBy(record_processor);
+            if (record_processor.hasErrors() == true) {
+                record_processor.addError("ERROR: validateSelectStatement.ORDER_BY_VALIDATION");
                 return null;
             }
         }
 
-        String gg = null;
-        if (g != null) {
-            gg = getFieldsGroupBy(g, errors);
-            if (errors.size() > 0) {
-                errors.add("ERROR: validateSelectStatement.GROUP_BY_VALIDATION");
+        String group_by_list = null;
+        if (record_processor.request.group_by_list != null) {
+            group_by_list = getFieldsGroupBy(record_processor);
+            if (record_processor.hasErrors()) {
+                record_processor.addError("ERROR: validateSelectStatement.GROUP_BY_VALIDATION");
                 return null;
             }
         }
@@ -1959,86 +1913,86 @@ public class Table {
         int idx = query.indexOf("$SELECT$");
         query.replace(idx, idx + 8, "");
         query.insert(idx, "SELECT ");
-        query.insert(idx + 7, getFieldsSelect(gg != null && gg.length() > 0, variable, s, ss, errors));
-        if (errors.size() > 0) {
-            errors.add("ERROR: validateSelectStatement.SELECT");
+        query.insert(idx + 7, getFieldsSelect(record_processor, field_list, service_field_list));
+        if (record_processor.hasErrors() == true) {
+            record_processor.addError("ERROR: validateSelectStatement.SELECT");
             return null;
         }
 
         idx = query.indexOf("$WHERE$");
         query.replace(idx, idx + 7, "");
-        if (ww != null && ww.length() > 0) {
-            if (ww.lastIndexOf(" AND ") == ww.length() - 5) {
-                ww = ww.delete(ww.lastIndexOf(" AND "), ww.length());
+        if (where_clause != null && where_clause.length() > 0) {
+            if (where_clause.lastIndexOf(" AND ") == where_clause.length() - 5) {
+                where_clause = where_clause.delete(where_clause.lastIndexOf(" AND "), where_clause.length());
             }
-            if (ww.lastIndexOf(" OR ") == ww.length() - 4) {
-                ww = hh.delete(ww.lastIndexOf(" OR "), ww.length());
+            if (where_clause.lastIndexOf(" OR ") == where_clause.length() - 4) {
+                where_clause = where_clause.delete(where_clause.lastIndexOf(" OR "), where_clause.length());
             }
         }        
-        if (ww != null && ww.length() > 0) {
+        if (where_clause != null && where_clause.length() > 0) {
             query.insert(idx, " WHERE ");
             if (hasSelectWhereCondition() == true) {
-                ww.insert(0, getSelectWhereCondition() + " AND ");
+                where_clause.insert(0, getSelectWhereCondition() + " AND ");
             }
-            query.insert(idx + 7, ww);
+            query.insert(idx + 7, where_clause);
         } else if (hasSelectWhereCondition() == true) {
             query.insert(idx, " WHERE ");
-            ww.setLength(0);
-            ww.append(getSelectWhereCondition());
-            query.insert(idx + 7, ww);
+            where_clause.setLength(0);
+            where_clause.append(getSelectWhereCondition());
+            query.insert(idx + 7, where_clause);
         }
-        if (errors.size() > 0) {
-            errors.add("ERROR: validateSelectStatement.WHERE");
+        if (record_processor.hasErrors() == true) {
+            record_processor.addError("ERROR: validateSelectStatement.WHERE");
             return null;
         }
 
         idx = query.indexOf("$GROUPBY$");
         query.replace(idx, idx + 9, "");
-        if (gg != null && gg.length() > 0) {
+        if (group_by_list != null && group_by_list.length() > 0) {
             query.insert(idx, "GROUP BY ");
-            query.insert(idx + 9, gg);
+            query.insert(idx + 9, group_by_list);
         }
-        if (errors.size() > 0) {
-            errors.add("ERROR: validateSelectStatement.GROUP_BY");
+        if (record_processor.hasErrors() == true) {
+            record_processor.addError("ERROR: validateSelectStatement.GROUP_BY");
             return null;
         }
 
         idx = query.indexOf("$HAVING$");
         query.replace(idx, idx + 8, "");
-        if (hh != null && hh.length() > 0) {
-            if (hh.lastIndexOf(" AND ") == hh.length() - 5) {
-                hh.delete(hh.lastIndexOf(" AND "), hh.length());
+        if (having_clause != null && having_clause.length() > 0) {
+            if (having_clause.lastIndexOf(" AND ") == having_clause.length() - 5) {
+                having_clause.delete(having_clause.lastIndexOf(" AND "), having_clause.length());
             }
-            if (hh.lastIndexOf(" OR ") == hh.length() - 4) {
-                hh.delete(hh.lastIndexOf(" OR "), hh.length());
+            if (having_clause.lastIndexOf(" OR ") == having_clause.length() - 4) {
+                having_clause.delete(having_clause.lastIndexOf(" OR "), having_clause.length());
             }
         }
-        if (hh != null && hh.length() > 0) {
+        if (having_clause != null && having_clause.length() > 0) {
             query.insert(idx, " HAVING ");
-            query.insert(idx + 8, hh);
+            query.insert(idx + 8, having_clause);
         }
-        if (errors.size() > 0) {
-            errors.add("ERROR: validateSelectStatement.HAVING");
+        if (record_processor.hasErrors() == true) {
+            record_processor.addError("ERROR: validateSelectStatement.HAVING");
             return null;
         }
 
         idx = query.indexOf("$ORDERBY$");
         query.replace(idx, idx + 9, "");
-        if (oo != null && oo.length() > 0) {
+        if (order_by_list != null && order_by_list.length() > 0) {
             query.insert(idx, "ORDER BY ");
-            query.insert(idx + 9, oo);
+            query.insert(idx + 9, order_by_list);
         }
-        if (errors.size() > 0) {
-            errors.add("ERROR: validateSelectStatement.ORDER_BY");
+        if (record_processor.hasErrors() == true) {
+            record_processor.addError("ERROR: validateSelectStatement.ORDER_BY");
             return null;
         }
 
         return query.toString();
     }
     
-    public void processSelectedRecord(ResultSet rs, JsonObject json, JsonObject record_object, ArrayList<String> s, JsonArray errors) throws Exception {
-        for (int i = 0; i < s.size(); i++) {
-            String alias = s.get(i);
+    public void processSelectedRecord(RecordProcessor record_processor, ResultSet rs, JsonObject record_object) throws Exception {
+        for (int i = 0; i < record_processor.request.select_list.size(); i++) {
+            String alias = record_processor.request.select_list.get(i);
             Field f = getField(alias);
             if (f.isIgnoredFor(Field.SELECT)) {
                 continue;
@@ -2057,15 +2011,15 @@ public class Table {
         }
     }
     
-    public void processSelectedObjectRecord(ResultSet rs, JsonObject json, JsonObject record_object, ArrayList<String> s, ArrayList<ServiceField> ss, JsonArray errors) throws Exception {
-        for (int i = 0; i < s.size(); i++) {
-            String alias = s.get(i);
+    public void processSelectedObjectRecord(RecordProcessor record_processor, ResultSet rs, JsonObject record_object, ArrayList<ServiceField> service_field_list) throws Exception {
+        for (int i = 0; i < record_processor.request.select_list.size(); i++) {
+            String alias = record_processor.request.select_list.get(i);
             Field f = getField(alias);
             if (f.isIgnoredFor(Field.SELECT)) {
                 continue;
             }
             //Object fieldObject = rs.getObject(f.getAlias());
-            Object fieldObject = f.getPostProcessedValue(Field.SELECT, rs.getObject(f.getAlias()), errors);
+            Object fieldObject = f.getPostProcessedValue(Field.SELECT, rs.getObject(f.getAlias()), record_processor.error_list);
             if (fieldObject == null) {
                 record_object.add(alias, JsonNull.INSTANCE);
             } else if (f.isNumeric() == true) {
@@ -2077,8 +2031,8 @@ public class Table {
                 record_object.addProperty(alias, f.getFieldString(fieldObject));
             }
         }
-        for (int i = 0; i < ss.size(); i++) {
-            ServiceField sf = ss.get(i);
+        for (int i = 0; i < service_field_list.size(); i++) {
+            ServiceField sf = service_field_list.get(i);
             Object fieldObject = rs.getObject(sf.getAlias());
             if (fieldObject == null) {
                 record_object.add(sf.getAlias(), JsonNull.INSTANCE);
@@ -2092,15 +2046,15 @@ public class Table {
         }
     }
     
-    public void processSelectedArrayRecord(ResultSet rs, JsonObject json, JsonArray record_list, ArrayList<String> s, ArrayList<ServiceField> ss, JsonArray errors) throws Exception {
-        for (int i = 0; i < s.size(); i++) {
-            String alias = s.get(i);
+    public void processSelectedArrayRecord(RecordProcessor record_processor, ResultSet rs, JsonArray record_list, ArrayList<ServiceField> service_field_list) throws Exception {
+        for (int i = 0; i < record_processor.request.select_list.size(); i++) {
+            String alias = record_processor.request.select_list.get(i);
             Field f = getField(alias);
             if (f.isIgnoredFor(Field.SELECT)) {
                 continue;
             }
             //Object fieldObject = rs.getObject(f.getAlias());
-            Object fieldObject = f.getPostProcessedValue(Field.SELECT, rs.getObject(f.getAlias()), errors);
+            Object fieldObject = f.getPostProcessedValue(Field.SELECT, rs.getObject(f.getAlias()), record_processor.error_list);
             if (fieldObject == null) {
                 record_list.add(JsonNull.INSTANCE);
             } else if (f.isNumeric() == true) {
@@ -2112,142 +2066,95 @@ public class Table {
                 record_list.add(f.getFieldString(fieldObject));
             }
         }
-        for (int i = 0; i < ss.size(); i++) {
-            ServiceField sf = ss.get(i);
-            Object fieldObject = rs.getObject(sf.getAlias());
+        for (int i = 0; i < service_field_list.size(); i++) {
+            ServiceField service_field = service_field_list.get(i);
+            Object fieldObject = rs.getObject(service_field.getAlias());
             if (fieldObject == null) {
                 record_list.add(JsonNull.INSTANCE);
-            } else if (sf.isNumeric() == true) {
+            } else if (service_field.isNumeric() == true) {
                 record_list.add((Number) fieldObject);
-            } else if (sf.isBoolean() == true) {
-                record_list.add(sf.parseBoolean(fieldObject));
+            } else if (service_field.isBoolean() == true) {
+                record_list.add(service_field.parseBoolean(fieldObject));
             } else {
-                record_list.add(sf.getFieldString(rs.getObject(sf.getAlias())));
+                record_list.add(service_field.getFieldString(rs.getObject(service_field.getAlias())));
             }
         }
     }
     
     public void select(RecordProcessor record_processor, RecordHandler record_handler) throws Exception {
         
-        validateSelectCommand(record_processor, record_handler);
-        if (record_processor.getErrors().size() > 0) {
+        validateCommand(record_processor);
+        if (record_processor.hasErrors() == true) {
             return;
         }
-        JsonObject database_request = record_processor.getTableRequest();
-        
         if (record_handler.selectInject(record_processor) == false) {
-            /*JsonObject response = createJsonResponseObject(false, 400, "Invalid Update PreLogic");
-            response.add("errors", errors);
-            sendResponse(req, resp, 400, response);*/
             return;
-        }
-        
+        }        
         selectRecordSet(record_processor, record_handler);
     }
     
     public void selectRecordSet(RecordProcessor record_processor, RecordHandler record_handler) throws Exception {
         long t1, t2, t3, t4;
         t1 = System.nanoTime();
-        JsonObject json = record_processor.getTableRequest();
-        JsonArray errors = record_processor.getErrors();
-        ArrayList<Field> wf = new ArrayList<Field>();
-        ArrayList<ServiceField> ss = new ArrayList<ServiceField>();
-        ArrayList<String> s = JsonUtil.javaStringArrayList(JsonUtil.getJsonArray(json, "select", false));
-        String vt = json.get("view").getAsString();
-        JsonObject w = json.get("where").getAsJsonObject();
-        ArrayList<String> v = w.get("values") == null || w.get("values").isJsonNull() ? null : new ArrayList<String>(Arrays.asList(JsonUtil.javaStringArray(w.get("values").getAsJsonArray())));
-        ArrayList<Argument> ah = new ArrayList<Argument>();
-        ArrayList<Argument> av = new ArrayList<Argument>();
-        JsonElement jt = json.get("datasource");
-        String default_datasource_name = jt == null ? record_handler.getDefaultDatasourceName() : jt.getAsString();
+        Request reuest = record_processor.getTableRequest();
+        ArrayList<Field> where_field_list = new ArrayList<Field>();
+        ArrayList<ServiceField> service_field_list = new ArrayList<ServiceField>();
+        ArrayList<Argument> where_argument_list = new ArrayList<Argument>();
+        ArrayList<Argument> having_argument_list = new ArrayList<Argument>();
 
-        String sql = validateSelectStatement(json, wf, vt, s, ss, v, ah, av, w, errors);
+        String sql = validateSelectStatement(record_processor, where_field_list, service_field_list, where_argument_list, having_argument_list);
 
-        if (errors.size() > 0) {
-            errors.add("ERROR: validateSelectStatement.selectGson.validateSelectStatement");
+        if (record_processor.hasErrors() == true) {
+            record_processor.addError("ERROR: validateSelectStatement.selectGson.validateSelectStatement");
             return;
         }
 
         t2 = System.nanoTime();
-        try (Connection con = record_handler.getDatabaseConnection(default_datasource_name)) {
+        try (Connection con = record_handler.getDatabaseConnection(data_datasource_name)) {
             if (record_handler.selectPreLogic(record_processor, con) == false) {
-                /*JsonObject response = createJsonResponseObject(false, 400, "Invalid Select Pre Logic");
-                response.add("errors", errors);
-                sendResponse(req, resp, 400, response);*/
                 return;
             }
-            
-            /*
-            Debug connection is SSL ciphered
-            try (PreparedStatement preparedStmt = con.prepareStatement("SHOW STATUS LIKE 'Ssl_cipher'")) {
-                try (ResultSet rs = preparedStmt.executeQuery()) {
-                    while (rs.next() == true) {
-                        String sss = rs.getString(2);
-                        sss = sss;
-                    }
-                } catch(Exception ex) {
-                    ex = ex;
-                }
-            } catch(Exception ex) {
-                ex = ex;
-            }*/
-
-            try (PreparedStatement preparedStmt = con.prepareStatement(sql.toString())) {
+            try (PreparedStatement prepared_statement = con.prepareStatement(sql.toString())) {
                 int idx = 0;
-                for (Argument a : ah) {
-                    for (String sv : a.getValues()) {
-                        preparedStmt.setObject(++idx, sv);
+                for (Argument argument : having_argument_list) {
+                    for (String sv : argument.getValues()) {
+                        prepared_statement.setObject(++idx, sv);
                     }
                 }
-                for (Argument a : av) {
-                    for (String sv : a.getValues()) {
-                        preparedStmt.setObject(++idx, sv);
+                for (Argument argument : where_argument_list) {
+                    for (String sv : argument.getValues()) {
+                        prepared_statement.setObject(++idx, sv);
                     }
                 }
-                /*for (int i = 0; i < v.size(); i++) {
-                    preparedStmt.setObject(++idx, v.get(i));
-                }
-                if (table.hasSelectWhereCondition() == true) {
-                    //JsonArray selectFields = json.get("select").getAsJsonArray();
-                    ArrayList<Field> field_list = table.getSelectWhereConditionFields();
-                    for (int i = 0; i < field_list.size(); i++) {
-                        for (int x = 0; x < wf.size(); x++) {
-                            if (field_list.get(i).getAlias().equalsIgnoreCase(wf.get(x).getAlias())) {
-                                preparedStmt.setObject(++idx, v.get(i));
-                            }
-                        }
-                    }
-                }*/
-                //rs.beforeFirst();
                 JsonObject table_view = new JsonObject();
                 JsonArray view = null;
-                Boolean ne = false;
-                try (ResultSet rs = preparedStmt.executeQuery()) {
-                    ne = rs.isBeforeFirst();
+                Boolean empty_set = true;
+                try (ResultSet rs = prepared_statement.executeQuery()) {
+                    empty_set = !rs.isBeforeFirst();
                     t3 = System.nanoTime();
                     view = new JsonArray();
-                    if (vt.equalsIgnoreCase("process")) {
+                    if (reuest.response.equalsIgnoreCase("process")) {
                         while (rs.next() == true) {
                             JsonObject record_object = new JsonObject();
-                            processSelectedRecord(rs, json, record_object, s, errors);
+                            processSelectedRecord(record_processor, rs, record_object);
                             if (record_handler.selectPerRecordLogic(record_processor, rs, record_object) == false) {
                                 //do something!!
                             }
                             view.getAsJsonArray().add(record_object);
                         }
-                    } else if (vt.equalsIgnoreCase("object")) {
+                    } else if (record_processor.request.response.equalsIgnoreCase("object")) {
                         while (rs.next() == true) {
                             JsonObject record_object = new JsonObject();
-                            processSelectedObjectRecord(rs, json, record_object, s, ss, errors);
+                            processSelectedObjectRecord(record_processor, rs, record_object, service_field_list);
                             if (record_handler.selectPerRecordLogic(record_processor, rs, record_object) == false) {
                                 //do something!!
                             }
                             view.getAsJsonArray().add(record_object);
                         }
-                    } else if (vt.equalsIgnoreCase("array")) {
+                    } else if (reuest.response.equalsIgnoreCase("array")) {
                         while (rs.next() == true) {
                             JsonArray record_list = new JsonArray();
-                            processSelectedArrayRecord(rs, json, record_list, s, ss, errors);
+                            processSelectedArrayRecord(record_processor, rs, record_list, service_field_list);
                             if (record_handler.selectPerRecordLogic(record_processor, rs, record_list) == false) {
                                 //do something!!
                             }
@@ -2255,25 +2162,25 @@ public class Table {
                         }
                     }
                     
-                    table_view.add(table_name, view);
-                    JsonArray child_view_list = new JsonArray();
-                    table_view.add("children", child_view_list);
+                    table_view.add(request_table.table_name, view);
+                    JsonObject child_response_view = new JsonObject();
+                    table_view.add("children", child_response_view);
                     for (int i = 0; i < child_table_list.size(); i++) {
                         Table child_table = child_table_list.get(i);
-                        child_table.selectRecordSet(record_processor.getChildTableRecordProcessor(child_table.table_name), record_handler);
-                        JsonObject child_view = record_processor.getDatabaseView();
-                        child_view_list.add(child_view);
+                        child_table.select(record_processor.getChildTableRecordProcessor(child_table.request_table.table_name), record_handler);
+                        JsonElement child_view = record_processor.getDatabaseView();
+                        child_response_view.add(child_table.getTableName(), child_view);
                     }
                     
                 } catch (Exception sqlx) {
                     throw sqlx;
                 }
-                if (record_handler.selectPostLogic(record_processor, con, json, view) == false || record_handler.selectEject(record_processor) == false) {
-                    //errors.add("Select completed but with post logic errors encountered");
+                if (record_handler.selectPostLogic(record_processor, con, view) == false || record_handler.selectEject(record_processor) == false) {
+                    //error_list.add("Select completed but with post logic error_list encountered");
                     return;
                 }
                 t4 = System.nanoTime();
-                if (errors.size() > 0) {
+                if (record_processor.hasErrors() == true) {
                     throw new Exception("SELECT PROGRAM INTERNAL SEQUENCE ERROR");
                 }
                 
@@ -2291,7 +2198,7 @@ public class Table {
     /************ INSERT PROCESSOR ********************************************/
     /**************************************************************************/
     
-    public String validateInsertSetStatement(JsonObject json, JsonArray errorList) throws Exception {
+    public String validateInsertSetStatement(JsonObject json) throws Exception {
         StringBuilder sql = new StringBuilder(insert_set_statement);
         JsonObject set = json.get("set").getAsJsonObject();
         Set<String> keys = set.keySet();
@@ -2307,31 +2214,31 @@ public class Table {
         //insert_set_statement_fields_alias
         //Validate Mandatory Paramters
         String c = w.get("clause").getAsString();
-        String[] o = javaStringArray(json.get("orderby").getAsJsonArray());
+        String[] o = javaStringArray(json.get("order_by_list").getAsJsonArray());
         StringBuilder ww = new StringBuilder();
         StringBuilder hh = new StringBuilder();
         
         StringBuilder query = new StringBuilder(select_statement);
         
-        JsonArray errors = new JsonArray();
-        if (areValidSelectFields(s, tableFields, select_fields, errors) == false) {
-            sendError(req, resp, "INVALID_DATABASE_REQUEST_FIELDS_VALUES", "ERROR", "validateInsertSetStatement", 400, 1400, errors);
+        JsonArray error_list = new JsonArray();
+        if (areValidSelectFields(s, tableFields, select_fields, error_list) == false) {
+            sendError(req, resp, "INVALID_DATABASE_REQUEST_FIELDS_VALUES", "ERROR", "validateInsertSetStatement", 400, 1400, error_list);
             return null;
         }
         
         if (c.replaceAll("[^?]", "").length() != wv.length) {
-            sendError(req, resp, "INVALID_DATABASE_REQUEST_FIELDS_VALUES", "ERROR", "validateInsertSetStatement", 400, 1400, errors);
+            sendError(req, resp, "INVALID_DATABASE_REQUEST_FIELDS_VALUES", "ERROR", "validateInsertSetStatement", 400, 1400, error_list);
             return null;
         }
         
-        if (isValidClause(c, tableFields, wf, wv, ww, hh, errors) == false) {
-            sendError(req, resp, "INVALID_DATABASE_REQUEST_FIELDS_VALUES", "ERROR", "validateInsertSetStatement", 400, 1400, errors);
+        if (isValidClause(c, tableFields, wf, wv, ww, hh, error_list) == false) {
+            sendError(req, resp, "INVALID_DATABASE_REQUEST_FIELDS_VALUES", "ERROR", "validateInsertSetStatement", 400, 1400, error_list);
             return null;
         }
         
-        String oo = getFieldsOrderBy(vt, o, errors);
-        if (errors.size() > 0) {
-            sendError(req, resp, "INVALID_DATABASE_REQUEST_FIELDS_VALUES", "ERROR", "validateInsertSetStatement", 400, 1400, errors);
+        String oo = getFieldsOrderBy(vt, o, error_list);
+        if (error_list.size() > 0) {
+            sendError(req, resp, "INVALID_DATABASE_REQUEST_FIELDS_VALUES", "ERROR", "validateInsertSetStatement", 400, 1400, error_list);
             return null;
         }
         //
@@ -2365,7 +2272,7 @@ public class Table {
         return query.toString();*/
     }
     
-    public int insertValues(Connection con, PreparedStatement prepared_statement, JsonArray values, JsonObject variable, Returns returns) throws Exception {
+    public int insertValues(Connection con, PreparedStatement prepared_statement, JsonArray values, Map<String, String> variables, Returns returns) throws Exception {
         int affected_rows = 0;
         for (int oo = 0; oo < values.size(); oo++) {
             JsonObject o = values.get(oo).getAsJsonObject();
@@ -2402,10 +2309,10 @@ public class Table {
             for (int oo = 0; oo < values.size(); oo++) {
                 JsonObject o = values.get(oo).getAsJsonObject();
                 if (insert_statement_select == null) {
-                    if (variable == null) {
-                        throw new Exception("Variable is Null");
+                    if (variables == null) {
+                        throw new Exception("Variables are Null");
                     }
-                    createRuntimeInsertStatementSelect(variable);
+                    createRuntimeInsertStatementSelect(variables);
                 }
                 try (PreparedStatement preparedInsertedSelectStmt = con.prepareStatement(insert_statement_select)) {
                     int idx = 0;
@@ -2469,7 +2376,7 @@ public class Table {
     /************ UPDATE PROCESSOR ********************************************/
     /**************************************************************************/
     
-    public String validateUpdateWhereStatement(String c, JsonArray v, JsonArray wff, JsonArray wvv, ArrayList<Field> uf, ArrayList<ArrayList<Object>> ufv, ArrayList<Argument> wa, ArrayList<Argument> ha, JsonArray errors) throws Exception {
+    public String validateUpdateWhereStatement(RecordProcessor record_processor, String c, JsonArray v, JsonArray wff, JsonArray wvv, ArrayList<Field> uf, ArrayList<ArrayList<Object>> ufv, ArrayList<Argument> wa, ArrayList<Argument> ha) throws Exception {
         //Validate Mandatory Paramters
         ArrayList<String> vv = wvv == null ? null : new ArrayList<String>(Arrays.asList(JsonUtil.javaStringArray(wvv.getAsJsonArray())));
         ArrayList<String> ff = wff == null ? null : new ArrayList<String>(Arrays.asList(JsonUtil.javaStringArray(wff.getAsJsonArray())));
@@ -2480,13 +2387,13 @@ public class Table {
 
         StringBuilder query = new StringBuilder(update_statement);
 
-        if (areValidUpdateFieldsValues(getFieldMap(), v, ff, update_fields, errors) == false) {
-            errors.add("ERROR: validateUpdateWhereStatement.areValidUpdateFieldsValues");
+        if (areValidUpdateFieldsValues(record_processor, getFieldMap(), v, ff, update_fields, record_processor.error_list) == false) {
+            record_processor.addError("ERROR: validateUpdateWhereStatement.areValidUpdateFieldsValues");
             return null;
         }
 
-        if (c == null || c.length() == 0 || (ff == null && vv == null) || isValidClause(Field.UPDATE, c, getFieldMap(), wf, vv, ww, hh, wa, ha, errors) == false) {
-            errors.add("ERROR: validateUpdateWhereStatement.isValidClause");
+        if (c == null || c.length() == 0 || (ff == null && vv == null) || isValidClause(record_processor, Field.UPDATE, c, getFieldMap(), wf, vv, ww, hh, wa, ha) == false) {
+            record_processor.addError("ERROR: validateUpdateWhereStatement.isValidClause");
             return null;
         }
         //
@@ -2496,15 +2403,15 @@ public class Table {
             ArrayList<Object> r = new ArrayList<>();
             JsonObject jsonObject = v.get(i).getAsJsonObject();
             if (jsonObject == null) {
-                errors.add("Null Json Object on group [" + i + "]");
+                record_processor.addError("Null Json Object on group [" + i + "]");
             } else if (jsonObject.size() == 0) {
-                errors.add("Empty Json Object on group [" + i + "]");
+                record_processor.addError("Empty Json Object on group [" + i + "]");
             } else if (job != null && jsonObject.size() != job.size()) {
-                errors.add("Json Object has different elements count on group [" + i + "]");
+                record_processor.addError("Json Object has different elements count on group [" + i + "]");
             }
             job = jsonObject;
-            if (errors.size() > 0) {
-                errors.add("ERROR: validateUpdateWhereStatement.Fields");
+            if (record_processor.hasErrors() == true) {
+                record_processor.addError("ERROR: validateUpdateWhereStatement.Fields");
                 return null;
             }
             if (uf.size() == 0) {
@@ -2513,14 +2420,14 @@ public class Table {
                     Field f = getField(fn);
                     if (primary_keys != null && primary_keys.contains(fn) == true) {
                         //ignore
-                        //errors.add("Field '" + fn + "' is a primary key and is not allowed for update");
+                        //error_list.add("Field '" + fn + "' is a primary key and is not allowed for update");
                     } else if (f == null && ff != null && ff.contains(fn) == false) {
-                        errors.add("Field '" + fn + "' is unknowen to where field_list");
+                        record_processor.addError("Field '" + fn + "' is unknowen to where field_list");
                     } else if (f == null && ff != null && ff.contains(fn) == true) {
                         /*uf.add(f);
                         uu.append(f.getSQLName()).append("=?, ");*/
                     } else if (f == null) {
-                        errors.add("Field '" + fn + "' is not a valid field name");
+                        record_processor.addError("Field '" + fn + "' is not a valid field name");
                     } else if (f.isPrimaryKey() == false) {
                         nonPrimaryKeysExists = true;
                         uf.add(f);
@@ -2532,12 +2439,12 @@ public class Table {
                     }
                 }
                 if (nonPrimaryKeysExists == false) {
-                    errors.add("Update abortred, no update can be performed over primary keys only record");
+                    record_processor.addError("Update abortred, no update can be performed over primary keys only record");
                 } else {
                     uu.delete(uu.length() - 2, uu.length());
                 }
-                if (errors.size() > 0) {
-                    errors.add("ERROR: validateUpdateWhereStatement.UPDATE_ABORTED");
+                if (record_processor.hasErrors() == true) {
+                    record_processor.addError("ERROR: validateUpdateWhereStatement.UPDATE_ABORTED");
                     return null;
                 }
             }
@@ -2546,17 +2453,17 @@ public class Table {
                 Field f = uf.get(x);
                 String ue = JsonUtil.getJsonString(jsonObject, f.getAlias(), false);
                 if (f.isValid(Field.UPDATE, ue, er) == false) {
-                    errors.add(er.toString() + ", check in group index[" + (i + 1) + "]");
+                    record_processor.error_list.add(er.toString() + ", check in group index[" + (i + 1) + "]");
                 } else {
-                    String preProcessedValue = f.getPreProcessedValue(Field.UPDATE, ue, errors);
-                    if (errors.size() > 0) {
-                        errors.add("ERROR: validateUpdateWhereStatement.PRE_PROCESS");
+                    String preProcessedValue = f.getPreProcessedValue(Field.UPDATE, ue, record_processor.error_list);
+                    if (record_processor.hasErrors() == true) {
+                        record_processor.addError("ERROR: validateUpdateWhereStatement.PRE_PROCESS");
                         return null;
                     }
                     r.add(f.getFieldObject(preProcessedValue));
                 }
             }
-            if (errors.size() > 0) {
+            if (record_processor.hasErrors() == true) {
                 continue;
             }
             for (int x = jsonObject.size(); x < wf.size() + jsonObject.size(); x++) {
@@ -2568,7 +2475,7 @@ public class Table {
                     ue = JsonUtil.getJsonString(jsonObject, wff.get(x - jsonObject.size()).getAsString(), false);
                 }
                 if (f.isValid(Field.UPDATE, ue, er) == false) {
-                    errors.add(er.toString());
+                    record_processor.addError(er.toString());
                 } else {
                     r.add(f.getFieldObject(ue));
                 }
@@ -2576,8 +2483,8 @@ public class Table {
             ufv.add(r);
         }
 
-        if (errors.size() > 0) {
-            errors.add("ERROR: validateUpdateWhereStatement.FIELD_VALIDATION");
+        if (record_processor.hasErrors() == true) {
+            record_processor.addError("ERROR: validateUpdateWhereStatement.FIELD_VALIDATION");
             return null;
         }
 
@@ -2607,7 +2514,7 @@ public class Table {
     /************ DELETE PROCESSOR ********************************************/
     /**************************************************************************/
     
-    public String validateDeleteWhereStatement(String c, JsonArray v, JsonArray wff, JsonArray wvv, ArrayList<Field> uf, ArrayList<ArrayList<Object>> ufv, ArrayList<Argument> wa, ArrayList<Argument> ha, JsonArray errors) throws Exception {
+    public String validateDeleteWhereStatement(RecordProcessor record_processor, String c, JsonArray v, JsonArray wff, JsonArray wvv, ArrayList<Field> uf, ArrayList<ArrayList<Object>> ufv, ArrayList<Argument> wa, ArrayList<Argument> ha) throws Exception {
         //Validate Mandatory Paramters
         ArrayList<String> vv = wvv == null ? null : new ArrayList<String>(Arrays.asList(JsonUtil.javaStringArray(wvv.getAsJsonArray())));
         ArrayList<String> ff = wff == null ? null : new ArrayList<String>(Arrays.asList(JsonUtil.javaStringArray(wff.getAsJsonArray())));
@@ -2618,8 +2525,8 @@ public class Table {
 
         StringBuilder query = new StringBuilder(delete_statement);
 
-        if (c == null || c.length() == 0 || (ff == null && vv == null) || isValidClause(Field.INSERT, c, getFieldMap(), wf, vv, ww, hh, wa, ha, errors) == false) {
-            errors.add("ERROR: validateUpdateWhereStatement.validateDeleteWhereStatement.isValidClause");
+        if (c == null || c.length() == 0 || (ff == null && vv == null) || isValidClause(record_processor, Field.INSERT, c, getFieldMap(), wf, vv, ww, hh, wa, ha) == false) {
+            record_processor.addError("ERROR: validateDeleteWhereStatement.validateDeleteWhereStatement.isValidClause");
             return null;
         }
 
@@ -2628,38 +2535,38 @@ public class Table {
             ArrayList<Object> r = new ArrayList<>();
             JsonObject jsonObject = v.get(i).getAsJsonObject();
             if (jsonObject == null) {
-                errors.add("Null Json Object on group [" + i + "]");
+                record_processor.addError("Null Json Object on group [" + i + "]");
             } else if (jsonObject.size() == 0) {
-                errors.add("Empty Json Object on group [" + i + "]");
+                record_processor.addError("Empty Json Object on group [" + i + "]");
             } else if (job != null && jsonObject.size() != job.size()) {
-                errors.add("Json Object has different elements count on group [" + i + "]");
+                record_processor.addError("Json Object has different elements count on group [" + i + "]");
             }
             job = jsonObject;
-            if (errors.size() > 0) {
-                errors.add("ERROR: validateUpdateWhereStatement.validateDeleteWhereStatement.Fields");
+            if (record_processor.hasErrors() == true) {
+                record_processor.addError("ERROR: validateDeleteWhereStatement.validateDeleteWhereStatement.Fields");
                 return null;
             }
             if (uf.size() == 0) {
                 for (String alias : jsonObject.keySet()) {
                     Field f = getField(alias);
                     /*if (primary_keys != null && primary_keys.contains(fn) == true) {
-                        errors.add("Field '" + fn + "' is a primary key and is not allowed for delete");
+                        error_list.add("Field '" + fn + "' is a primary key and is not allowed for delete");
                     } else */
                     if (f == null && ff != null && ff.contains(alias) == false) {
-                        errors.add("Field '" + alias + "' is unknowen to where field_list");
+                        record_processor.addError("Field '" + alias + "' is unknowen to where field_list");
                     } else if (f == null && ff != null && ff.contains(alias) == true) {
                         /*uf.add(f);
                         uu.append(f.getSQLName()).append("=?, ");*/
                     } else if (f == null) {
-                        errors.add("Field '" + alias + "' is not a valid field name");
+                        record_processor.addError("Field '" + alias + "' is not a valid field name");
                     } else {
                         uf.add(f);
                         //uu.append(f.getSQLName()).append("=?, ");
                     }
                 }
                 //uu.delete(uu.length() - 2, uu.length());
-                if (errors.size() > 0) {
-                    errors.add("ERROR: validateUpdateWhereStatement.validateDeleteWhereStatement.PRE_PROCESS");
+                if (record_processor.hasErrors() == true) {
+                    record_processor.addError("ERROR: validateDeleteWhereStatement.validateDeleteWhereStatement.PRE_PROCESS");
                     return null;
                 }
             }
@@ -2669,12 +2576,12 @@ public class Table {
                 Field f = uf.get(x);
                 String ue = getJsonString(jsonObject, f.getAlias());
                 if (f.isValid(Field.DELETE, ue, er) == false) {
-                    errors.add(er.toString() + "in group index[" + i + "]");
+                    error_list.add(er.toString() + "in group index[" + i + "]");
                 } else {
                     r.add(f.getFieldObject(ue));
                 }
             }
-            if (errors.size() > 0) {
+            if (error_list.size() > 0) {
                 continue;
             }*/
             for (int x = jsonObject.size(); x < wf.size() + jsonObject.size(); x++) {
@@ -2686,7 +2593,7 @@ public class Table {
                     ue = JsonUtil.getJsonString(jsonObject, wff.get(x - jsonObject.size()).getAsString(), false);
                 }
                 if (f.isValid(Field.DELETE, ue, er) == false) {
-                    errors.add(er.toString());
+                    record_processor.addError(er.toString());
                 } else {
                     r.add(f.getFieldObject(ue));
                 }
@@ -2694,8 +2601,8 @@ public class Table {
             ufv.add(r);
         }
 
-        if (errors.size() > 0) {
-            errors.add("ERROR: validateUpdateWhereStatement.validateDeleteWhereStatement.FIELD_VALIDATION");
+        if (record_processor.hasErrors() == true) {
+            record_processor.addError("ERROR: validateDeleteWhereStatement.validateDeleteWhereStatement.FIELD_VALIDATION");
             return null;
         }
 
@@ -2720,11 +2627,11 @@ public class Table {
     /**
      * @param model_jdbc_source
      * @param model_id
-     * @param errors
+     * @param error_list
      * @throws java.lang.Exception
      */
     
-    public static void loadDataModel(String secret_key, JDBCSource model_jdbc_source, JDBCSource data_jdbc_source, Integer model_id, HashMap<String, Class> interface_implementation, JsonArray errors) throws Exception {
+    public static void loadDataModel(String secret_key, JDBCSource model_jdbc_source, JDBCSource data_jdbc_source, Integer model_id, HashMap<String, Class> interface_implementation, JsonArray error_list) throws Exception {
         Integer model_instance_id = 1;
         DataClass.LoadMethod loadMethod = DataClass.LoadMethod.REFLECTION;
         DataLookup data_lookup = null;
@@ -2737,7 +2644,7 @@ public class Table {
                 try (ResultSet rs = stmt.executeQuery()) {
                     ArrayList<ModelDefinition> data_model_definition_list = JsonResultset.resultset(rs, ModelDefinition.class);
                     if (data_model_definition_list == null || data_model_definition_list.size() == 0) {
-                        errors.add("Data Model ID '"+model_id+"' is not exist");
+                        error_list.add("Data Model ID '"+model_id+"' is not exist");
                     } else {
                         data_model_definition = data_model_definition_list.get(0);
                     }
@@ -2775,24 +2682,24 @@ public class Table {
         }
     }
     
-    private void initializeTable(Integer model_id, JsonArray error_list) throws Exception {
+    private void initializeTable(Integer model_id, JsonArray table_error_list) throws Exception {
         EnterpriseModel<Enterprise> enterprise_model = data_model_map.get(model_id);
-        net.reyadeyat.relational.api.model.Table database_table = enterprise_model.getInstance().getDatabase(database_name).getTable(table_name);
-        for(net.reyadeyat.relational.api.model.Field table_field: database_table.field_list) {
-            String field_alias = table_field.name;
+        net.reyadeyat.relational.api.model.Table database_table = enterprise_model.getInstance().getDatabase(data_database_name).getTable(request_table.table_name);
+        for (RequestField request_field : request_table.request_field_list) {
+            net.reyadeyat.relational.api.model.Field table_field = database_table.field_map.get(request_field.field_name);
+            if (table_field == null) {
+                table_error_list.add("Request Field '"+request_field.field_name+"' not found in Table '"+request_table.table_name+"'");
+            }
             FieldType field_type = FieldType.getClassFieldType(table_field.getTypeJavaClass());
             Boolean nullable = table_field.nullable;
-            Boolean group = false;
-            String field_name = table_field.name;
-            Field field = addField(field_alias, field_type, nullable, group, field_name);
+            Boolean group_by = false;
+            Field field = addField(request_field.field_name, request_field.field_alias, nullable, group_by, field_type, table_error_list);
             if (table_field.getTypeJavaClass().equals(String.class) == true) {
                 field.setTexLengthRange(0, table_field.size);
             } else if (table_field.getTypeJavaClass().equals(Number.class) == true) {
                 field.setNumberRange(0, table_field.size);
             }
         }
-        
-        database_table = database_table;
         
         //scan table
         //add field_list
@@ -2836,91 +2743,46 @@ public class Table {
         //addField("customer_verified_by_mobile_code_sent", FieldType.Boolean, true, false, "customer_verified_by_mobile_code_sent");
         */
     }
-    
-    private void validateSelectCommand(RecordProcessor record_processor, RecordHandler record_handler) throws Exception {
-        JsonObject database_request = record_processor.getTableRequest();
-        if (database_request.get("engine") == null || database_request.get("engine").isJsonNull()) {
-            record_processor.addError("Select command misses 'engin' property");
-        } else if (database_request.get("view") == null || database_request.get("view").isJsonNull()) {
-            record_processor.addError("Select command misses 'view' property");
-        } else if (database_request.get("select") == null || database_request.get("select").isJsonNull()) {
-            record_processor.addError("Select command misses 'select' array");
-        } else if (database_request.get("select").isJsonArray() == false) {
-            record_processor.addError("Select command has 'select' object while 'select' must be array");
-        } else if (database_request.get("where") == null || database_request.get("where").isJsonNull()) {
-            record_processor.addError("Select command misses 'where' compound object");
-        } else if (database_request.get("where").getAsJsonObject().get("clause") == null || database_request.get("where").getAsJsonObject().get("clause").isJsonNull()) {
-            record_processor.addError("Select command misses 'where.clause' property");
-        } else if (database_request.get("where").getAsJsonObject().get("values") == null || database_request.get("where").getAsJsonObject().get("values").isJsonNull()) {
-            record_processor.addError("Select command misses 'where.values' array");
-        } else if (database_request.get("orderby") == null || database_request.get("orderby").isJsonNull()) {
-            record_processor.addError("Select command misses 'orderby' array");
-        }
 
-        JsonElement jt;
-        jt = database_request.get("engine");
-        String engine = jt == null ? null : jt.getAsString();
-        jt = database_request.get("view");
-        String view = jt == null ? null : jt.getAsString();
-
-        jt = database_request.get("datasource");
-        String datasource_name = jt == null ? null : jt.getAsString();
-        if (datasource_name == null) {
-            datasource_name = record_handler.getDefaultDatasourceName();
-            database_request.addProperty("datasource", datasource_name);
+    private void validateCommand(RecordProcessor record_processor) throws Exception {
+        Request request = record_processor.getTableRequest();
+        if ((request.value_map == null || request.value_map.size() == 0) 
+                && (request.insert_field_map == null && request.update_field_map == null && request.delete_field_map == null)) {
+            record_processor.addError(record_processor.getCommand() + " command misses 'values' array");
         }
-        //Check data source is loaded
-        if (record_handler.getDataSource(datasource_name) == null) {
-            record_processor.addError("Datasource '" + datasource_name + "' not pooled on this container!");
-        }
-
-        if (engine.equalsIgnoreCase("memory") == false && engine.equalsIgnoreCase("stream") == false) {
-            record_processor.addError("Undefined engine type '" + engine + "' define ['memory', 'stream']");
-        }
-        if (view.equalsIgnoreCase("object") == false && view.equalsIgnoreCase("array") == false && view.equalsIgnoreCase("process") == false) {
-            record_processor.addError("Undefined view type '" + view + "' define ['object', 'array', 'process']");
-        }
-        if (engine.equalsIgnoreCase("memory") == false && view.equalsIgnoreCase("process") == true) {
-            record_processor.addError("engine 'memory' is required for 'process' view");
-        }
-    }
-
-    private void validateDeleteCommand(RecordProcessor record_processor) throws Exception {
-        JsonObject database_request = record_processor.getTableRequest();
-        if (database_request.get("values") == null || database_request.get("values").isJsonNull()) {
-            record_processor.addError("Delete command misses 'values' array");
-        } else if (database_request.get("values").isJsonArray() == false) {
-            record_processor.addError("Delete command has 'values' object while 'values' must be array");
-        } else if (database_request.get("values").getAsJsonArray().size() == 0) {
-            record_processor.addError("Delete command has an empyt 'values' array");
-        } else if (database_request.get("where") == null || database_request.get("where").isJsonNull()) {
-            record_processor.addError("Delete command misses 'where' compound object");
-        } else if (database_request.get("where").getAsJsonObject().get("clause") == null || database_request.get("where").getAsJsonObject().get("clause").isJsonNull()) {
-            record_processor.addError("Delete command misses 'where.clause' object");
-        } else if ((database_request.get("where").getAsJsonObject().get("values") == null || database_request.get("where").getAsJsonObject().get("values").isJsonNull())
-                && (database_request.get("where").getAsJsonObject().get("field_list") == null || database_request.get("where").getAsJsonObject().get("field_list").isJsonNull())) {
-            record_processor.addError("Delete command misses but shall have either 'where.values' or 'where.field_list' compound object");
+        if (record_processor.is_select() == true) {
+            String response = record_processor.getResponseView();
+            if (response.equalsIgnoreCase("object") == false && response.equalsIgnoreCase("array") == false && response.equalsIgnoreCase("process") == false) {
+                record_processor.addError("Unknown response type '" + response + "' define ['tabular', 'tree', 'process']");
+            } else if (request.where == null) {
+                record_processor.addError("Select command misses 'where' compound object");
+            } else if (request.where.clause == null) {
+                record_processor.addError("Select command misses 'where.clause' property");
+            } else if (request.where.values == null) {
+                record_processor.addError("Select command misses 'where.values' array");
+            } else if (request.order_by_list == null) {
+                record_processor.addError("Select command misses 'order_by_list' array");
+            }
         }
     }
     
-    public void process(String table_name, JsonObject table_request, OutputStream response_output_stream, RecordHandler record_handler) throws Exception {
-        RecordProcessor record_processor = new RecordProcessor(table_name, table_request, response_output_stream);
-        Map<String, JsonElement> table_map = table_request.asMap();
-        for (Map.Entry<String, JsonElement> request: table_map.entrySet()) {
-            String transaction_type = request.getKey();
-            if (transaction_type == null || transaction_type_list.contains(transaction_type) == false) {
-                record_processor.addError("Bad Request, invalid transaction [" + transaction_type + "] - valid transactions are [" + transaction_type_list + "]");
-                return;
-            }
-            if (transaction_type.equalsIgnoreCase("select")) {
-                select(record_processor, record_handler);
-            } else if (transaction_type.equalsIgnoreCase("update")) {
-                
-            } else if (transaction_type.equalsIgnoreCase("insert")) {
-                
-            } else if (transaction_type.equalsIgnoreCase("delete")) {
-                
-            }
+    public void process(RecordProcessor record_processor, RecordHandler record_handler) throws Exception {
+        if (record_processor.is_select() == true) {
+            select(record_processor, record_handler);
+        } else if (record_processor.is_update() == true) {
+
+        } else if (record_processor.is_insert() == true) {
+
+        } else if (record_processor.is_delete() == true) {
+
+        }
+        if (child_table_map == null || child_table_map.size() == 0) {
+            return;
+        }
+        for (int i = 0; i < record_processor.child_list.size(); i++) {
+            RecordProcessor child_record_processor = record_processor.child_list.get(i);
+            Table child_table = child_table_map.get(child_record_processor.request.table_alias);
+            child_table.process(child_record_processor, record_handler);
         }
     }
 }

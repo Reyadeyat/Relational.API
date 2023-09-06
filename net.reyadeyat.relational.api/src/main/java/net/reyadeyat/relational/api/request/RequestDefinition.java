@@ -14,9 +14,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package net.reyadeyat.relational.api.jdbc;
+package net.reyadeyat.relational.api.request;
 
-import java.sql.Connection;
+import com.google.gson.annotations.SerializedName;
+import java.util.List;
 
 /**
  * 
@@ -28,16 +29,17 @@ import java.sql.Connection;
  * 
  * @since 2023.01.01
  */
-public interface JDBCSource {
-    Connection getConnection(Boolean auto_commit) throws Exception;
-    String getDataSourceName() throws Exception;
-    String getUserName() throws Exception;
-    String getUserPassword() throws Exception;
-    String getDatabaseEngine() throws Exception;
-    String getURL() throws Exception;
-    String getDatabaseServer() throws Exception;
-    String getDatabaseName() throws Exception;
-    String getDatabaseSchema() throws Exception;
-    String getDatabaseOpenQuote() throws Exception;
-    String getDatabaseCloseQuote() throws Exception;
+public class RequestDefinition {
+    public String service_name;
+    public Integer model_id;
+    public String model_datasource_name;
+    public String data_datasource_name;
+    public String data_database_name;
+    public String secret_key;
+    @SerializedName("request_table")
+    public RequestTable request_table;
+    
+    public void init() {
+        request_table.init();
+    }
 }

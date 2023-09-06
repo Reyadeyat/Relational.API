@@ -80,14 +80,20 @@ public class TestModelingRequest extends ModelingRequest {
         System.out.println(value);
         
         try {
-            Connection jdbc_connection = data_jdbc_source.getConnection(true);
+            registered_jdbcsource_map.put(model_jdbc_source.getDatabaseName(), model_jdbc_source);
+            registered_jdbcsource_map.put(data_jdbc_source.getDatabaseName(), data_jdbc_source);
+        } catch (Exception ex) {
+            Logger.getLogger(TestRelationalRequest.class.getName()).log(Level.SEVERE, ex.getMessage(), ex);
+        }
+        
+        try (Connection jdbc_connection = data_jdbc_source.getConnection(true)) {
             Integer security_flag = SECURITY_FLAG_ASSERT_VALID_FIELD_NAMES | SECURITY_FLAG_RETURN_DESCRIPTIVE_RESPONSE_MESSAGE | SECURITY_FLAG_RETURN_GENERATED_ID;
             Gson gson = JsonUtil.gson();
             //JsonObject model_transaction_request = gson.fromJson(model_transaction_request_json_text, JsonObject.class);
             JsonArray log_list = new JsonArray();
             
-            //ByteArrayOutputStream response_output_stream = new ByteArrayOutputStream();
-            FileOutputStream response_output_stream = new FileOutputStream(new File("/linux/reyadeyat/projects/open-source/Relational.API/modeling.sql"));
+            ByteArrayOutputStream response_output_stream = new ByteArrayOutputStream();
+            //FileOutputStream response_output_stream = new FileOutputStream(new File("/linux/reyadeyat/projects/open-source/Relational.API/modeling.sql"));
             
             JsonArray error_list = new JsonArray();
             TestModelingRequest modeling_request = new TestModelingRequest();
@@ -156,18 +162,6 @@ public class TestModelingRequest extends ModelingRequest {
     }
     
     private static String data_database = "parental";
-    
-    /*private static String model_transaction_request_json_text = """
-            {
-                "service_name": "parental_service",
-                "default_datasource_name": "%s",
-                "database_name": "%s",
-                "model_id": "500",
-                "model_datasource_name": "model",
-                "data_datasource_name": "%s",
-                "secret_key": "1234567890"
-            }
-            """.formatted(data_database, data_database, data_database);*/
     
     private static String model_service_build_request_json_text = """
     {
@@ -310,6 +304,9 @@ public class TestModelingRequest extends ModelingRequest {
     }
     """.formatted(data_database, data_database, data_database, data_database, data_database);
     
+    private static HashMap<String, DataSource> registered_datasource_map = new HashMap<>();
+    private static HashMap<String, JDBCSource> registered_jdbcsource_map = new HashMap<>();
+    
     private static String model_version = "0.0.0.0001";
 
     private static JDBCSource data_jdbc_source = new JDBCSource() {
@@ -320,6 +317,11 @@ public class TestModelingRequest extends ModelingRequest {
         private static final String database_schema = "";
         private static final String mysql_database_field_open_quote = "`";
         private static final String mysql_database_field_close_quote = "`";
+        
+        @Override
+        public String getDataSourceName() throws Exception {
+            return getDatabaseName();
+        }
 
         @Override
         public Connection getConnection(Boolean auto_commit) throws Exception {
@@ -384,6 +386,11 @@ public class TestModelingRequest extends ModelingRequest {
         private static final String mysql_database_field_open_quote = "`";
         private static final String mysql_database_field_close_quote = "`";
 
+        @Override
+        public String getDataSourceName() throws Exception {
+            return getDatabaseName();
+        }
+        
         @Override
         public Connection getConnection(Boolean auto_commit) throws Exception {
             //CREATE DATABASE `data` CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
