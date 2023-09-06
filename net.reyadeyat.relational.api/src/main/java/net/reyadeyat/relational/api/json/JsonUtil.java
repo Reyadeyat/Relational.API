@@ -228,9 +228,9 @@ public class JsonUtil {
         }
     }
     
-    static private void isNull(JsonObject jsonObject, String jsonProperty, Boolean nullable) throws Exception {
-        if (nullable == false && (jsonObject.get(jsonProperty) == null || jsonObject.get(jsonProperty).isJsonNull() == true)) {
-            throw new Exception("Json Object property '"+jsonProperty+"' is null");
+    static private void isNull(JsonObject json_object, String json_property, Boolean nullable) throws Exception {
+        if (nullable == false && (json_object.get(json_property) == null || json_object.get(json_property).isJsonNull() == true)) {
+            throw new Exception("Json Object property '"+json_property+"' is null");
         }
     }
 
@@ -240,39 +240,43 @@ public class JsonUtil {
         }
     }
     
-    static public JsonObject getJsonObject(JsonObject jsonObject, String jsonProperty, Boolean nullable) throws Exception {
-        JsonUtil.isNull(jsonObject, jsonProperty, nullable);
-        return jsonObject.get(jsonProperty) == null || jsonObject.get(jsonProperty).isJsonNull() == true ? null : jsonObject.get(jsonProperty).getAsJsonObject();
+    static public Boolean hasProperty(JsonObject json_object, String json_property) throws Exception {
+        return json_object.get(json_property) != null;
     }
     
-    static public JsonArray getJsonArray(JsonObject jsonObject, String jsonProperty, Boolean nullable) throws Exception {
-        JsonUtil.isNull(jsonObject, jsonProperty, nullable);
-        return jsonObject.get(jsonProperty) == null || jsonObject.get(jsonProperty).isJsonNull() == true ? null : jsonObject.get(jsonProperty).getAsJsonArray();
+    static public JsonObject getJsonObject(JsonObject json_object, String json_property, Boolean nullable) throws Exception {
+        JsonUtil.isNull(json_object, json_property, nullable);
+        return json_object.get(json_property) == null || json_object.get(json_property).isJsonNull() == true ? null : json_object.get(json_property).getAsJsonObject();
     }
     
-    static public String getJsonString(JsonObject jsonObject, String jsonProperty, Boolean nullable) throws Exception {
-        JsonUtil.isNull(jsonObject, jsonProperty, nullable);
-        return jsonObject.get(jsonProperty) == null || jsonObject.get(jsonProperty).isJsonNull() == true ? null : jsonObject.get(jsonProperty).getAsString();
+    static public JsonArray getJsonArray(JsonObject json_object, String json_property, Boolean nullable) throws Exception {
+        JsonUtil.isNull(json_object, json_property, nullable);
+        return json_object.get(json_property) == null || json_object.get(json_property).isJsonNull() == true ? null : json_object.get(json_property).getAsJsonArray();
+    }
+    
+    static public String getJsonString(JsonObject json_object, String json_property, Boolean nullable) throws Exception {
+        JsonUtil.isNull(json_object, json_property, nullable);
+        return json_object.get(json_property) == null || json_object.get(json_property).isJsonNull() == true ? null : json_object.get(json_property).getAsString();
     }
 
-    static public Boolean getJsonBoolean(JsonObject jsonObject, String jsonProperty, Boolean nullable) throws Exception {
-        JsonUtil.isNull(jsonObject, jsonProperty, nullable);
-        return jsonObject.get(jsonProperty) == null || jsonObject.get(jsonProperty).isJsonNull() == true ? null : jsonObject.get(jsonProperty).getAsBoolean();
+    static public Boolean getJsonBoolean(JsonObject json_object, String json_property, Boolean nullable) throws Exception {
+        JsonUtil.isNull(json_object, json_property, nullable);
+        return json_object.get(json_property) == null || json_object.get(json_property).isJsonNull() == true ? null : json_object.get(json_property).getAsBoolean();
     }
 
-    static public Integer getJsonInteger(JsonObject jsonObject, String jsonProperty, Boolean nullable) throws Exception {
-        JsonUtil.isNull(jsonObject, jsonProperty, nullable);
-        return jsonObject.get(jsonProperty) == null || jsonObject.get(jsonProperty).isJsonNull() == true ? null : jsonObject.get(jsonProperty).getAsInt();
+    static public Integer getJsonInteger(JsonObject json_object, String json_property, Boolean nullable) throws Exception {
+        JsonUtil.isNull(json_object, json_property, nullable);
+        return json_object.get(json_property) == null || json_object.get(json_property).isJsonNull() == true ? null : json_object.get(json_property).getAsInt();
     }
 
-    static public Long getJsonLong(JsonObject jsonObject, String jsonProperty, Boolean nullable) throws Exception {
-        JsonUtil.isNull(jsonObject, jsonProperty, nullable);
-        return jsonObject.get(jsonProperty) == null || jsonObject.get(jsonProperty).isJsonNull() == true ? null : jsonObject.get(jsonProperty).getAsLong();
+    static public Long getJsonLong(JsonObject json_object, String json_property, Boolean nullable) throws Exception {
+        JsonUtil.isNull(json_object, json_property, nullable);
+        return json_object.get(json_property) == null || json_object.get(json_property).isJsonNull() == true ? null : json_object.get(json_property).getAsLong();
     }
 
-    static public Double getJsonDouble(JsonObject jsonObject, String jsonProperty, Boolean nullable) throws Exception {
-        JsonUtil.isNull(jsonObject, jsonProperty, nullable);
-        return jsonObject.get(jsonProperty) == null || jsonObject.get(jsonProperty).isJsonNull() == true ? null : jsonObject.get(jsonProperty).getAsDouble();
+    static public Double getJsonDouble(JsonObject json_object, String json_property, Boolean nullable) throws Exception {
+        JsonUtil.isNull(json_object, json_property, nullable);
+        return json_object.get(json_property) == null || json_object.get(json_property).isJsonNull() == true ? null : json_object.get(json_property).getAsDouble();
     }
     
     static private void isNull(JsonArray jsonArray, Integer index, Boolean nullable) throws Exception {

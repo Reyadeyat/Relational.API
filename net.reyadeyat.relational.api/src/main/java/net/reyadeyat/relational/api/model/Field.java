@@ -128,7 +128,7 @@ public class Field {
     }
     
     public String getTypeJavaClassPath() throws Exception {
-        if ((data_type_name.equalsIgnoreCase("TINYINT") || data_type_name.equalsIgnoreCase("TINYINT UNSIGNED") && size == 1 /*mysql*/)
+        if ((data_type_name.equalsIgnoreCase("BIT") || data_type_name.equalsIgnoreCase("TINYINT") || data_type_name.equalsIgnoreCase("TINYINT UNSIGNED") && size == 1 /*mysql*/)
                 || data_type_name.equalsIgnoreCase("BOOLEAN"/*informix*/)) {
             return Boolean.class.getCanonicalName();
         } else if (data_type_name.equalsIgnoreCase("TINYINT") || data_type_name.equalsIgnoreCase("TINYINT UNSIGNED")) {
@@ -203,7 +203,7 @@ public class Field {
     }
     
     public Class getTypeJavaClass() throws Exception {
-        if ((data_type_name.equalsIgnoreCase("TINYINT") || data_type_name.equalsIgnoreCase("TINYINT UNSIGNED") && size == 1 /*mysql*/)
+        if ((data_type_name.equalsIgnoreCase("BIT") || data_type_name.equalsIgnoreCase("TINYINT") || data_type_name.equalsIgnoreCase("TINYINT UNSIGNED") && size == 1 /*mysql*/)
                 || data_type_name.equalsIgnoreCase("BOOLEAN"/*informix*/)) {
             return Boolean.class;
         } else if (data_type_name.equalsIgnoreCase("TINYINT") || data_type_name.equalsIgnoreCase("TINYINT UNSIGNED")) {

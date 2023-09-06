@@ -22,6 +22,7 @@ import net.reyadeyat.relational.api.json.JsonUtil;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonArray;
+import com.google.gson.reflect.TypeToken;
 import com.google.gson.stream.JsonReader;
 import net.reyadeyat.relational.api.database.RecordHandler;
 import net.reyadeyat.relational.api.database.RecordProcessor;
@@ -30,14 +31,12 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.io.OutputStream;
 import java.sql.Connection;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javax.sql.DataSource;
 import net.reyadeyat.relational.api.jdbc.JDBCSource;
 
 /**
@@ -52,6 +51,7 @@ import net.reyadeyat.relational.api.jdbc.JDBCSource;
  */
 public abstract class RelationalRequest implements RecordHandler {
     
+    private RequestDefinition request_definition;
     private Table table;
     
     //Security
@@ -65,33 +65,19 @@ public abstract class RelationalRequest implements RecordHandler {
     static final public Integer SECURITY_FLAG_RETURN_GENERATED_ID_ENCRYPTED = 64;
     static final public Integer SECURITY_FLAG_RETURN_RESPONSE_ENCRYPTED = 128;
     
-    private JsonObject request_service_definition_json;
-    
-    public RelationalRequest(JsonObject request_service_definition_json, HashMap<String, Class> interface_implementation) throws Exception {
-        this.request_service_definition_json = request_service_definition_json;
-        String service_name = JsonUtil.getJsonString(request_service_definition_json, "service_name", false);
+    public RelationalRequest(RequestDefinition request_definition, HashMap<String, Class> interface_implementation) throws Exception {
+        this.request_definition = request_definition;
         try {
-            String database_name = JsonUtil.getJsonString(request_service_definition_json, "database_name", false);
-            String default_datasource_name = JsonUtil.getJsonString(request_service_definition_json, "default_datasource_name", false);
-            if (default_datasource_name == null || default_datasource_name.length() == 0) {
-                throw new Exception("Default Source Name can not be null");
-            }
-            
-            //this.database_name = database_name;
-            String model_datasource_name = JsonUtil.getJsonString(request_service_definition_json, "model_datasource_name", false);
-            String data_datasource_name = JsonUtil.getJsonString(request_service_definition_json, "data_datasource_name", false);
-            Integer model_id = JsonUtil.getJsonInteger(request_service_definition_json, "model_id", false);
-            String secret_key = JsonUtil.getJsonString(request_service_definition_json, "secret_key", false);
-            JDBCSource model_jdbc_source = getJDBCSource(model_datasource_name);
-            JDBCSource data_jdbc_source = getJDBCSource(data_datasource_name);
+            //this.data_database_name = data_database_name;
+            JDBCSource model_jdbc_source = getJDBCSource(request_definition.model_datasource_name);
+            JDBCSource data_jdbc_source = getJDBCSource(request_definition.data_datasource_name);
             JsonArray error_list = new JsonArray();
-            Table.loadDataModel(secret_key, model_jdbc_source, data_jdbc_source, model_id, interface_implementation, error_list);
+            Table.loadDataModel(request_definition.secret_key, model_jdbc_source, data_jdbc_source, request_definition.model_id, interface_implementation, error_list);
             JsonUtil.throwJsonExceptionOnError("Table service definition has errors:", error_list);
-            JsonObject table_tree = JsonUtil.getJsonObject(request_service_definition_json, "table_tree", false);
-            table = new Table(model_id, null, database_name, table_tree, error_list);
+            table = new Table(request_definition.data_datasource_name, request_definition.data_database_name, request_definition.model_id, null, request_definition.request_table, error_list);
             JsonUtil.throwJsonExceptionOnError("Table service definition has errors:", error_list);
         } catch (Exception ex) {
-            Logger.getLogger(this.getClass().getName()).log(Level.SEVERE, "Error: defineServlet '"+service_name+"'", ex);
+            Logger.getLogger(this.getClass().getName()).log(Level.SEVERE, "Error: defineServlet '"+request_definition.service_name+"'", ex);
             throw ex;
         }
     }
@@ -100,45 +86,33 @@ public abstract class RelationalRequest implements RecordHandler {
         return (security_flag & SECURITY_FLAG) != 0;
     }
     
-    protected JsonObject serviceContent(InputStream json_request_stream, OutputStream response_output_stream) throws Exception {
+    protected List<Request> serviceContent(InputStream json_request_stream, OutputStream response_output_stream) throws Exception {
         Gson gson = JsonUtil.gson();
-        
-        JsonElement json_request = null;
+        List<Request> request_list = null;
         try (JsonReader json_reader = new JsonReader(new InputStreamReader(json_request_stream, StandardCharsets.UTF_8))) {
-            json_request = gson.fromJson(json_reader, JsonElement.class);
+            request_list = gson.fromJson(json_reader, new TypeToken<List<Request>>(){}.getType());
         } catch (Exception exception) {
             JsonUtil.reclaimGson(gson);
             throw exception;
         }
         JsonUtil.reclaimGson(gson);
-        if (json_request.isJsonObject() == false) {
-            throw new Exception("Bad Request, Non JSON Object received => " + json_request.getClass().getName());
-        }
-        return json_request.getAsJsonObject();
+        return request_list;
     }
 
     public void serviceTransaction(Integer security_flag, InputStream json_request_stream, OutputStream response_output_stream, Connection jdbc_connection, JsonArray log_list, JsonArray error_list) throws Exception {
-        JsonObject service_transaction_request = serviceContent(json_request_stream, response_output_stream);
-        serviceTransaction(security_flag, service_transaction_request, response_output_stream, jdbc_connection, log_list, error_list);
+        List<Request> request = serviceContent(json_request_stream, response_output_stream);
+        serviceTransaction(security_flag, request, response_output_stream, jdbc_connection, log_list, error_list);
     }
     
-    public void serviceTransaction(Integer security_flag, JsonObject service_transaction_request, OutputStream response_output_stream, Connection jdbc_connection, JsonArray log_list, JsonArray error_list) throws Exception {
-        this.security_flag = security_flag;
-        if (service_transaction_request == null) {
-            error_list.add("Bad Request, Non JSON received => null !");
-            return;
-        }
-        JsonObject database_request = service_transaction_request.getAsJsonObject();
+    public void serviceTransaction(Integer security_flag, List<Request> request_list, OutputStream response_output_stream, Connection jdbc_connection, JsonArray log_list, JsonArray error_list) throws Exception {
         log_list.add("Start-Process");
-        Set<Map.Entry<String, JsonElement>> table_set = database_request.entrySet();
-        for (Map.Entry<String, JsonElement> table_entry : table_set) {
-            String table_name = table_entry.getKey();
-            JsonObject table_request = table_entry.getValue().getAsJsonObject();
+        this.security_flag = security_flag;
+        for (Request request : request_list) {
+            request.init();
+            RecordProcessor record_processor = new RecordProcessor(request, response_output_stream);
             RecordHandler record_handler= this;
-            table.process(table_name, table_request, response_output_stream, record_handler);
+            table.process(record_processor, record_handler);
         }
         log_list.add("End-Process");
     }
-      
-
 }
