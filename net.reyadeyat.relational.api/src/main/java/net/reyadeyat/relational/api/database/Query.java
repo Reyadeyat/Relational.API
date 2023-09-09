@@ -14,14 +14,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package net.reyadeyat.relational.api.request;
 
-import com.google.gson.annotations.SerializedName;
+package net.reyadeyat.relational.api.database;
+
+import java.util.ArrayList;
 import java.util.List;
 
 /**
  * 
- * Description
+ * Description 
  * 
  *
  * @author Mohammad Nabil Mostafa
@@ -29,19 +30,22 @@ import java.util.List;
  * 
  * @since 2023.01.01
  */
-public class RequestDefinition {
-    public String service_name;
-    public Integer model_id;
-    public String model_datasource_name;
-    public String data_datasource_name;
-    public String data_database_name;
-    public String secret_key;
-    @SerializedName("transaction_type")
-    public List<String> transaction_type_list;
-    @SerializedName("request_table")
-    public RequestTable request_table;
+public class Query {
     
-    public void init() {
-        request_table.init(null, transaction_type_list);
+    public long t1, t2, t3, t4;
+    public List<Field> where_field_list;
+    public List<ServiceField> service_field_list;
+    public List<Argument> where_argument_list;
+    public List<Argument> having_argument_list;
+    public String sql;
+
+    
+    public Query() throws Exception {
+        where_field_list = new ArrayList<>();
+        service_field_list = new ArrayList<>();
+        where_argument_list = new ArrayList<>();
+        having_argument_list = new ArrayList<>();
     }
+    
+    
 }

@@ -21,7 +21,6 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
-import java.io.OutputStream;
 import net.reyadeyat.relational.api.data.ModelDefinition;
 import net.reyadeyat.relational.api.data.DataClass;
 import net.reyadeyat.relational.api.data.DataLookup;
@@ -152,7 +151,7 @@ public class Table {
                 RequestTable child_request_table = request_table.child_request_table_list.get(i);
                 Table child_table = new Table(data_database_name, data_datasource_name, model_id, this, child_request_table, table_error_list);
                 child_table_list.add(child_table);
-                child_table_map.put(child_table.request_table.table_name, child_table);
+                child_table_map.put(child_table.request_table.table_alias, child_table);
             }
         }
     }
@@ -531,13 +530,9 @@ public class Table {
             }
         }
     }
-    
-    public Field addField(String field_name, String field_alias, Boolean nullable, Boolean group_by, FieldType field_type, JsonArray table_error_list) {
-        return addField(field_name, field_alias, nullable, group_by, field_type, null, null, table_error_list);
-    }
-    
-    public Field addField(String field_name, String field_alias, Boolean nullable, Boolean group_by, FieldType field_type, String join_table, String join_table_alias, JsonArray table_error_list) {
-        Field field = new Field(field_list.size(), field_name, field_alias, nullable, group_by, field_type, join_table, join_table_alias, table_error_list);
+        
+    public Field addField(String table_name, String table_alias, String field_name, String field_alias, Boolean nullable, Boolean group_by, FieldType field_type, JsonArray table_error_list) {
+        Field field = new Field(table_name, table_alias, field_list.size(), field_name, field_alias, nullable, group_by, field_type, table_error_list);
         if (table_error_list.size() > 0) {
             return field;
         }
@@ -882,15 +877,15 @@ public class Table {
                         }
                     }
 
-                    try (ResultSet rs = preparedInsertedSelectStmt.executeQuery()) {
-                        while (rs.next()) {
+                    try (ResultSet resultset = preparedInsertedSelectStmt.executeQuery()) {
+                        while (resultset.next()) {
                             StringBuilder sb = new StringBuilder();
                             StringBuilder ssb = new StringBuilder();
                             //primary_keys
                             for (int i = 0; i < primary_keys.size(); i++) {
                                 Field f = primary_keys.get(i);
                                 ssb.append("'").append(primary_keys.get(i).getAlias()).append("'=").append(f.isText() || f.isDateTime() ? "'" : "")
-                                        .append(rs.getString(primary_keys.get(i).getAlias())).append(f.isText() || f.isDateTime() ? "'" : "").append(",");
+                                        .append(resultset.getString(primary_keys.get(i).getAlias())).append(f.isText() || f.isDateTime() ? "'" : "").append(",");
                             }
                             if (ssb.length() > 0) {
                                 ssb.delete(ssb.length() - 1, ssb.length());
@@ -902,7 +897,7 @@ public class Table {
                             for (int i = 0; i < uniqueness_fields_all.size(); i++) {
                                 Field f = uniqueness_fields_all.get(i);
                                 sb.append("'").append(uniqueness_fields_all.get(i).getAlias()).append("'=").append(f.isText() || f.isDateTime() ? "'" : "")
-                                        .append(rs.getString(uniqueness_fields_all.get(i).getAlias())).append(f.isText() || f.isDateTime() ? "'" : "").append(",");
+                                        .append(resultset.getString(uniqueness_fields_all.get(i).getAlias())).append(f.isText() || f.isDateTime() ? "'" : "").append(",");
                             }
                             if (sb.length() > 0) {
                                 sb.delete(sb.length() - 1, sb.length());
@@ -913,14 +908,14 @@ public class Table {
                             for (int i = 0; i < uniqueness_fields_any.size(); i++) {
                                 Field f = uniqueness_fields_any.get(i);
                                 sb.append("'").append(uniqueness_fields_any.get(i).getAlias()).append("'=").append(f.isText() || f.isDateTime() ? "'" : "")
-                                        .append(rs.getString(uniqueness_fields_any.get(i).getAlias())).append(f.isText() || f.isDateTime() ? "'" : "").append(",");
+                                        .append(resultset.getString(uniqueness_fields_any.get(i).getAlias())).append(f.isText() || f.isDateTime() ? "'" : "").append(",");
                             }
                             if (sb.length() > 0) {
                                 sb.delete(sb.length() - 1, sb.length());
                                 error_list.add("Record with [any] unique values {" + sb.toString() + "} already exists");
                             }
                         }
-                        rs.close();
+                        resultset.close();
                     } catch (Exception sqlx) {
                         throw sqlx;
                     }
@@ -989,15 +984,15 @@ public class Table {
                         }
                     }
 
-                    try (ResultSet rs = preparedInsertedSelectStmt.executeQuery()) {
-                        while (rs.next()) {
+                    try (ResultSet resultset = preparedInsertedSelectStmt.executeQuery()) {
+                        while (resultset.next()) {
                             StringBuilder sb = new StringBuilder();
                             StringBuilder ssb = new StringBuilder();
                             //primary_keys
                             for (int i = 0; i < primary_keys.size(); i++) {
                                 Field f = primary_keys.get(i);
                                 ssb.append("'").append(primary_keys.get(i).getAlias()).append("'=").append(f.isText() || f.isDateTime() ? "'" : "")
-                                        .append(rs.getString(primary_keys.get(i).getAlias())).append(f.isText() || f.isDateTime() ? "'" : "").append(",");
+                                        .append(resultset.getString(primary_keys.get(i).getAlias())).append(f.isText() || f.isDateTime() ? "'" : "").append(",");
                             }
                             ssb = (ssb.length() > 1 ? ssb.delete(ssb.length() - 1, ssb.length()) : ssb);
                             if (ssb.length() > 0) {
@@ -1010,7 +1005,7 @@ public class Table {
                             for (int i = 0; i < uniqueness_fields_all.size(); i++) {
                                 Field f = uniqueness_fields_all.get(i);
                                 sb.append("'").append(uniqueness_fields_all.get(i).getAlias()).append("'=").append(f.isText() || f.isDateTime() ? "'" : "")
-                                        .append(rs.getString(uniqueness_fields_all.get(i).getAlias())).append(f.isText() || f.isDateTime() ? "'" : "").append(",");
+                                        .append(resultset.getString(uniqueness_fields_all.get(i).getAlias())).append(f.isText() || f.isDateTime() ? "'" : "").append(",");
                             }
                             if (sb.length() > 0) {
                                 sb.delete(sb.length() - 1, sb.length());
@@ -1021,14 +1016,14 @@ public class Table {
                             for (int i = 0; i < uniqueness_fields_any.size(); i++) {
                                 Field f = uniqueness_fields_any.get(i);
                                 sb.append("'").append(uniqueness_fields_any.get(i).getAlias()).append("'=").append(f.isText() || f.isDateTime() ? "'" : "")
-                                        .append(rs.getString(uniqueness_fields_any.get(i).getAlias())).append(f.isText() || f.isDateTime() ? "'" : "").append(",");
+                                        .append(resultset.getString(uniqueness_fields_any.get(i).getAlias())).append(f.isText() || f.isDateTime() ? "'" : "").append(",");
                             }
                             if (sb.length() > 0) {
                                 sb.delete(sb.length() - 1, sb.length());
                                 error_list.add("Record with [any] unique values {" + sb.toString() + "} already exists");
                             }
                         }
-                        rs.close();
+                        resultset.close();
                     } catch (Exception sqlx) {
                         throw sqlx;
                     }
@@ -1086,11 +1081,11 @@ public class Table {
                     }
                     sb.delete(sb.length() - 1, sb.length());
                     String s = sb.toString();
-                    try (ResultSet rs = preparedInsertedSelectStmt.executeQuery()) {
-                        if (rs.next() == false) {
+                    try (ResultSet resultset = preparedInsertedSelectStmt.executeQuery()) {
+                        if (resultset.next() == false) {
                             error_list.add("Table '" + foreignKey.getForeignTable() + "' doesn't have record with {" + s + "}");
                         }
-                        rs.close();
+                        resultset.close();
                     } catch (Exception sqlx) {
                         throw sqlx;
                     }
@@ -1148,11 +1143,11 @@ public class Table {
                         }
                         sb.delete(sb.length() - 1, sb.length());
                         String s = sb.toString();
-                        try (ResultSet rs = preparedInsertedSelectStmt.executeQuery()) {
-                            if (rs.next() == false) {
+                        try (ResultSet resultset = preparedInsertedSelectStmt.executeQuery()) {
+                            if (resultset.next() == false) {
                                 error_list.add("Table '" + foreignKey.getForeignTable() + "' doesn't have record with {" + s + "}");
                             }
-                            rs.close();
+                            resultset.close();
                         } catch (Exception sqlx) {
                             throw sqlx;
                         }
@@ -1166,36 +1161,36 @@ public class Table {
         return error_list.size() == 0;
     }
     
-    protected Boolean getBoolean(ResultSet rs, String field) throws Exception {
-        return rs.getObject(field) == null ? null : rs.getBoolean(field);
+    protected Boolean getBoolean(ResultSet resultset, String field) throws Exception {
+        return resultset.getObject(field) == null ? null : resultset.getBoolean(field);
     }
 
-    protected Integer getInt(ResultSet rs, String field) throws Exception {
-        return rs.getObject(field) == null ? null : rs.getInt(field);
+    protected Integer getInt(ResultSet resultset, String field) throws Exception {
+        return resultset.getObject(field) == null ? null : resultset.getInt(field);
     }
 
-    protected Long getLong(ResultSet rs, String field) throws Exception {
-        return rs.getObject(field) == null ? null : rs.getLong(field);
+    protected Long getLong(ResultSet resultset, String field) throws Exception {
+        return resultset.getObject(field) == null ? null : resultset.getLong(field);
     }
 
-    protected Double getDouble(ResultSet rs, String field) throws Exception {
-        return rs.getObject(field) == null ? null : rs.getDouble(field);
+    protected Double getDouble(ResultSet resultset, String field) throws Exception {
+        return resultset.getObject(field) == null ? null : resultset.getDouble(field);
     }
 
-    protected Date getDate(ResultSet rs, String field) throws Exception {
-        return rs.getObject(field) == null ? null : rs.getDate(field);
+    protected Date getDate(ResultSet resultset, String field) throws Exception {
+        return resultset.getObject(field) == null ? null : resultset.getDate(field);
     }
 
-    protected Time getTime(ResultSet rs, String field) throws Exception {
-        return rs.getObject(field) == null ? null : rs.getTime(field);
+    protected Time getTime(ResultSet resultset, String field) throws Exception {
+        return resultset.getObject(field) == null ? null : resultset.getTime(field);
     }
 
-    protected Timestamp getTimestamp(ResultSet rs, String field) throws Exception {
-        return rs.getObject(field) == null ? null : rs.getTimestamp(field);
+    protected Timestamp getTimestamp(ResultSet resultset, String field) throws Exception {
+        return resultset.getObject(field) == null ? null : resultset.getTimestamp(field);
     }
 
-    protected String getString(ResultSet rs, String field) throws Exception {
-        return rs.getObject(field) == null ? null : rs.getString(field);
+    protected String getString(ResultSet resultset, String field) throws Exception {
+        return resultset.getObject(field) == null ? null : resultset.getString(field);
     }
 
     private ServiceField isValidServiceField(RecordProcessor record_processor, String serviceField, Map<String, Field> record) {
@@ -1844,51 +1839,29 @@ public class Table {
     /************ SELECT PROCESSOR ********************************************/
     /**************************************************************************/
     
-    /*
-    long t1, t2, t3, t4;
-        t1 = System.nanoTime();
-        JsonObject json = record_processor.getTableRequest();
-        JsonArray error_list = record_processor.getErrors();
-        ArrayList<Field> wf = new ArrayList<Field>();
-        ArrayList<ServiceField> ss = new ArrayList<ServiceField>();
-        ArrayList<String> s = JsonUtil.javaStringArrayList(JsonUtil.getJsonArray(json, "select", false));
-        String vt = json.get("view").getAsString();
-        JsonObject w = json.get("where").getAsJsonObject();
-        ArrayList<String> v = w.get("values") == null || w.get("values").isJsonNull() ? null : new ArrayList<String>(Arrays.asList(JsonUtil.javaStringArray(w.get("values").getAsJsonArray())));
-        ArrayList<Argument> ah = new ArrayList<Argument>();
-        ArrayList<Argument> av = new ArrayList<Argument>();
-        
-        public String validateSelectStatement(JsonObject json, ArrayList<Field> wf, String vt, ArrayList<String> s, ArrayList<ServiceField> ss, ArrayList<String> wv, ArrayList<Argument> ah, ArrayList<Argument> av, JsonObject w, JsonArray error_list) throws Exception {
-        //Validate Mandatory Paramters
-        String c = w.get("clause").getAsString();
-        String[] g = json.get("group_by_list") == null || json.get("group_by_list").isJsonNull() ? null : JsonUtil.javaStringArray(json.get("group_by_list").getAsJsonArray());
-        String[] o = json.get("order_by_list") == null || json.get("order_by_list").isJsonNull() ? null : JsonUtil.javaStringArray(json.get("order_by_list").getAsJsonArray());
-        JsonObject variable = json.getAsJsonObject("variable");
-        StringBuilder ww = new StringBuilder();
-        StringBuilder hh = new StringBuilder();
-
-        StringBuilder query = new StringBuilder(select_statement);
-    */
-    
-    public String validateSelectStatement(RecordProcessor record_processor, ArrayList<Field> where_field_list, ArrayList<ServiceField> service_field_list, ArrayList<Argument> where_argument_list, ArrayList<Argument> having_argument_list) throws Exception {
+    /**
+     * @param record_processor
+     * @throws java.lang.Exception
+     */
+    public void validateSelectStatement(RecordProcessor record_processor) throws Exception {
         StringBuilder where_clause = new StringBuilder();
         StringBuilder having_clause = new StringBuilder();
 
         StringBuilder query = new StringBuilder(select_statement);
 
-        if (areValidSelectFields(record_processor, service_field_list, getFieldMap(), select_fields) == false) {
+        if (areValidSelectFields(record_processor, record_processor.query.service_field_list, getFieldMap(), select_fields) == false) {
             record_processor.addError("ERROR: validateSelectStatement.areValidSelectFields");
-            return null;
+            return;
         }
 
         if (record_processor.request.where.values != null && record_processor.request.where.clause.replaceAll("[^?]", "").length() != record_processor.request.where.values.size()) {
             record_processor.addError("ERROR: validateSelectStatement.escapement");
-            return null;
+            return;
         }
 
-        if (isValidClause(record_processor, Field.SELECT, record_processor.request.where.clause, getFieldMap(), where_field_list, record_processor.request.where.values, where_clause, having_clause, where_argument_list, having_argument_list) == false) {
+        if (isValidClause(record_processor, Field.SELECT, record_processor.request.where.clause, getFieldMap(), record_processor.query.where_field_list, record_processor.request.where.values, where_clause, having_clause, record_processor.query.where_argument_list, record_processor.query.having_argument_list) == false) {
             record_processor.addError("ERROR: validateSelectStatement.isValidClause");
-            return null;
+            return;
         }
 
         String order_by_list = null;
@@ -1896,7 +1869,7 @@ public class Table {
             order_by_list = getFieldsOrderBy(record_processor);
             if (record_processor.hasErrors() == true) {
                 record_processor.addError("ERROR: validateSelectStatement.ORDER_BY_VALIDATION");
-                return null;
+                return;
             }
         }
 
@@ -1905,7 +1878,7 @@ public class Table {
             group_by_list = getFieldsGroupBy(record_processor);
             if (record_processor.hasErrors()) {
                 record_processor.addError("ERROR: validateSelectStatement.GROUP_BY_VALIDATION");
-                return null;
+                return;
             }
         }
         //
@@ -1913,10 +1886,10 @@ public class Table {
         int idx = query.indexOf("$SELECT$");
         query.replace(idx, idx + 8, "");
         query.insert(idx, "SELECT ");
-        query.insert(idx + 7, getFieldsSelect(record_processor, field_list, service_field_list));
+        query.insert(idx + 7, getFieldsSelect(record_processor, field_list, record_processor.query.service_field_list));
         if (record_processor.hasErrors() == true) {
             record_processor.addError("ERROR: validateSelectStatement.SELECT");
-            return null;
+            return;
         }
 
         idx = query.indexOf("$WHERE$");
@@ -1943,7 +1916,7 @@ public class Table {
         }
         if (record_processor.hasErrors() == true) {
             record_processor.addError("ERROR: validateSelectStatement.WHERE");
-            return null;
+            return;
         }
 
         idx = query.indexOf("$GROUPBY$");
@@ -1954,7 +1927,7 @@ public class Table {
         }
         if (record_processor.hasErrors() == true) {
             record_processor.addError("ERROR: validateSelectStatement.GROUP_BY");
-            return null;
+            return;
         }
 
         idx = query.indexOf("$HAVING$");
@@ -1973,7 +1946,7 @@ public class Table {
         }
         if (record_processor.hasErrors() == true) {
             record_processor.addError("ERROR: validateSelectStatement.HAVING");
-            return null;
+            return;
         }
 
         idx = query.indexOf("$ORDERBY$");
@@ -1984,21 +1957,21 @@ public class Table {
         }
         if (record_processor.hasErrors() == true) {
             record_processor.addError("ERROR: validateSelectStatement.ORDER_BY");
-            return null;
+            return;
         }
 
-        return query.toString();
+        record_processor.query.sql = query.toString();
     }
     
-    public void processSelectedRecord(RecordProcessor record_processor, ResultSet rs, JsonObject record_object) throws Exception {
+    public void processSelectedRecord(RecordProcessor record_processor, ResultSet resultset, JsonObject record_object) throws Exception {
         for (int i = 0; i < record_processor.request.select_list.size(); i++) {
             String alias = record_processor.request.select_list.get(i);
             Field f = getField(alias);
             if (f.isIgnoredFor(Field.SELECT)) {
                 continue;
             }
-            //jrecord.addProperty(s[i], f.getFieldString(rs.getObject(f.getAlias())));
-            Object fieldObject = rs.getObject(f.getAlias());
+            //jrecord.addProperty(s[i], f.getFieldString(resultset.getObject(f.getAlias())));
+            Object fieldObject = resultset.getObject(f.getAlias());
             if (fieldObject == null) {
                 record_object.add(alias, JsonNull.INSTANCE);
             } else if (f.isNumeric() == true) {
@@ -2006,20 +1979,20 @@ public class Table {
             } else if (f.isBoolean() == true) {
                 record_object.addProperty(alias, f.parseBoolean(fieldObject));
             } else {
-                record_object.addProperty(alias, f.getFieldString(rs.getObject(f.getAlias())));
+                record_object.addProperty(alias, f.getFieldString(resultset.getObject(f.getAlias())));
             }
         }
     }
     
-    public void processSelectedObjectRecord(RecordProcessor record_processor, ResultSet rs, JsonObject record_object, ArrayList<ServiceField> service_field_list) throws Exception {
+    public void processSelectedObjectRecord(RecordProcessor record_processor, ResultSet resultset, JsonObject record_object, List<ServiceField> service_field_list) throws Exception {
         for (int i = 0; i < record_processor.request.select_list.size(); i++) {
             String alias = record_processor.request.select_list.get(i);
             Field f = getField(alias);
             if (f.isIgnoredFor(Field.SELECT)) {
                 continue;
             }
-            //Object fieldObject = rs.getObject(f.getAlias());
-            Object fieldObject = f.getPostProcessedValue(Field.SELECT, rs.getObject(f.getAlias()), record_processor.error_list);
+            //Object fieldObject = resultset.getObject(f.getAlias());
+            Object fieldObject = f.getPostProcessedValue(Field.SELECT, resultset.getObject(f.getAlias()), record_processor.error_list);
             if (fieldObject == null) {
                 record_object.add(alias, JsonNull.INSTANCE);
             } else if (f.isNumeric() == true) {
@@ -2027,13 +2000,13 @@ public class Table {
             } else if (f.isBoolean() == true) {
                 record_object.addProperty(alias, f.parseBoolean(fieldObject));
             } else {
-                //jrecord.addProperty(alias, f.getFieldString(rs.getObject(f.getAlias())));
+                //jrecord.addProperty(alias, f.getFieldString(resultset.getObject(f.getAlias())));
                 record_object.addProperty(alias, f.getFieldString(fieldObject));
             }
         }
         for (int i = 0; i < service_field_list.size(); i++) {
             ServiceField sf = service_field_list.get(i);
-            Object fieldObject = rs.getObject(sf.getAlias());
+            Object fieldObject = resultset.getObject(sf.getAlias());
             if (fieldObject == null) {
                 record_object.add(sf.getAlias(), JsonNull.INSTANCE);
             } else if (sf.isNumeric() == true) {
@@ -2041,20 +2014,20 @@ public class Table {
             } else if (sf.isBoolean() == true) {
                 record_object.addProperty(sf.getAlias(), sf.parseBoolean(fieldObject));
             } else {
-                record_object.addProperty(sf.getAlias(), sf.getFieldString(rs.getObject(sf.getAlias())));
+                record_object.addProperty(sf.getAlias(), sf.getFieldString(resultset.getObject(sf.getAlias())));
             }
         }
     }
     
-    public void processSelectedArrayRecord(RecordProcessor record_processor, ResultSet rs, JsonArray record_list, ArrayList<ServiceField> service_field_list) throws Exception {
+    public void processSelectedArrayRecord(RecordProcessor record_processor, ResultSet resultset, JsonArray record_list, List<ServiceField> service_field_list) throws Exception {
         for (int i = 0; i < record_processor.request.select_list.size(); i++) {
             String alias = record_processor.request.select_list.get(i);
             Field f = getField(alias);
             if (f.isIgnoredFor(Field.SELECT)) {
                 continue;
             }
-            //Object fieldObject = rs.getObject(f.getAlias());
-            Object fieldObject = f.getPostProcessedValue(Field.SELECT, rs.getObject(f.getAlias()), record_processor.error_list);
+            //Object fieldObject = resultset.getObject(f.getAlias());
+            Object fieldObject = f.getPostProcessedValue(Field.SELECT, resultset.getObject(f.getAlias()), record_processor.error_list);
             if (fieldObject == null) {
                 record_list.add(JsonNull.INSTANCE);
             } else if (f.isNumeric() == true) {
@@ -2062,13 +2035,13 @@ public class Table {
             } else if (f.isBoolean() == true) {
                 record_list.add(f.parseBoolean(fieldObject));
             } else {
-                //jrecord.add(f.getFieldString(rs.getObject(f.getAlias())));
+                //jrecord.add(f.getFieldString(resultset.getObject(f.getAlias())));
                 record_list.add(f.getFieldString(fieldObject));
             }
         }
         for (int i = 0; i < service_field_list.size(); i++) {
             ServiceField service_field = service_field_list.get(i);
-            Object fieldObject = rs.getObject(service_field.getAlias());
+            Object fieldObject = resultset.getObject(service_field.getAlias());
             if (fieldObject == null) {
                 record_list.add(JsonNull.INSTANCE);
             } else if (service_field.isNumeric() == true) {
@@ -2076,13 +2049,13 @@ public class Table {
             } else if (service_field.isBoolean() == true) {
                 record_list.add(service_field.parseBoolean(fieldObject));
             } else {
-                record_list.add(service_field.getFieldString(rs.getObject(service_field.getAlias())));
+                record_list.add(service_field.getFieldString(resultset.getObject(service_field.getAlias())));
             }
         }
     }
     
-    public void select(RecordProcessor record_processor, RecordHandler record_handler) throws Exception {
-        
+    public void prepareSelectStatement(RecordProcessor record_processor, RecordHandler record_handler) throws Exception {
+       
         validateCommand(record_processor);
         if (record_processor.hasErrors() == true) {
             return;
@@ -2090,108 +2063,106 @@ public class Table {
         if (record_handler.selectInject(record_processor) == false) {
             return;
         }        
-        selectRecordSet(record_processor, record_handler);
-    }
-    
-    public void selectRecordSet(RecordProcessor record_processor, RecordHandler record_handler) throws Exception {
-        long t1, t2, t3, t4;
-        t1 = System.nanoTime();
-        Request reuest = record_processor.getTableRequest();
-        ArrayList<Field> where_field_list = new ArrayList<Field>();
-        ArrayList<ServiceField> service_field_list = new ArrayList<ServiceField>();
-        ArrayList<Argument> where_argument_list = new ArrayList<Argument>();
-        ArrayList<Argument> having_argument_list = new ArrayList<Argument>();
 
-        String sql = validateSelectStatement(record_processor, where_field_list, service_field_list, where_argument_list, having_argument_list);
+        
+        Request reuest = record_processor.getTableRequest();
+        validateSelectStatement(record_processor);
 
         if (record_processor.hasErrors() == true) {
             record_processor.addError("ERROR: validateSelectStatement.selectGson.validateSelectStatement");
             return;
         }
-
-        t2 = System.nanoTime();
-        try (Connection con = record_handler.getDatabaseConnection(data_datasource_name)) {
-            if (record_handler.selectPreLogic(record_processor, con) == false) {
-                return;
+    }
+    
+    public void executeSelect(Connection connection, RecordProcessor record_processor, RecordHandler record_handler) throws Exception {
+        if (record_handler.selectPreLogic(record_processor, connection) == false) {
+            return;
+        }
+        try (PreparedStatement prepared_statement = connection.prepareStatement(record_processor.query.sql.toString())) {
+            int idx = 0;
+            for (Argument argument : record_processor.query.having_argument_list) {
+                for (String sv : argument.getValues()) {
+                    prepared_statement.setObject(++idx, sv);
+                }
             }
-            try (PreparedStatement prepared_statement = con.prepareStatement(sql.toString())) {
-                int idx = 0;
-                for (Argument argument : having_argument_list) {
-                    for (String sv : argument.getValues()) {
-                        prepared_statement.setObject(++idx, sv);
-                    }
+            for (Argument argument : record_processor.query.where_argument_list) {
+                for (String sv : argument.getValues()) {
+                    prepared_statement.setObject(++idx, sv);
                 }
-                for (Argument argument : where_argument_list) {
-                    for (String sv : argument.getValues()) {
-                        prepared_statement.setObject(++idx, sv);
-                    }
-                }
-                JsonObject table_view = new JsonObject();
-                JsonArray view = null;
-                Boolean empty_set = true;
-                try (ResultSet rs = prepared_statement.executeQuery()) {
-                    empty_set = !rs.isBeforeFirst();
-                    t3 = System.nanoTime();
-                    view = new JsonArray();
-                    if (reuest.response.equalsIgnoreCase("process")) {
-                        while (rs.next() == true) {
-                            JsonObject record_object = new JsonObject();
-                            processSelectedRecord(record_processor, rs, record_object);
-                            if (record_handler.selectPerRecordLogic(record_processor, rs, record_object) == false) {
-                                //do something!!
-                            }
-                            view.getAsJsonArray().add(record_object);
+            }
+            JsonObject table_view = new JsonObject();
+            JsonArray view = null;
+            Boolean empty_set = true;
+            try (ResultSet resultset = prepared_statement.executeQuery()) {
+                empty_set = !resultset.isBeforeFirst();
+                record_processor.query.t3 = System.nanoTime();
+                view = new JsonArray();
+                while (resultset.next() == true) {
+                    if (record_processor.request.response.equalsIgnoreCase("process")) {
+                        JsonObject record_object = new JsonObject();
+                        processSelectedRecord(record_processor, resultset, record_object);
+                        if (record_handler.selectPerRecordLogic(record_processor, resultset, record_object) == false) {
+                            //do something!!
                         }
+                        view.getAsJsonArray().add(record_object);
                     } else if (record_processor.request.response.equalsIgnoreCase("object")) {
-                        while (rs.next() == true) {
-                            JsonObject record_object = new JsonObject();
-                            processSelectedObjectRecord(record_processor, rs, record_object, service_field_list);
-                            if (record_handler.selectPerRecordLogic(record_processor, rs, record_object) == false) {
-                                //do something!!
-                            }
-                            view.getAsJsonArray().add(record_object);
+                        JsonObject record_object = new JsonObject();
+                        processSelectedObjectRecord(record_processor, resultset, record_object, record_processor.query.service_field_list);
+                        if (record_handler.selectPerRecordLogic(record_processor, resultset, record_object) == false) {
+                            //do something!!
                         }
-                    } else if (reuest.response.equalsIgnoreCase("array")) {
-                        while (rs.next() == true) {
-                            JsonArray record_list = new JsonArray();
-                            processSelectedArrayRecord(record_processor, rs, record_list, service_field_list);
-                            if (record_handler.selectPerRecordLogic(record_processor, rs, record_list) == false) {
-                                //do something!!
-                            }
-                            view.getAsJsonArray().add(record_list);
+                        view.getAsJsonArray().add(record_object);
+                    } else if (record_processor.request.response.equalsIgnoreCase("array")) {
+                        JsonArray record_list = new JsonArray();
+                        processSelectedArrayRecord(record_processor, resultset, record_list, record_processor.query.service_field_list);
+                        if (record_handler.selectPerRecordLogic(record_processor, resultset, record_list) == false) {
+                            //do something!!
                         }
+                        view.getAsJsonArray().add(record_list);
                     }
-                    
-                    table_view.add(request_table.table_name, view);
+                    saveTablePrimaryRecord(record_processor, resultset);
+                }
+
+                table_view.add(request_table.table_name, view);
+                if (record_processor.request.response.equalsIgnoreCase("tree") == true) {
                     JsonObject child_response_view = new JsonObject();
                     table_view.add("children", child_response_view);
                     for (int i = 0; i < child_table_list.size(); i++) {
                         Table child_table = child_table_list.get(i);
-                        child_table.select(record_processor.getChildTableRecordProcessor(child_table.request_table.table_name), record_handler);
+                        child_table.executeSelect(connection, record_processor.getChildTableRecordProcessor(child_table.request_table.table_name), record_handler);
                         JsonElement child_view = record_processor.getDatabaseView();
                         child_response_view.add(child_table.getTableName(), child_view);
                     }
-                    
-                } catch (Exception sqlx) {
-                    throw sqlx;
                 }
-                if (record_handler.selectPostLogic(record_processor, con, view) == false || record_handler.selectEject(record_processor) == false) {
-                    //error_list.add("Select completed but with post logic error_list encountered");
-                    return;
-                }
-                t4 = System.nanoTime();
-                if (record_processor.hasErrors() == true) {
-                    throw new Exception("SELECT PROGRAM INTERNAL SEQUENCE ERROR");
-                }
-                
-                record_processor.setDatabaseView(table_view);
-                
             } catch (Exception sqlx) {
                 throw sqlx;
             }
+            if (record_handler.selectPostLogic(record_processor, connection, view) == false || record_handler.selectEject(record_processor) == false) {
+                //error_list.add("Select completed but with post logic error_list encountered");
+                return;
+            }
+            record_processor.query.t4 = System.nanoTime();
+            if (record_processor.hasErrors() == true) {
+                throw new Exception("SELECT PROGRAM INTERNAL SEQUENCE ERROR");
+            }
+
+            record_processor.setDatabaseView(table_view);
+
         } catch (Exception sqlx) {
             throw sqlx;
         }
+    }
+    
+    private void saveTablePrimaryRecord(RecordProcessor record_processor, ResultSet resultset) {
+        if (record_processor.request.child_list == null || record_processor.request.child_list.size() == 0) {
+            return;
+        }
+        
+        /*field_map.get();
+        getPrimaryKey;
+        getForeginKey to Parent*/
+        Map<String, Object> record_stack_frame = new HashMap<>();
+        record_processor.addRecordStackFrame(record_stack_frame);
     }
 
     /**************************************************************************/
@@ -2325,14 +2296,14 @@ public class Table {
                         }
                     }
 
-                    try (ResultSet rs = preparedInsertedSelectStmt.executeQuery()) {
-                        while (rs.next() == true) {
+                    try (ResultSet resultset = preparedInsertedSelectStmt.executeQuery()) {
+                        while (resultset.next() == true) {
                             for (int i = 0; i < primary_keys_manual_increment_fields.size(); i++) {
                                 Field f = primary_keys_manual_increment_fields.get(i);
-                                o.addProperty(f.getAlias(), rs.getBigDecimal(f.getAlias()));
+                                o.addProperty(f.getAlias(), resultset.getBigDecimal(f.getAlias()));
                             }
                         }
-                        rs.close();
+                        resultset.close();
                     } catch (Exception sqlx) {
                         throw sqlx;
                     }
@@ -2641,14 +2612,14 @@ public class Table {
             try (PreparedStatement stmt = data_connection.prepareStatement(select_model)) {
                 stmt.setString(1, secret_key);
                 stmt.setInt(2, model_id);
-                try (ResultSet rs = stmt.executeQuery()) {
-                    ArrayList<ModelDefinition> data_model_definition_list = JsonResultset.resultset(rs, ModelDefinition.class);
+                try (ResultSet resultset = stmt.executeQuery()) {
+                    ArrayList<ModelDefinition> data_model_definition_list = JsonResultset.resultset(resultset, ModelDefinition.class);
                     if (data_model_definition_list == null || data_model_definition_list.size() == 0) {
                         error_list.add("Data Model ID '"+model_id+"' is not exist");
                     } else {
                         data_model_definition = data_model_definition_list.get(0);
                     }
-                    rs.close();
+                    resultset.close();
                 } catch (Exception ex) {
                     throw ex;
                 }
@@ -2661,9 +2632,9 @@ public class Table {
                 String sql = "SELECT `enum_name`, `enum_element_id`, `enum_element_code`, `enum_element_java_datatype`, `enum_element_typescript_datatype` FROM `"+model_jdbc_source.getDatabaseName()+"`.`lookup_enum` INNER JOIN `"+model_jdbc_source.getDatabaseName()+"`.`lookup_enum_element` ON `lookup_enum`.`enum_id` = `lookup_enum_element`.`enum_id` WHERE `lookup_enum`.`enum_name`=? ORDER BY `enum_name`, `enum_element_code`";
                 try (PreparedStatement stmt = data_connection.prepareStatement(sql)) {
                     stmt.setString(1, data_model_definition.model_data_lookup_category);
-                    try (ResultSet rs = stmt.executeQuery()) {
-                        data_lookup = new DataLookup(rs, data_model_definition.model_data_lookup_category, "enum_name", "enum_element_id", "enum_element_code", "enum_element_java_datatype", "enum_element_typescript_datatype");
-                        rs.close();
+                    try (ResultSet resultset = stmt.executeQuery()) {
+                        data_lookup = new DataLookup(resultset, data_model_definition.model_data_lookup_category, "enum_name", "enum_element_id", "enum_element_code", "enum_element_java_datatype", "enum_element_typescript_datatype");
+                        resultset.close();
                     } catch (Exception ex) {
                         throw ex;
                     }
@@ -2693,13 +2664,27 @@ public class Table {
             FieldType field_type = FieldType.getClassFieldType(table_field.getTypeJavaClass());
             Boolean nullable = table_field.nullable;
             Boolean group_by = false;
-            Field field = addField(request_field.field_name, request_field.field_alias, nullable, group_by, field_type, table_error_list);
+            Field field = addField(request_table.table_name, request_table.table_alias, request_field.field_name, request_field.field_alias, nullable, group_by, field_type, table_error_list);
             if (table_field.getTypeJavaClass().equals(String.class) == true) {
                 field.setTexLengthRange(0, table_field.size);
             } else if (table_field.getTypeJavaClass().equals(Number.class) == true) {
                 field.setNumberRange(0, table_field.size);
             }
+            
+            if (request_table.parent_request_table != null) {
+                //database_table
+                //addJoinKey("JK1", "calendar_id", "pm_calendar", "id");
+                //addForeignKey("FK1", "calendar_id", "pm_calendar", "id");
+            }
         }
+        
+        /*
+        addJoinKey("JK1", "calendar_id", "pm_calendar", "id");
+        addJoinKey("JK2", "owner_id", "hr_employee", "id");
+        addForeignKey("FK1", "calendar_id", "pm_calendar", "id");
+        addForeignKey("FK2", "owner_id", "hr_employee", "id");
+        addDependentKey("DK1", "project_id", "pm_task", "project_id");
+        */
         
         //scan table
         //add field_list
@@ -2752,7 +2737,7 @@ public class Table {
         }
         if (record_processor.is_select() == true) {
             String response = record_processor.getResponseView();
-            if (response.equalsIgnoreCase("object") == false && response.equalsIgnoreCase("array") == false && response.equalsIgnoreCase("process") == false) {
+            if (response.equalsIgnoreCase("tabular") == false && response.equalsIgnoreCase("tree") == false && response.equalsIgnoreCase("process") == false) {
                 record_processor.addError("Unknown response type '" + response + "' define ['tabular', 'tree', 'process']");
             } else if (request.where == null) {
                 record_processor.addError("Select command misses 'where' compound object");
@@ -2767,8 +2752,13 @@ public class Table {
     }
     
     public void process(RecordProcessor record_processor, RecordHandler record_handler) throws Exception {
+        prepareProcess(record_processor, record_handler);
+        executeProcess(record_processor, record_handler);
+    }
+    
+    private void prepareProcess(RecordProcessor record_processor, RecordHandler record_handler) throws Exception {
         if (record_processor.is_select() == true) {
-            select(record_processor, record_handler);
+            prepareSelectStatement(record_processor, record_handler);
         } else if (record_processor.is_update() == true) {
 
         } else if (record_processor.is_insert() == true) {
@@ -2776,13 +2766,52 @@ public class Table {
         } else if (record_processor.is_delete() == true) {
 
         }
+        if (record_processor.hasErrors() == true) {
+            return;
+        }
         if (child_table_map == null || child_table_map.size() == 0) {
             return;
         }
         for (int i = 0; i < record_processor.child_list.size(); i++) {
             RecordProcessor child_record_processor = record_processor.child_list.get(i);
             Table child_table = child_table_map.get(child_record_processor.request.table_alias);
-            child_table.process(child_record_processor, record_handler);
+            if (child_table == null) {
+                record_processor.addError("Child Table aliased '"+child_record_processor.request.table_alias+"' is null of Parent Table aliased '"+request_table.table_alias+"'");
+            }
+            child_table.prepareProcess(child_record_processor, record_handler);
+        }
+    }
+    
+    private void executeProcess(RecordProcessor record_processor, RecordHandler record_handler) throws Exception {
+        try (Connection connection = record_handler.getDatabaseConnection(data_datasource_name)) {
+            if (record_processor.is_select() == true) {
+                executeSelect(connection, record_processor, record_handler);
+            } else if (record_processor.is_update() == true) {
+
+            } else if (record_processor.is_insert() == true) {
+
+            } else if (record_processor.is_delete() == true) {
+
+            }
+            if (record_processor.hasErrors() == true) {
+                return;
+            }
+            if (child_table_map == null || child_table_map.size() == 0) {
+                return;
+            }
+            if (record_processor.request.response.equalsIgnoreCase("tabular") == true
+                    || record_processor.request.response.equalsIgnoreCase("process") == true) {
+                for (int i = 0; i < record_processor.child_list.size(); i++) {
+                    RecordProcessor child_record_processor = record_processor.child_list.get(i);
+                    Table child_table = child_table_map.get(child_record_processor.request.table_alias);
+                    if (child_table == null) {
+                        record_processor.addError("Child Table aliased '"+child_record_processor.request.table_alias+"' is null of Parent Table aliased '"+request_table.table_alias+"'");
+                    }
+                    child_table.executeProcess(child_record_processor, record_handler);
+                }
+            }
+        } catch (Exception sqlx) {
+            throw sqlx;
         }
     }
 }
