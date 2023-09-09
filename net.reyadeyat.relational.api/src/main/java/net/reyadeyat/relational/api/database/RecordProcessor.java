@@ -17,15 +17,19 @@
 
 package net.reyadeyat.relational.api.database;
 
+import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.gson.stream.JsonWriter;
 import net.reyadeyat.relational.api.request.Response;
 import net.reyadeyat.relational.api.util.Returns;
 import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.TreeMap;
-import net.reyadeyat.relational.api.json.JsonUtil;
 import net.reyadeyat.relational.api.request.Request;
 
 /**
@@ -48,26 +52,47 @@ public class RecordProcessor {
     public JsonElement view;
     public Response response;
     public Returns returns;
-    public TreeMap<String, RecordProcessor> child_tree;
-    public ArrayList<RecordProcessor> child_list;
+    public RecordProcessor parent_record_processor;
+    public Map<String, RecordProcessor> child_map;
+    public List<RecordProcessor> child_list;
+    public List<Map<String, Object>> record_stack_frame_list;
+    public Query query;
     
     public RecordProcessor(Request request, OutputStream response_output_stream) throws Exception {
+        this(null, request, response_output_stream);
+    }
+    
+    public RecordProcessor(RecordProcessor parent_record_processor, Request request, OutputStream response_output_stream) throws Exception {
+        this.parent_record_processor = parent_record_processor;
         this.request = request;
         this.command = is_select() ? "Select" : is_insert() ? "insert" : is_update() ? "Update" : is_delete() ? "Delete" : null;
         if (this.command == null) {
              throw new Exception("Request has invalid command type");
         }
+        this.query = new Query();
         this.response_output_stream = response_output_stream;
         this.error_list = new JsonArray();
         this.is_empty_view = true;
         this.affected_rows = 0;
         this.returns = new Returns();
-        child_tree = new TreeMap<String, RecordProcessor>();
-        for (Request child_request : request.child_list) {
-            RecordProcessor child_record_processor = new RecordProcessor(child_request, response_output_stream);
-            child_list.add(child_record_processor);
-            child_tree.put(child_record_processor.request.table_alias, child_record_processor);
+        child_list = new ArrayList<>();
+        child_map = new TreeMap<>();
+        if (request.child_list != null && request.child_list.size() > 0) {
+            record_stack_frame_list = new ArrayList<>();
+            for (Request child_request : request.child_list) {
+                RecordProcessor child_record_processor = new RecordProcessor(this, child_request, response_output_stream);
+                child_list.add(child_record_processor);
+                child_map.put(child_record_processor.request.table_alias, child_record_processor);
+            }
         }
+    }
+    
+    public void addRecordStackFrame(Map<String, Object> record_stack_frame) {
+        record_stack_frame_list.add(record_stack_frame);
+    }
+    
+    public List<Map<String, Object>> getTablePrimaryRecordList(Map<String, Object> table_parimary_record) {
+        return record_stack_frame_list;
     }
     
     public String getResponseView() {
@@ -79,18 +104,18 @@ public class RecordProcessor {
     }
     
     public RecordProcessor getChildTableRecordProcessor(String table_alias) {
-        return child_tree.get(table_alias);
+        return child_map.get(table_alias);
     }
     
     public void addChildRecordProcessor(RecordProcessor child_record_processor) throws Exception {
-        if (this.child_tree.containsKey(child_record_processor.request.table_alias) == true) {
+        if (this.child_map.containsKey(child_record_processor.request.table_alias) == true) {
             throw new Exception("RecordProcessor Key '"+child_record_processor.request.table_alias+"' already exists!!");
         }
-        this.child_tree.put(child_record_processor.request.table_alias, child_record_processor);
+        this.child_map.put(child_record_processor.request.table_alias, child_record_processor);
     }
     
     public void deleteChildRecordProcessor(RecordProcessor child_record_processor) {
-        child_tree.remove(child_record_processor.request.table_alias);
+        child_map.remove(child_record_processor.request.table_alias);
     }
     
     public OutputStream getResponseOutputStream() {
@@ -160,7 +185,45 @@ public class RecordProcessor {
     }
     
     public Boolean hasErrors() {
-        return error_list.size() > 0;
+        Boolean has_errors = false;
+        for (int i = 0; i < child_list.size(); i++) {
+            RecordProcessor child_record_processor = child_list.get(i);
+            has_errors = has_errors || child_record_processor.hasErrors();
+        }
+        return has_errors || error_list.size() > 0;
+    }
+    
+    public void printErrors(Gson gson) throws Exception {
+        JsonWriter writer = new JsonWriter(new OutputStreamWriter(response_output_stream));
+        writer.beginObject();
+        writer.name("Record Processing Errors");
+        writer.beginArray();
+        printErrors(gson, writer);
+        writer.endArray();
+        writer.endObject();
+        writer.flush();
+    }
+    
+    private void printErrors(Gson gson, JsonWriter writer) throws Exception {
+        writer.beginObject();
+        writer.name("table");
+        writer.value(request.table_alias);
+        writer.name("erorrs");
+        gson.toJson(error_list, writer);
+        writer.endObject();
+        if (child_list == null || child_list.size() == 0) {
+            return;
+        }
+        writer.beginObject();
+        writer.name("children");
+        writer.beginArray();
+        for (int i = 0; i < child_list.size(); i++) {
+            RecordProcessor child_record_processor = child_list.get(i);
+            child_record_processor.printErrors(gson, writer);
+        }
+        writer.endArray();
+        writer.endObject();
+        
     }
     
     public Boolean hasGroupBy() {

@@ -57,7 +57,7 @@ public class Field implements Cloneable, Comparable<Field> {
 
     private final FieldType field_type;
     private PrimartKeyType pt;
-    private String table;
+    private String table_name;
     private String table_alias;
     private final Boolean nullable;
     private final Boolean group;
@@ -97,7 +97,7 @@ public class Field implements Cloneable, Comparable<Field> {
     //final static private SimpleDateFormat stzf = new SimpleDateFormat("yyyy-MM-ddTHH:mm:ss.SSSZ");//YYYY-MM-DDThh:mm:ss.SSSZ
     final static private SimpleDateFormat stzf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");//YYYY-MM-DDThh:mm:ss.SSSZ
 
-    public Field(Integer index, String name, String alias, Boolean nullable, Boolean group, FieldType field_type, String table, String table_alias, JsonArray table_error_list) {
+    public Field(String table_name, String table_alias, Integer index, String name, String alias, Boolean nullable, Boolean group, FieldType field_type, JsonArray table_error_list) {
         if (operation_list.size() == 0) {
             operation_list.add(SELECT);
             operation_list.add(UPDATE);
@@ -109,13 +109,13 @@ public class Field implements Cloneable, Comparable<Field> {
         this.field_type = field_type;
         this.index = index;
         this.pt = PrimartKeyType.NotPrimaryKey;
-        this.table = table;
+        this.table_name = table_name;
         this.table_alias = table_alias;
         this.nullable = nullable;
         this.group = group;
         this.name = name;
         this.alias = alias;
-        this.statementName = (this.name == null || this.name.isBlank() == true ? null : "`" + (this.table_alias == null ? this.table : this.table_alias) + "`.`" + this.name + "`");
+        this.statementName = (this.name == null || this.name.isBlank() == true ? null : "`" + (this.table_alias == null ? this.table_name : this.table_alias) + "`.`" + this.name + "`");
         this.statementAalias = (this.alias == null || this.alias.isBlank() == true ? null : "`" + this.alias + "`");
         this.insert_formula = null;
         this.select_formula = null;
@@ -146,8 +146,8 @@ public class Field implements Cloneable, Comparable<Field> {
             table_error_list.add("Field '" + name + "' grouping is not defined");
         }
 
-        if (table == null || table.length() == 0) {
-            table_error_list.add("Field '" + name + "' table is not defined");
+        if (table_name == null || table_name.length() == 0) {
+            table_error_list.add("Table name is null for Field '" + name + "'");
         }
 
         if (alias == null || alias.length() == 0) {
@@ -158,7 +158,7 @@ public class Field implements Cloneable, Comparable<Field> {
             return;
         }
 
-        if (alias != null && name != null && table != null && alias.isBlank() == false && name.isBlank() == false && table.isBlank() == false) {
+        if (alias != null && name != null && table_name != null && alias.isBlank() == false && name.isBlank() == false && table_name.isBlank() == false) {
             select = this.statementName + " AS " + this.statementAalias;
         } else if (name != null && name.isBlank() == false) {
             select = this.statementName;
@@ -463,11 +463,6 @@ public class Field implements Cloneable, Comparable<Field> {
 
         return 1;
     }
-
-    public Field setTable(String table) {
-        this.table = table;
-        return this;
-    }
     
     public String getSQLInsertName() {
         return name;
@@ -511,7 +506,7 @@ public class Field implements Cloneable, Comparable<Field> {
     }
 
     public String getTable() {
-        return table;
+        return table_name;
     }
 
     public String getHaving() {

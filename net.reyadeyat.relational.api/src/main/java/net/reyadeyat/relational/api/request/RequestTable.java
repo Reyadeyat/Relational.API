@@ -32,6 +32,7 @@ import java.util.Map;
  * @since 2023.01.01
  */
 public class RequestTable {
+    public RequestTable parent_request_table;
     public String table_alias;
     public String table_name;
     @SerializedName("transaction_type")
@@ -43,7 +44,10 @@ public class RequestTable {
     public List<RequestTable> child_request_table_list;
     public Map<String, RequestTable> child_request_table_map;
     
-    public void init() {
+    public void init(RequestTable parent_request_table, List<String> parent_transaction_type_list) {
+        if (transaction_type_list == null) {
+            transaction_type_list = parent_transaction_type_list;
+        }
         if (request_field_list != null && request_field_map == null) {
             request_field_map = new HashMap<>();
             for(RequestField request_field : request_field_list) {
@@ -54,7 +58,7 @@ public class RequestTable {
             child_request_table_map = new HashMap<>();
             for (RequestTable child : child_request_table_list) {
                 child_request_table_map.put(child.table_alias, child);
-                child.init();
+                child.init(this, parent_transaction_type_list);
             }
         }
     }

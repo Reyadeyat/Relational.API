@@ -107,12 +107,22 @@ public abstract class RelationalRequest implements RecordHandler {
     public void serviceTransaction(Integer security_flag, List<Request> request_list, OutputStream response_output_stream, Connection jdbc_connection, JsonArray log_list, JsonArray error_list) throws Exception {
         log_list.add("Start-Process");
         this.security_flag = security_flag;
-        for (Request request : request_list) {
-            request.init();
-            RecordProcessor record_processor = new RecordProcessor(request, response_output_stream);
-            RecordHandler record_handler= this;
-            table.process(record_processor, record_handler);
+        Gson gson = JsonUtil.gson();
+        try {
+            for (Request request : request_list) {
+                request.init();
+                RecordProcessor record_processor = new RecordProcessor(request, response_output_stream);
+                RecordHandler record_handler= this;
+                table.process(record_processor, record_handler);
+                if (record_processor.hasErrors()) {
+                    record_processor.printErrors(gson);
+                }
+            }
+        } catch (Exception ex) {
+            JsonUtil.reclaimGson(gson);
+            throw ex;
         }
+        JsonUtil.reclaimGson(gson);
         log_list.add("End-Process");
     }
 }

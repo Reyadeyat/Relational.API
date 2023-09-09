@@ -210,7 +210,7 @@ public class TestRelationalRequest extends RelationalRequest {
         """
         [
             {
-                "table": "table_a",
+                "table": "table_a_x",
                 "response": "tree",
                 "select": [
                   "id",
@@ -232,7 +232,7 @@ public class TestRelationalRequest extends RelationalRequest {
                 ],
                 "children": [
                     {
-                        "table": "table_a_a",
+                        "table": "table_a_a_x",
                         "response": "tabular",
                         "select": [
                             "id",
@@ -254,7 +254,7 @@ public class TestRelationalRequest extends RelationalRequest {
                         ]
                     },
                     {
-                        "table": "table_a_b",
+                        "table": "table_a_b_x",
                         "response": "tree",
                         "select": [
                             "id",
@@ -273,32 +273,34 @@ public class TestRelationalRequest extends RelationalRequest {
                         },
                         "order_by": [
                             "id"
-                        ]
-                    },
-                    {
-                        "table": "table_a_b_a",
-                        "response": "tabular",
-                        "select": [
-                            "id",
-                            "name_ar",
-                            "name_en",
-                            "date",
-                            "time",
-                            "timestamp",
-                            "boolean"
                         ],
-                        "where": {
-                            "clause": "id=?",
-                            "values": [
-                                "parent.id"
-                            ]
-                        },
-                        "order_by": [
-                            "id"
+                        "children": [
+                            {
+                                "table": "table_a_b_a_x",
+                                "response": "tabular",
+                                "select": [
+                                    "id",
+                                    "name_ar",
+                                    "name_en",
+                                    "date",
+                                    "time",
+                                    "timestamp",
+                                    "boolean"
+                                ],
+                                "where": {
+                                    "clause": "id=?",
+                                    "values": [
+                                        "parent.id"
+                                    ]
+                                },
+                                "order_by": [
+                                    "id"
+                                ]
+                            }
                         ]
                     },
                     {
-                        "table": "table_a_c",
+                        "table": "table_a_c_x",
                         "response": "tabular",
                         "select": [
                             "id",
@@ -332,10 +334,10 @@ public class TestRelationalRequest extends RelationalRequest {
             "data_datasource_name": "%s",
             "data_database_name": "%s",
             "secret_key": "1234567890",
+            "transaction_type": ["insert","select","update","delete"],
             "request_table": {
                 "table_name": "table_a",
-                "table_alias": "table_a",
-                "transaction_type": ["insert","select","update","delete"],
+                "table_alias": "table_a_x",
                 "fields": [
                     {"name": "id", "alias": "id", "group_by": false},
                     {"name": "name_ar", "alias": "name_ar", "group_by": false},
@@ -348,8 +350,7 @@ public class TestRelationalRequest extends RelationalRequest {
                 "children": [
                     {
                         "table_name": "table_a_a",
-                        "table_alias": "table_a_a",
-                        "transaction_type_list": "insert,select,update,delete",
+                        "table_alias": "table_a_a_x",
                         "fields": [
                             {"name": "id", "alias": "id", "group_by": false},
                             {"name": "name_ar", "alias": "name_ar", "group_by": false},
@@ -363,8 +364,7 @@ public class TestRelationalRequest extends RelationalRequest {
                     },
                     {
                         "table_name": "table_a_b",
-                        "table_alias": "table_a_b",
-                        "transaction_type_list": "insert,select,update,delete",
+                        "table_alias": "table_a_b_x",
                         "fields": [
                             {"name": "id", "alias": "id", "group_by": false},
                             {"name": "name_ar", "alias": "name_ar", "group_by": false},
@@ -377,8 +377,7 @@ public class TestRelationalRequest extends RelationalRequest {
                         "children": [
                             {
                                 "table_name": "table_a_b_a",
-                                "table_alias": "table_a_b_a",
-                                "transaction_type_list": "insert,select,update,delete",
+                                "table_alias": "table_a_b_a_x",
                                 "fields": [
                                     {"name": "id", "alias": "id", "group_by": false},
                                     {"name": "name_ar", "alias": "name_ar", "group_by": false},
@@ -394,8 +393,7 @@ public class TestRelationalRequest extends RelationalRequest {
                     },
                     {
                         "table_name": "table_a_c",
-                        "table_alias": "table_a_c",
-                        "transaction_type_list": "insert,select,update,delete",
+                        "table_alias": "table_a_c_x",
                         "fields": [
                             {"name": "id", "alias": "id", "group_by": false},
                             {"name": "name_ar", "alias": "name_ar", "group_by": false},
