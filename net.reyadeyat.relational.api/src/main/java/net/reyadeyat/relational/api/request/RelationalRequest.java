@@ -19,25 +19,26 @@ package net.reyadeyat.relational.api.request;
 import com.google.gson.Gson;
 import net.reyadeyat.relational.api.database.Table;
 import net.reyadeyat.relational.api.json.JsonUtil;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
 import com.google.gson.JsonArray;
 import com.google.gson.reflect.TypeToken;
 import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonWriter;
 import net.reyadeyat.relational.api.database.RecordHandler;
 import net.reyadeyat.relational.api.database.RecordProcessor;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
 import java.sql.Connection;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.reyadeyat.relational.api.jdbc.JDBCSource;
+import net.reyadeyat.relational.security.SecuredWriter;
+import net.reyadeyat.relational.security.Security;
 
 /**
  * 
@@ -86,7 +87,7 @@ public abstract class RelationalRequest implements RecordHandler {
         return (security_flag & SECURITY_FLAG) != 0;
     }
     
-    protected List<Request> serviceContent(InputStream json_request_stream, OutputStream response_output_stream) throws Exception {
+    protected List<Request> serviceContent(InputStream json_request_stream) throws Exception {
         Gson gson = JsonUtil.gson();
         List<Request> request_list = null;
         try (JsonReader json_reader = new JsonReader(new InputStreamReader(json_request_stream, StandardCharsets.UTF_8))) {
@@ -99,21 +100,21 @@ public abstract class RelationalRequest implements RecordHandler {
         return request_list;
     }
 
-    public void serviceTransaction(Integer security_flag, InputStream json_request_stream, OutputStream response_output_stream, Connection jdbc_connection, JsonArray log_list, JsonArray error_list) throws Exception {
-        List<Request> request = serviceContent(json_request_stream, response_output_stream);
-        serviceTransaction(security_flag, request, response_output_stream, jdbc_connection, log_list, error_list);
+    public void serviceTransaction(Integer security_flag, InputStream json_request_stream, JsonWriter response_json_writer, Connection jdbc_connection, JsonArray log_list, JsonArray error_list) throws Exception {
+        List<Request> request_list = serviceContent(json_request_stream);
+        serviceTransaction(security_flag, request_list, response_json_writer, jdbc_connection, log_list, error_list);
     }
     
-    public void serviceTransaction(Integer security_flag, List<Request> request_list, OutputStream response_output_stream, Connection jdbc_connection, JsonArray log_list, JsonArray error_list) throws Exception {
+    public void serviceTransaction(Integer security_flag, List<Request> request_list, JsonWriter response_json_writer, Connection jdbc_connection, JsonArray log_list, JsonArray error_list) throws Exception {
         log_list.add("Start-Process");
         this.security_flag = security_flag;
         Gson gson = JsonUtil.gson();
         try {
             for (Request request : request_list) {
                 request.init();
-                RecordProcessor record_processor = new RecordProcessor(request, response_output_stream);
+                RecordProcessor record_processor = new RecordProcessor(request, response_json_writer);
                 RecordHandler record_handler= this;
-                table.process(record_processor, record_handler);
+                table.process(gson, record_processor, record_handler);
                 if (record_processor.hasErrors()) {
                     record_processor.printErrors(gson);
                 }

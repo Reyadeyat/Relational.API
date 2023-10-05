@@ -21,11 +21,11 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 import com.google.gson.stream.JsonWriter;
+import java.time.Duration;
 import net.reyadeyat.relational.api.request.Response;
 import net.reyadeyat.relational.api.util.Returns;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -45,11 +45,10 @@ import net.reyadeyat.relational.api.request.Request;
 public class RecordProcessor {
     public Request request;
     public String command;
-    public OutputStream response_output_stream;
+    public JsonWriter response_output_writer;
     public JsonArray error_list;
     public int affected_rows;
     public Boolean is_empty_view;
-    public JsonElement view;
     public Response response;
     public Returns returns;
     public RecordProcessor parent_record_processor;
@@ -58,11 +57,13 @@ public class RecordProcessor {
     public List<Map<String, Object>> record_stack_frame_list;
     public Query query;
     
-    public RecordProcessor(Request request, OutputStream response_output_stream) throws Exception {
-        this(null, request, response_output_stream);
+    private Boolean debug = Boolean.TRUE;
+    
+    public RecordProcessor(Request request, JsonWriter response_output_writer) throws Exception {
+        this(null, request, response_output_writer);
     }
     
-    public RecordProcessor(RecordProcessor parent_record_processor, Request request, OutputStream response_output_stream) throws Exception {
+    public RecordProcessor(RecordProcessor parent_record_processor, Request request, JsonWriter response_output_writer) throws Exception {
         this.parent_record_processor = parent_record_processor;
         this.request = request;
         this.command = is_select() ? "Select" : is_insert() ? "insert" : is_update() ? "Update" : is_delete() ? "Delete" : null;
@@ -70,7 +71,7 @@ public class RecordProcessor {
              throw new Exception("Request has invalid command type");
         }
         this.query = new Query();
-        this.response_output_stream = response_output_stream;
+        this.response_output_writer = response_output_writer;
         this.error_list = new JsonArray();
         this.is_empty_view = true;
         this.affected_rows = 0;
@@ -80,7 +81,7 @@ public class RecordProcessor {
         if (request.child_list != null && request.child_list.size() > 0) {
             record_stack_frame_list = new ArrayList<>();
             for (Request child_request : request.child_list) {
-                RecordProcessor child_record_processor = new RecordProcessor(this, child_request, response_output_stream);
+                RecordProcessor child_record_processor = new RecordProcessor(this, child_request, response_output_writer);
                 child_list.add(child_record_processor);
                 child_map.put(child_record_processor.request.table_alias, child_record_processor);
             }
@@ -118,8 +119,8 @@ public class RecordProcessor {
         child_map.remove(child_record_processor.request.table_alias);
     }
     
-    public OutputStream getResponseOutputStream() {
-        return response_output_stream;
+    public JsonWriter getResponseOutputWriter() {
+        return response_output_writer;
     }
     
     public JsonArray addError(String error) {
@@ -129,23 +130,6 @@ public class RecordProcessor {
     
     public JsonArray getErrors() {
         return error_list;
-    }
-    
-    public void setDatabaseView(JsonObject view) {
-        this.view = view;
-    }
-    
-    public JsonElement getDatabaseView() {
-        return view;
-    }
-    
-    public Boolean isEmptyView() throws Exception {
-        if (view.isJsonArray()) {
-            return view.getAsJsonArray().size() > 0;
-        } else if (view.isJsonObject() == true) {
-            return view.getAsJsonObject().size() > 0;
-        }
-        throw new Exception("Response View is not JsonArray nor JsonObject.");
     }
     
     public void setAffectedRows(int affected_rows) {
@@ -194,14 +178,13 @@ public class RecordProcessor {
     }
     
     public void printErrors(Gson gson) throws Exception {
-        JsonWriter writer = new JsonWriter(new OutputStreamWriter(response_output_stream));
-        writer.beginObject();
-        writer.name("Record Processing Errors");
-        writer.beginArray();
-        printErrors(gson, writer);
-        writer.endArray();
-        writer.endObject();
-        writer.flush();
+        beginObject();
+        name("Record Processing Errors");
+        beginArray();
+        printErrors(gson, response_output_writer);
+        endArray();
+        endObject();
+        flush();
     }
     
     private void printErrors(Gson gson, JsonWriter writer) throws Exception {
@@ -226,7 +209,219 @@ public class RecordProcessor {
         
     }
     
-    public Boolean hasGroupBy() {
+    public Boolean hasGroupBy() throws Exception {
         return request.group_by_list != null && request.group_by_list.size() > 0;
     }
+    
+    public void writeJsonElement(Gson gson, JsonElement json_element) throws Exception {
+        gson.toJson(json_element, response_output_writer);
+    }
+    
+    public JsonArray extractJsonObjectKeyList(JsonObject json_object) throws Exception {
+        JsonArray json_array = new JsonArray();
+        for (Map.Entry<String, JsonElement> element : json_object.entrySet()) {
+            json_array.add(element.getKey());
+        }
+        return json_array;
+    }
+    
+    public JsonArray extractJsonObjectValueList(JsonObject json_object) throws Exception {
+        JsonArray json_array = new JsonArray();
+        for (Map.Entry<String, JsonElement> element : json_object.entrySet()) {
+            json_array.add(element.getValue());
+        }
+        return json_array;
+    }
+    
+    public void mergeJsonElement(JsonElement json_element) throws Exception {
+        mergeJsonElement(null, json_element);
+    }
+    
+    public void mergeJsonElement(String name, JsonElement json_element) throws Exception {
+        mergeJsonElement(name, json_element, false);
+    }
+    
+    public void mergeJsonElement(String name, JsonElement json_element, Boolean keep_open) throws Exception {
+        if (json_element.isJsonObject() == true) {
+            if (name != null) {
+                name(name);
+            }
+            beginObject();
+            for (Map.Entry<String, JsonElement> element : json_element.getAsJsonObject().entrySet()) {
+                name(element.getKey());
+                JsonElement json_object_element = element.getValue();
+                if (json_object_element.isJsonObject()) {
+                    mergeJsonElement(json_object_element.getAsJsonObject());
+                } else if (json_object_element.isJsonPrimitive()) {
+                    mergeJsonPrimitive(json_object_element.getAsJsonPrimitive());
+                } else if (json_object_element.isJsonNull() == true) {
+                    nullValue();
+                }
+            }
+            if (keep_open == false) {
+                endObject();
+            }
+        } else if (json_element.isJsonArray() == true) {
+            JsonArray json_array = json_element.getAsJsonArray();
+            if (name != null) {
+                name(name);
+            }
+            beginArray();
+            for (int i = 0; i < json_array.size(); i++) {
+                JsonElement json_array_element = json_array.get(i);
+                mergeJsonElement(json_array_element);
+            }
+            if (keep_open == false) {
+                endArray();
+            }
+        } else if (json_element.isJsonPrimitive() == true) {
+            mergeJsonPrimitive(name, json_element.getAsJsonPrimitive());
+        } else if (json_element.isJsonNull() == true) {
+            nullValue();
+        }
+    }
+    
+    public void addJsonElement(JsonElement json_element) throws Exception {
+        if (json_element.isJsonObject() == true) {
+            for (Map.Entry<String, JsonElement> element : json_element.getAsJsonObject().entrySet()) {
+                name(element.getKey());
+                JsonElement json_object_element = element.getValue();
+                if (json_object_element.isJsonObject()) {
+                    mergeJsonElement(json_object_element.getAsJsonObject());
+                } else if (json_object_element.isJsonPrimitive()) {
+                    mergeJsonPrimitive(json_object_element.getAsJsonPrimitive());
+                } else if (json_object_element.isJsonNull() == true) {
+                    nullValue();
+                }
+            }
+        } else if (json_element.isJsonArray() == true) {
+            JsonArray json_array = json_element.getAsJsonArray();
+            for (int i = 0; i < json_array.size(); i++) {
+                JsonElement json_array_element = json_array.get(i);
+                mergeJsonElement(json_array_element);
+            }
+        } else if (json_element.isJsonPrimitive() == true) {
+            mergeJsonPrimitive(json_element.getAsJsonPrimitive());
+        } else if (json_element.isJsonNull() == true) {
+            nullValue();
+        }
+    }
+    
+    public void mergeJsonPrimitive(JsonPrimitive json_primitive) throws Exception {
+        mergeJsonPrimitive(null, json_primitive);
+    }
+    
+    public void mergeJsonPrimitive(String name, JsonPrimitive json_primitive) throws Exception {
+        if (name != null) {
+            name(name);
+        }
+        if (json_primitive.isBoolean()) {
+            response_output_writer.value(json_primitive.getAsBoolean());
+            system_out(json_primitive.getAsBoolean());
+        } else if (json_primitive.isString()) {
+            response_output_writer.value(json_primitive.getAsString());
+            system_out(json_primitive.getAsString());
+        } else if (json_primitive.isNumber()) {
+            response_output_writer.value(json_primitive.getAsNumber());
+            system_out(json_primitive.getAsNumber());
+        }
+    }
+    
+    public void writeJsonElement(Gson gson, String name, JsonElement json_element) throws Exception {
+        name(name);
+        gson.toJson(json_element, response_output_writer);
+        system_out(gson.toJson(json_element));
+    }
+    
+    public void beginObject() throws Exception {
+        response_output_writer.beginObject();
+        system_out("{");
+    }
+    
+    public void name(String name) throws Exception {
+        response_output_writer.name(name);
+        system_out(name);
+    }
+    
+    public void beginArray() throws Exception {
+        response_output_writer.beginArray();
+        system_out("[");
+    }
+    
+    public void endArray() throws Exception {
+        response_output_writer.endArray();
+        system_out("]");
+    }
+    
+    public void endObject() throws Exception {
+        response_output_writer.endObject();
+        system_out("}");
+    }
+    
+    public void nullValue() throws Exception {
+        nullValue(null);
+    }
+    
+    public void nullValue(String name) throws Exception {
+        if (name != null) {
+            name(name);
+        }
+        response_output_writer.nullValue();
+        system_out("null");
+    }
+    
+    public void value(Boolean value) throws Exception {
+        response_output_writer.value(value);
+        system_out(value);
+    }
+    
+    public void value(Number value) throws Exception {
+        response_output_writer.value(value);
+        system_out(value);
+    }
+    
+    public void value(String value) throws Exception {
+        response_output_writer.value(value);
+        system_out(value);
+    }
+    
+    public void value(boolean value) throws Exception {
+        response_output_writer.value(value);
+        system_out(value);
+    }
+    
+    public void value(double value) throws Exception {
+        response_output_writer.value(value);
+        system_out(value);
+    }
+    
+    public void value(float value) throws Exception {
+        response_output_writer.value(value);
+        system_out(value);
+    }
+    
+    public void value(long value) throws Exception {
+        response_output_writer.value(value);
+        system_out(value);
+    }
+    
+    public void flush() throws Exception {
+        response_output_writer.flush();
+    }
+    
+    private void system_out(Object text) {
+        if (debug == true) {
+            System.out.println(text.toString());
+        }
+    }
+    
+    public void query_stats() throws Exception {
+        name("prepare ");
+        value((Duration.between(query.t1, query.t2).toNanos()/1000000d) + " ms");
+        name("query ");
+        value((Duration.between(query.t2, query.t3).toNanos()/1000000d) + " ms");
+        name("process ");
+        value((Duration.between(query.t3, query.t4).toNanos()/1000000d) + " ms");
+    }
+    
 }

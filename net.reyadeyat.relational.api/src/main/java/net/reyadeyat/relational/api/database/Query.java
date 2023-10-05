@@ -17,6 +17,7 @@
 
 package net.reyadeyat.relational.api.database;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -32,7 +33,7 @@ import java.util.List;
  */
 public class Query {
     
-    public long t1, t2, t3, t4;
+    public Instant t1, t2, t3, t4;
     public List<Field> where_field_list;
     public List<ServiceField> service_field_list;
     public List<Argument> where_argument_list;
