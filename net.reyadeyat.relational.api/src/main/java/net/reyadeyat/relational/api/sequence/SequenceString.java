@@ -31,7 +31,7 @@ import java.util.Iterator;
  * 
  * @since 2023.01.01
  */
-public class SequenceString<Type extends String> implements Sequence<Type> {
+public class SequenceString implements Sequence<String> {
 
     private class SequenceStringItem {
 
@@ -51,7 +51,7 @@ public class SequenceString<Type extends String> implements Sequence<Type> {
             }
         }
 
-        public Type nextSequence() throws Exception {
+        public String nextSequence() throws Exception {
             if (counterCursor <= sequence_base) {
                 sequence_chars[chars_width - 1] = ordered_sequence[sequence_chars_cursors[chars_width - 1] = counterCursor++];
             } else {//carry out by 1
@@ -83,7 +83,7 @@ public class SequenceString<Type extends String> implements Sequence<Type> {
                     sequence_chars[sliding_cursor] = ordered_sequence[sequence_chars_cursors[sliding_cursor] = 1];
                 }
             }
-            return (Type) new String(sequence_chars);
+            return new String(sequence_chars);
         }
         
         public void initSequence(String value) throws Exception {
@@ -108,8 +108,8 @@ public class SequenceString<Type extends String> implements Sequence<Type> {
             }
         }
         
-        public Type getLastSequenceIssued() {
-            return (Type) new String(sequence_chars);
+        public String getLastSequenceIssued() {
+            return new String(sequence_chars);
         }
     }
 
@@ -195,7 +195,8 @@ public class SequenceString<Type extends String> implements Sequence<Type> {
     }
 
     @Override
-    public Type nextSequence(Class clas) throws Exception {
+    @SuppressWarnings("unchecked")
+    public <T extends String> T nextSequence(Class clas) throws Exception {
         if (clas == null) {
             throw new Exception("Sequence Class can not be null value");
         }
@@ -205,14 +206,15 @@ public class SequenceString<Type extends String> implements Sequence<Type> {
         }
         if (synchronize) {
             synchronized (ss) {
-                return ss.nextSequence();
+                return (T) ss.nextSequence();
             }
         }
-        return ss.nextSequence();
+        return (T) ss.nextSequence();
     }
     
     @Override
-    public Type getSequenceState(Class clas) throws Exception {
+    @SuppressWarnings("unchecked")
+    public <T extends String> T getSequenceState(Class clas) throws Exception {
         if (clas == null) {
             throw new Exception("Sequence Class can not be null value");
         }
@@ -222,32 +224,33 @@ public class SequenceString<Type extends String> implements Sequence<Type> {
         }
         if (synchronize) {
             synchronized (ss) {
-                return ss.getLastSequenceIssued();
+                return (T) ss.getLastSequenceIssued();
             }
         }
-        return ss.getLastSequenceIssued();
+        return (T) ss.getLastSequenceIssued();
     }
     
     @Override
-    public HashMap<Class, Type> getSequenceState() throws Exception {
+    @SuppressWarnings("unchecked")
+    public <T extends String> HashMap<Class, T> getSequenceState() throws Exception {
         if (synchronize) {
             synchronized (sequenceClassMap) {
-                HashMap<Class, Type> sequenceClassMapState = new HashMap<Class, Type>();
+                HashMap<Class, String> sequenceClassMapState = new HashMap<Class, String>();
                 Iterator<Class> iterator = sequenceClassMap.keySet().iterator();
                 while (iterator.hasNext()) {
                     Class key = iterator.next();
                     sequenceClassMapState.put(key, sequenceClassMap.get(key).getLastSequenceIssued());
                 }
-                return sequenceClassMapState;
+                return (HashMap<Class, T>) sequenceClassMapState;
             }
         }
-        HashMap<Class, Type> sequenceClassMapState = new HashMap<Class, Type>();
+        HashMap<Class, String> sequenceClassMapState = new HashMap<Class, String>();
         Iterator<Class> iterator = sequenceClassMap.keySet().iterator();
         while (iterator.hasNext()) {
             Class key = iterator.next();
             sequenceClassMapState.put(key, sequenceClassMap.get(key).getLastSequenceIssued());
         }
-        return sequenceClassMapState;
+        return (HashMap<Class, T>) sequenceClassMapState;
         
     }
 

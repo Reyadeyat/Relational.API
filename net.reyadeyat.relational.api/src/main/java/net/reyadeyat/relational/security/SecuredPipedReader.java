@@ -25,18 +25,28 @@ import java.io.Writer;
  * @author Mohammad Nabil Mostafa
  * <a href="mailto:code@mnabil.net">code@mnabil.net</a>
  */
-public class SecuredReader extends Reader {
+public class SecuredPipedReader extends Reader {
     
     private Reader reader;
+    private Writer piped_writer;
     private Security secutiry;
     private String separator;
     private StringBuilder buffer;
     
-    public SecuredReader(Reader reader, Writer piped_writer, Security secutiry, String separator) throws Exception {
-        if (this.reader == null) {
-            throw new Exception("reader is null");
-        }
+    /**Reader only*/
+    public SecuredPipedReader(Reader reader, Security secutiry, String separator) {
+        this(reader, null, secutiry, separator);
+    }
+    
+    /**Piped Reader to Writer*/
+    public SecuredPipedReader(Writer writer, Security secutiry, String separator) {
+        this(null, writer, secutiry, separator);
+    }
+    
+    /**reader and Piped Reader to Writer*/
+    public SecuredPipedReader(Reader reader, Writer piped_writer, Security secutiry, String separator) {
         this.reader = reader;
+        this.piped_writer = piped_writer;
         this.secutiry = secutiry;
         this.separator = separator;
         this.buffer = new StringBuilder();
@@ -51,7 +61,13 @@ public class SecuredReader extends Reader {
                 String encrypted_text = buffer.substring(0, index);
                 buffer.delete(0, index+separator.length());
                 char[] plain_buffer = this.secutiry.decrypt_text(encrypted_text).toCharArray();
-                return reader.read(plain_buffer, 0, plain_buffer.length);
+                if (this.piped_writer != null) {
+                    this.piped_writer.write(plain_buffer, 0, plain_buffer.length);
+                    return plain_buffer.length;
+                }
+                if (reader != null) {
+                    return reader.read(plain_buffer, 0, plain_buffer.length);
+                }
             }
             return 0;
         } catch (Exception ex) {
@@ -61,7 +77,14 @@ public class SecuredReader extends Reader {
 
     @Override
     public void close() throws IOException {
-        reader.close();
+        if (reader != null) {
+            reader.close();
+        }
     }
     
+    public void flush() throws IOException {
+        if (this.piped_writer != null) {
+            this.piped_writer.flush();
+        }
+    }
 }

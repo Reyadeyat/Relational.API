@@ -50,7 +50,7 @@ public class DataInstance {
     private State state;
     DataClass data_class;
     DataInstance parent_data_instance;
-    SequenceNumber<Integer> sequence_number;
+    SequenceNumber sequence_number;
     Boolean is_null;
     Integer parent_id;
     Object instance_object;
@@ -89,7 +89,8 @@ public class DataInstance {
                 "http_requests"
             }));
     
-    public DataInstance(State state, String database_name, DataClass data_class, DataInstance parent_data_instance, Object parentInstanceObject, Object instance_object, SequenceNumber<Integer> sequence_number, Boolean traverse) throws Exception {
+    @SuppressWarnings("unchecked")
+    public DataInstance(State state, String database_name, DataClass data_class, DataInstance parent_data_instance, Object parentInstanceObject, Object instance_object, SequenceNumber sequence_number, Boolean traverse) throws Exception {
         this.state = state;
         this.database_name = database_name;
         this.data_class = data_class;
@@ -245,7 +246,7 @@ public class DataInstance {
         this.addMemeber(instance, membersList, tablesList, fieldsList, membersMap, tablesMap, fieldsMap);
     }
     
-    public void addChildInstanceObject(State childState, DataClass newDataClass, Object parentInstanceObject, Object newInstanceObject, SequenceNumber<Integer> sequence_number, Boolean traverse) throws Exception {
+    public void addChildInstanceObject(State childState, DataClass newDataClass, Object parentInstanceObject, Object newInstanceObject, SequenceNumber sequence_number, Boolean traverse) throws Exception {
         ArrayList<DataInstance> membersList = this.member_list_map.get(parentInstanceObject);
         ArrayList<DataInstance> tablesList = this.table_list_map.get(parentInstanceObject);
         ArrayList<DataInstance> fieldsList = this.field_list_map.get(parentInstanceObject);

@@ -25,17 +25,27 @@ import java.io.Writer;
  * @author Mohammad Nabil Mostafa
  * <a href="mailto:code@mnabil.net">code@mnabil.net</a>
  */
-public class SecuredWriter extends Writer {
+public class SecuredPipedWriter extends Writer {
     
     private Writer writer;
+    private Reader piped_reader;
     private Security secutiry;
     private String separator;
     
-    public SecuredWriter(Writer writer, Reader piped_reader, Security secutiry, String separator) throws Exception {
-        if (this.writer == null) {
-            throw new Exception("writer is null");
-        }
+    /**Writer only*/
+    public SecuredPipedWriter(Writer writer, Security secutiry, String separator) {
+        this(writer, null, secutiry, separator);
+    }
+    
+    /**Pipe Writer to Reader*/
+    public SecuredPipedWriter(Reader piped_reader, Security secutiry, String separator) {
+        this(null, piped_reader, secutiry, separator);
+    }
+    
+    /**Writer and Piped Writer to Reader*/
+    public SecuredPipedWriter(Writer writer, Reader piped_reader, Security secutiry, String separator) {
         this.writer = writer;
+        this.piped_reader = piped_reader;
         this.secutiry = secutiry;
         this.separator = separator;
     }
@@ -44,7 +54,12 @@ public class SecuredWriter extends Writer {
     public void write(char[] plain_buffer, int offset, int length) throws IOException {
         try {
             char[] encrypted_buffer = (this.secutiry.encrypt_text(new String(plain_buffer, offset, length))+separator).toCharArray();
-            writer.write(encrypted_buffer, 0, encrypted_buffer.length);
+            if (this.piped_reader != null) {
+                this.piped_reader.read(encrypted_buffer, 0, encrypted_buffer.length);
+            }
+            if (writer != null) {
+                writer.write(encrypted_buffer, 0, encrypted_buffer.length);
+            }
         } catch (Exception ex) {
             throw new IOException(ex);
         }
@@ -52,12 +67,16 @@ public class SecuredWriter extends Writer {
 
     @Override
     public void flush() throws IOException {
-        writer.flush();
+        if (writer != null) {
+            writer.flush();
+        }
     }
 
     @Override
     public void close() throws IOException {
-        writer.close();
+        if (writer != null) {
+            writer.close();
+        }
     }
     
     

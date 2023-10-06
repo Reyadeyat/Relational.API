@@ -377,8 +377,8 @@ public class MetadataMiner {
                     writer.append("Table [");
                     writer.append(table.name);
                     writer.append("][Parent Paths]\n");
-                    for (int i = 0; i < table.parent_paths.size(); i++) {
-                        ArrayList<Table> tablesPath = table.parent_paths.get(i);
+                    for (int i = 0; i < table.parent_path_list.size(); i++) {
+                        ArrayList<Table> tablesPath = table.parent_path_list.get(i);
                         for (int x = 0; x < level * shift; x++) {
                             writer.append(" ");
                         }
@@ -397,8 +397,8 @@ public class MetadataMiner {
                         writer.append("\n");
                     }
                     writer.append("Table [");writer.append(table.name);writer.append("][All Paths]\n");
-                    for (int i = 0; i < table.paths.size(); i++) {
-                        ArrayList<Table> tablesPath = table.paths.get(i);
+                    for (int i = 0; i < table.path_list.size(); i++) {
+                        ArrayList<Table> tablesPath = table.path_list.get(i);
                         for (int x = 0; x < level * shift; x++) {
                             writer.append(" ");
                         }
@@ -437,13 +437,13 @@ public class MetadataMiner {
                         }
                     }
                     writer.append("Table [");writer.append(table.name);writer.append("][All Paths Inner Joined]\n");
-                    for (int i = 0; i < table.paths.size(); i++) {
+                    for (int i = 0; i < table.path_list.size(); i++) {
                         /*save model in InstanceId that acts as versionID
                         Alter Database to memic versionID
                         or
                         Create new Database to memic versionID*/
 
-                        ArrayList<Table> tablesPath = table.paths.get(i);
+                        ArrayList<Table> tablesPath = table.path_list.get(i);
                         String pathString = database.pathToString(tablesPath);
                         writer.append(pathString);
                         writer.append("\n");

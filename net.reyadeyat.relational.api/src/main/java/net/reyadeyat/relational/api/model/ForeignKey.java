@@ -153,6 +153,8 @@ public class ForeignKey {
             i++;
             if (i < foreign_key_field_list.size()) {
                 appendable.append("`,");
+            } else {
+                appendable.append("`");
             }
         }
         appendable.append(") REFERENCES");
@@ -166,6 +168,8 @@ public class ForeignKey {
             i++;
             if (i < foreign_key_field_list.size()) {
                 appendable.append("`,");
+            } else {
+                appendable.append("`");
             }
         }
         appendable.append(") ");
@@ -186,6 +190,8 @@ public class ForeignKey {
             i++;
             if (i < foreign_key_field_list.size()) {
                 appendable.append("`,");
+            } else {
+                appendable.append("`");
             }
         }
         appendable.append(") REFERENCES");
@@ -199,6 +205,8 @@ public class ForeignKey {
             i++;
             if (i < foreign_key_field_list.size()) {
                 appendable.append("`,");
+            } else {
+                appendable.append("`");
             }
         }
         appendable.append(") ");

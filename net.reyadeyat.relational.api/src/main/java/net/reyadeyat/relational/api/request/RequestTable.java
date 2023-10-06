@@ -45,6 +45,7 @@ public class RequestTable {
     public Map<String, RequestTable> child_request_table_map;
     
     public void init(RequestTable parent_request_table, List<String> parent_transaction_type_list) {
+        this.parent_request_table = parent_request_table;
         if (transaction_type_list == null) {
             transaction_type_list = parent_transaction_type_list;
         }

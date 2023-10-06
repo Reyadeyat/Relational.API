@@ -30,7 +30,7 @@ import java.util.Iterator;
  * 
  * @since 2023.01.01
  */
-public class SequenceNumber<Type extends Number> implements Sequence<Type> {
+public class SequenceNumber implements Sequence<Number> {
 
     private class SequenceNumberItem {
         private Number sequence_initial_number;
@@ -46,7 +46,7 @@ public class SequenceNumber<Type extends Number> implements Sequence<Type> {
             this.type = this.sequence_value.getClass();
         }
         
-        public Type nextSequence() throws Exception {
+        public Number nextSequence() throws Exception {
             if (this.type.equals(Byte.class)) {
                 if (sequence_initial_value.byteValue() + increment.byteValue() >= Byte.MAX_VALUE) {
                     if (rewind == true) {
@@ -102,24 +102,24 @@ public class SequenceNumber<Type extends Number> implements Sequence<Type> {
                 }
                 sequence_value = sequence_value.floatValue() + increment.floatValue();
             }
-            return (Type) sequence_value;
+            return sequence_value;
         }
         
-        public void initSequence(Type value) {
+        public void initSequence(Number value) {
             this.sequence_value = value;
         }
         
-        public Type getLastSequenceIssued() {
-            return (Type) this.sequence_value;
+        public Number getLastSequenceIssued() {
+            return this.sequence_value;
         }
     }
     
     private HashMap<Class, SequenceNumberItem> sequenceClassMap;
     private Boolean synchronize;
-    private Type sequence_initial_value;
-    private Type sequence_increment;
+    private Number sequence_initial_value;
+    private Number sequence_increment;
     
-    public SequenceNumber(Type sequence_initial_value, Type sequence_increment, Boolean synchronize) {
+    public SequenceNumber(Number sequence_initial_value, Number sequence_increment, Boolean synchronize) {
         this.sequenceClassMap = new HashMap<Class, SequenceNumberItem>();
         this.sequence_initial_value = sequence_initial_value;
         this.sequence_increment = sequence_increment;
@@ -169,7 +169,7 @@ public class SequenceNumber<Type extends Number> implements Sequence<Type> {
     }
     
     @Override
-    public void initSequence(Class clas, Type value) throws Exception {
+    public void initSequence(Class clas, Number value) throws Exception {
         if (clas == null) {
             throw new Exception("Sequence Class can not be null value");
         }
@@ -208,7 +208,8 @@ public class SequenceNumber<Type extends Number> implements Sequence<Type> {
     }
     
     @Override
-    public Type nextSequence(Class clas) throws Exception {
+    @SuppressWarnings("unchecked")
+    public <T extends Number> T nextSequence(Class clas) throws Exception {
         if (clas == null) {
             throw new Exception("Sequence Class can not be null value");
         }
@@ -218,31 +219,33 @@ public class SequenceNumber<Type extends Number> implements Sequence<Type> {
         }
         if (synchronize) {
             synchronized(si) {
-                return si.nextSequence();
+                return (T) si.nextSequence();
             }
         }
-        return si.nextSequence();
+        return (T) si.nextSequence();
     }
     
     @Override
-    public Type getSequenceState(Class clas) throws Exception {
+    @SuppressWarnings("unchecked")
+    public <T extends Number> T getSequenceState(Class clas) throws Exception {
         SequenceNumberItem si = sequenceClassMap.get(clas);
         if (si == null) {
             throw new NullPointerException("Class '" + clas + "' is not defined in this sequence");
         }
         if (synchronize) {
             synchronized(si) {
-                return si.getLastSequenceIssued();
+                return (T) si.getLastSequenceIssued();
             }
         }
-        return si.getLastSequenceIssued();
+        return (T) si.getLastSequenceIssued();
     }
     
     @Override
-    public HashMap<Class, Type> getSequenceState() throws Exception {
+    @SuppressWarnings("unchecked")
+    public <T extends Number> HashMap<Class, T> getSequenceState() throws Exception {
         if (synchronize) {
             synchronized(sequenceClassMap) {
-                HashMap<Class, Type> sequenceClassMapState = new HashMap<Class, Type>();
+                HashMap<Class, Number> sequenceClassMapState = new HashMap<Class, Number>();
                 Iterator<Class> iterator = sequenceClassMap.keySet().iterator();
                 while (iterator.hasNext()) {
                     Class key = iterator.next();
@@ -251,10 +254,10 @@ public class SequenceNumber<Type extends Number> implements Sequence<Type> {
                     }*/
                     sequenceClassMapState.put(key, sequenceClassMap.get(key).getLastSequenceIssued());
                 }
-                return sequenceClassMapState;
+                return (HashMap<Class, T>) sequenceClassMapState;
             }
         }
-        HashMap<Class, Type> sequenceClassMapState = new HashMap<Class, Type>();
+        HashMap<Class, Number> sequenceClassMapState = new HashMap<Class, Number>();
         Iterator<Class> iterator = sequenceClassMap.keySet().iterator();
         while (iterator.hasNext()) {
             Class key = iterator.next();
@@ -263,6 +266,6 @@ public class SequenceNumber<Type extends Number> implements Sequence<Type> {
             }*/
             sequenceClassMapState.put(key, sequenceClassMap.get(key).getLastSequenceIssued());
         }
-        return sequenceClassMapState;
+        return (HashMap<Class, T>) sequenceClassMapState;
     }
 }

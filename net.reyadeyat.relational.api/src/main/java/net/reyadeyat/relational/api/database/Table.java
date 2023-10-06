@@ -589,20 +589,20 @@ public class Table {
         return this.updateWhereConditionFields;
     }
     
-    private void addForeignKey(String key, String foreign_table) {
+    private void addForeignKey(String key, String foreign_table_name, String foreign_table_alias) {
         foreignKeys = (foreignKeys != null ? foreignKeys : new HashMap<String, ForeignKey>());
         if (foreignKeys.get(key) == null) {
-            foreignKeys.put(key, new ForeignKey(key, data_database_name, foreign_table));
+            foreignKeys.put(key, new ForeignKey(key, data_database_name, foreign_table_name, foreign_table_alias));
         }
     }
     
-    public void addForeignField(String key, String foreign_table, String field_alias, String foreign_field_alias, JsonArray table_error_list) {
-        if (field_map.get(field_alias) == null) {
-            table_error_list.add("Field alias '" + field_alias + "' is not exist in table '" + request_table.table_name + "'");
+    public void addForeignField(String key, String table_field_alias, String foreign_table_name, String foreign_table_alias, String foreign_field_alias, JsonArray table_error_list) {
+        if (field_map.get(table_field_alias) == null) {
+            table_error_list.add("Field alias '" + table_field_alias + "' is not exist in table '" + request_table.table_alias + "'");
             return;
         }
-        Field field = field_map.get(field_alias);
-        addForeignKey(key, foreign_table);
+        Field field = field_map.get(table_field_alias);
+        addForeignKey(key, foreign_table_name, foreign_table_alias);
         ForeignKey foreignKey = foreignKeys.get(key);
         foreignKey.addForeignField(field, foreign_field_alias);
     }
@@ -832,8 +832,8 @@ public class Table {
         addJoinField(key, joinTable, field_alias, joinField, join_type, table_error_list);
     }
 
-    protected void addForeignKey(String key, String field_alias, String foreignTable, String foreign_field, JsonArray table_error_list) {
-        addForeignField(key, foreignTable, field_alias, foreign_field, table_error_list);
+    protected void addForeignKey(String key, String table_field_alias, String foreign_table_name, String foreign_table_alias, String foreign_field_alias, JsonArray table_error_list) {
+        addForeignField(key, table_field_alias, foreign_table_name, foreign_table_alias, foreign_field_alias, table_error_list);
     }
 
     protected void addDependentKey(String key, String field_alias, String dependendTable, String dependendField, JsonArray table_error_list) {
@@ -1064,7 +1064,7 @@ public class Table {
                 }
                 nullableRecords.add(nullables);
                 if (nullables > 0 && nullables != field_list.size()) {
-                    error_list.add("Foreign Key '" + foreignKey.getKey() + "' for Table '" + foreignKey.getForeignTable() + "' has mixed keys {null} values check index [" + oo + "], either or null or all non-null}");
+                    error_list.add("Foreign Key '" + foreignKey.getKey() + "' for Table '" + foreignKey.getForeignTableName() + "' has mixed keys {null} values check index [" + oo + "], either or null or all non-null}");
                 }
             }
             for (int oo = 0; error_list.size() == 0 && oo < values.size(); oo++) {//error_list.size() == 0 to validate all records
@@ -1082,13 +1082,13 @@ public class Table {
                         JsonElement fje = o.get(f.getAlias());
                         String fieldValue = (fje == null || fje.isJsonNull() ? null : fje.getAsString());
                         preparedInsertedSelectStmt.setObject(++idx, f.getFieldObject(fieldValue));
-                        sb.append("`").append(foreignKey.getForeignTable()).append("`.`").append(foreignKey.getForeignField(f)).append("`=").append(fieldValue).append(",");
+                        sb.append("`").append(foreignKey.getForeignTableAlias()).append("`.`").append(foreignKey.getForeignField(f)).append("`=").append(fieldValue).append(",");
                     }
                     sb.delete(sb.length() - 1, sb.length());
                     String s = sb.toString();
                     try (ResultSet resultset = preparedInsertedSelectStmt.executeQuery()) {
                         if (resultset.next() == false) {
-                            error_list.add("Table '" + foreignKey.getForeignTable() + "' doesn't have record with {" + s + "}");
+                            error_list.add("Table '" + foreignKey.getForeignTableAlias() + "' doesn't have record with {" + s + "}");
                         }
                         resultset.close();
                     } catch (Exception sqlx) {
@@ -1127,7 +1127,7 @@ public class Table {
                     if (checkForeignKeyUpdate == field_list.size()) {
                         skipForeignKeyCheck = true;
                     } else if (checkForeignKeyUpdate != 0) {//some field_list exists but some others doesn't
-                        error_list.add("Table '" + foreignKey.getForeignTable() + "' missing '" + (field_list.size() - checkForeignKeyUpdate) + "' foreign keys '" + foreignKey.getKey() + "' keys {" + sb.toString() + "}");
+                        error_list.add("Table '" + foreignKey.getForeignTableAlias() + "' missing '" + (field_list.size() - checkForeignKeyUpdate) + "' foreign keys '" + foreignKey.getKey() + "' keys {" + sb.toString() + "}");
                         return false;
                     }
                 }
@@ -1144,13 +1144,13 @@ public class Table {
                             JsonElement fje = o.get(f.getAlias());
                             String fieldValue = (fje == null || fje.isJsonNull() ? null : fje.getAsString());
                             preparedInsertedSelectStmt.setObject(++idx, f.getFieldObject(fieldValue));
-                            sb.append("`").append(foreignKey.getForeignTable()).append("`.`").append(foreignKey.getForeignField(f)).append("`=").append(fieldValue).append(",");
+                            sb.append("`").append(foreignKey.getForeignTableAlias()).append("`.`").append(foreignKey.getForeignField(f)).append("`=").append(fieldValue).append(",");
                         }
                         sb.delete(sb.length() - 1, sb.length());
                         String s = sb.toString();
                         try (ResultSet resultset = preparedInsertedSelectStmt.executeQuery()) {
                             if (resultset.next() == false) {
-                                error_list.add("Table '" + foreignKey.getForeignTable() + "' doesn't have record with {" + s + "}");
+                                error_list.add("Table '" + foreignKey.getForeignTableAlias() + "' doesn't have record with {" + s + "}");
                             }
                             resultset.close();
                         } catch (Exception sqlx) {
@@ -2670,19 +2670,22 @@ public class Table {
             for (Integer foreign_key_counter = 0; foreign_key_counter < foreign_key_list.size(); foreign_key_counter++) {
                 //Add Aliases to the joints
                 net.reyadeyat.relational.api.model.ForeignKey foreign_key = foreign_key_list.get(foreign_key_counter);
-                addForeignKey("FK_"+foreign_key.name, foreign_key.table.name);
-                addJoinKey("JK_"+foreign_key.name, foreign_key.table.name, JoinKey.JoinType.INNER_JOIN);
-                for (int field_counter = 0; field_counter < foreign_key.foreign_key_field_list.size(); field_counter++) {
-                    ForeignKeyField foreign_key_field = foreign_key.foreign_key_field_list.get(field_counter);
-                    ////addJoinField("JK_"+foreign_key.name, foreign_key.table.name, String field_alias, String join_field_alias, table_error_list);
-                    ////addForeignField("FK_"+foreign_key.name, foreign_key.table.name, String field_alias, String foreign_field_alias, table_error_list);
+                for (ForeignKeyField foreign_key_field : foreign_key.foreign_key_field_list) {
+                    RequestField request_field = request_table.parent_request_table.request_field_map.get(foreign_key_field.name);
+                    addForeignKey("FK_"+foreign_key.name, request_field.field_name, request_table.parent_request_table.table_name, request_table.parent_request_table.table_alias, request_field.field_alias, table_error_list);
+                    addJoinKey("JK_"+foreign_key.name, foreign_key.table.name, JoinKey.JoinType.INNER_JOIN);
+                    /*for (int field_counter = 0; field_counter < foreign_key.foreign_key_field_list.size(); field_counter++) {
+                        ForeignKeyField foreign_key_field = foreign_key.foreign_key_field_list.get(field_counter);
+                        /////addJoinField("JK_"+foreign_key.name, foreign_key.table.name, String field_alias, String join_field_alias, table_error_list);
+                        /////addForeignField("FK_"+foreign_key.name, foreign_key.table.name, String field_alias, String foreign_field_alias, table_error_list);
+                    }*/
+                    //addForeignKey("FK"+foreign_key_counter, request_table.table_name);
+                    //addJoinKey("JK"+foreign_key_counter, request_table.table_name, JoinKey.JoinType.INNER_JOIN);
+                    //net.reyadeyat.relational.api.model.Field table_field = database_table.field_map.get(request_field.field_name);
+                    //addJoinField(String key, String join_table, String field_alias, String join_field_alias, JsonArray table_error_list);
+                    //addForeignField(String key, String foreign_table, String field_alias, String foreign_field_alias, JsonArray table_error_list)
+                    //addDependentKey("DK1", "project_id", "pm_task", "project_id");
                 }
-                //addForeignKey("FK"+foreign_key_counter, request_table.table_name);
-                //addJoinKey("JK"+foreign_key_counter, request_table.table_name, JoinKey.JoinType.INNER_JOIN);
-                //net.reyadeyat.relational.api.model.Field table_field = database_table.field_map.get(request_field.field_name);
-                //addJoinField(String key, String join_table, String field_alias, String join_field_alias, JsonArray table_error_list);
-                //addForeignField(String key, String foreign_table, String field_alias, String foreign_field_alias, JsonArray table_error_list)
-                //addDependentKey("DK1", "project_id", "pm_task", "project_id");
             }
         }
         

@@ -34,15 +34,17 @@ import java.util.HashMap;
 public class ForeignKey {
     private String key;
     private String database_name;
-    private String foreign_table;
+    private String foreign_table_name;
+    private String foreign_table_alias;
     private ArrayList<Field> field_list;
     private HashMap<Field, String> foreignFields;//Foreign Field, Field
     private String foreiness_validation_statement;
     
-    public ForeignKey(String key, String database_name, String foreign_table) {
+    public ForeignKey(String key, String database_name, String foreign_table_name, String foreign_table_alias) {
         this.key = key;
         this.database_name = database_name;
-        this.foreign_table = foreign_table;
+        this.foreign_table_name = foreign_table_name;
+        this.foreign_table_alias = foreign_table_alias;
         this.foreignFields = new HashMap<Field, String>();
     }
     
@@ -58,8 +60,12 @@ public class ForeignKey {
         return this.foreignFields.get(field);
     }
     
-    public String getForeignTable() {
-        return foreign_table;
+    public String getForeignTableName() {
+        return foreign_table_name;
+    }
+    
+    public String getForeignTableAlias() {
+        return foreign_table_alias;
     }
     
     public ArrayList<Field> getFields() {
@@ -74,11 +80,11 @@ public class ForeignKey {
         StringBuilder sb = new StringBuilder();
         field_list = new ArrayList<>(foreignFields.keySet());
         Collections.sort(field_list);
-        sb.append("SELECT * FROM ").append("`").append(database_name).append("`.`").append(foreign_table).append("` WHERE ");
+        sb.append("SELECT * FROM ").append("`").append(database_name).append("`.`").append(foreign_table_name).append("` WHERE ");
         for (int i = 0; i < field_list.size(); i++) {
             Field field = field_list.get(i);
             String foreignFieldName = foreignFields.get(field);
-            sb.append("`").append(foreign_table).append("`.`").append(foreignFieldName).append("`<=>?").append(i+1 == field_list.size() ? "" : " AND ");
+            sb.append("`").append(foreign_table_name).append("`.`").append(foreignFieldName).append("`<=>?").append(i+1 == field_list.size() ? "" : " AND ");
         }
         foreiness_validation_statement = sb.toString();
     }
