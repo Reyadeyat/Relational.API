@@ -46,6 +46,8 @@ import net.reyadeyat.relational.api.json.JsonUtil;
 import net.reyadeyat.relational.api.request.RelationalRequest;
 import net.reyadeyat.relational.api.request.Request;
 import net.reyadeyat.relational.api.request.RequestDefinition;
+import net.reyadeyat.relational.security.SecuredPipedReader;
+import net.reyadeyat.relational.security.SecuredPipedWriter;
 import net.reyadeyat.relational.security.SecuredReader;
 import net.reyadeyat.relational.security.SecuredWriter;
 import net.reyadeyat.relational.security.Security;
@@ -87,9 +89,10 @@ public class TestRelationalRequest extends RelationalRequest {
             Security security = new SecurityAES();
 
             //collect encrypted stream output from service then decrypt and input it to file
+            String separator = "~";
             FileWriter plain_writer = new FileWriter(new File("/linux/reyadeyat/yanobel/open-source/Relational.API/response.txt"));
-            SecuredReader plain_reader_pipe = new SecuredReader(plain_writer, security);
-            SecuredWriter secured_writer = new SecuredWriter(plain_reader_pipe, security);
+            SecuredPipedReader plain_reader_pipe = new SecuredPipedReader(plain_writer, security, separator);
+            SecuredPipedWriter secured_writer = new SecuredPipedWriter(plain_reader_pipe, security, separator);
             JsonWriter response_output_writer = new JsonWriter(secured_writer);
             
             Gson gson = JsonUtil.gson();

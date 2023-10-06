@@ -56,6 +56,7 @@ public class TestModelingRequest extends ModelingRequest {
     /**
      * @param args the command line arguments
      */
+    @SuppressWarnings("unchecked")
     public static void main(String[] args) {
         CompositObject c1 = new CompositObject(1, "1");
         CompositObject c2 = new CompositObject(2, "2");

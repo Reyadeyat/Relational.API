@@ -33,7 +33,7 @@ public interface Sequence<Type> {
     public void createSequence(Class clas) throws Exception;
     public void initSequence(Class clas, Type value) throws Exception;
     public Boolean hasSequence(Class clas) throws Exception;
-    public /*<Type>*/ Type nextSequence(Class clas) throws Exception;
-    public /*<Type>*/ Type getSequenceState(Class clas) throws Exception;
-    public /*<Type>*/ HashMap<Class, Type> getSequenceState() throws Exception;
+    public <T extends Type> T nextSequence(Class clas) throws Exception;
+    public <T extends Type> T getSequenceState(Class clas) throws Exception;
+    public <T extends Type> HashMap<Class, T> getSequenceState() throws Exception;
 }

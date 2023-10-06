@@ -61,8 +61,8 @@ public class Table {
     /**Analyse foreign_key_Map to get child table_list and generate possible paths for conceptual model*/
     transient public Boolean case_sensitive_sql;
     transient public Database database;
-    transient public ArrayList<ArrayList<Table>> paths;
-    transient public ArrayList<ArrayList<Table>> parent_paths;
+    transient public ArrayList<ArrayList<Table>> path_list;
+    transient public ArrayList<ArrayList<Table>> parent_path_list;
     transient public ArrayList<ArrayList<Table>> cyclic_reference_paths;
     transient public TreeMap<String, Field> field_map;
     
@@ -74,8 +74,8 @@ public class Table {
         primary_key_list = new ArrayList<PrimaryKey>();
         foreign_key_list = new ArrayList<ForeignKey>();
         child_table_list = new ArrayList<ChildTable>();
-        paths = new ArrayList<ArrayList<Table>>();
-        parent_paths = new ArrayList<ArrayList<Table>>();
+        path_list = new ArrayList<ArrayList<Table>>();
+        parent_path_list = new ArrayList<ArrayList<Table>>();
         cyclic_reference_paths = new ArrayList<ArrayList<Table>>();
         field_map = new TreeMap<String, Field>();
     }
@@ -216,7 +216,7 @@ public class Table {
         }
     }
     
-    public void toStringTableTree(Appendable appendable, Integer level, Integer shift, ArrayList<Table> tables_path) throws Exception {
+    public void toStringTableTree(Appendable appendable, Integer level, Integer shift, ArrayList<Table> table_path_list) throws Exception {
         appendable.append("\n");
         for (int i = 0; i < level * shift; i++) {
             /*if (i%4 == 0) {
@@ -230,38 +230,35 @@ public class Table {
         for (int i = 0; i < shift - 1; i++) {
             appendable.append(".");
         }
-        appendable.append("[").append(String.valueOf(tables_path.size())).append("]:[");
-        for (int i=0; i < tables_path.size(); i++) {
-            Table t = tables_path.get(i);
+        appendable.append("[").append(String.valueOf(table_path_list.size())).append("]:[");
+        for (int i=0; i < table_path_list.size(); i++) {
+            Table t = table_path_list.get(i);
             appendable.append(t.name);appendable.append(".");
         }
         appendable.append("]:[").append(String.valueOf(child_table_list.size())).append("]");
         for (ChildTable child_table : child_table_list) {
-            if (tables_path.contains(child_table.table)) {
+            if (table_path_list.contains(child_table.table)) {
                 appendable.append(" [Cyclic Child `" + child_table.parentTable.name + "` To Parent `" + child_table.table.name + "` Reference] - Stop Tree Traversing");
             } else {
-                ArrayList<Table> tables_pathClone = (ArrayList<Table>) tables_path.clone();
-                tables_pathClone.add(child_table.table);
-                child_table.table.toStringTableTree(appendable, level + 1, shift, tables_pathClone);
+                ArrayList<Table> table_path_list_copy = new ArrayList<>(table_path_list);
+                table_path_list_copy.add(child_table.table);
+                child_table.table.toStringTableTree(appendable, level + 1, shift, table_path_list_copy);
             }
         }
     }
     
-    public void compileTablePaths(ArrayList<Table> tables_path, ArrayList<ArrayList<Table>> returnedTablesPaths, Boolean is_building_model) throws Exception {
-        if (tables_path.size() > 0) {
-            if (parent_paths == null) {
-                parent_paths = parent_paths;
-            }
-            parent_paths.add((ArrayList<Table>) tables_path.clone());
+    public void compileTablePaths(ArrayList<Table> table_path_list, ArrayList<ArrayList<Table>> returnedTablesPaths, Boolean is_building_model) throws Exception {
+        if (table_path_list.size() > 0) {
+            parent_path_list.add(new ArrayList<>(table_path_list));
         }
-        tables_path.add(this);
-        returnedTablesPaths.add(tables_path);
+        table_path_list.add(this);
+        returnedTablesPaths.add(table_path_list);
         for (ChildTable child_table : child_table_list) {
-            if (tables_path.contains(child_table.table)) {
-                cyclic_reference_paths.add((ArrayList<Table>) tables_path.clone());
+            if (table_path_list.contains(child_table.table)) {
+                cyclic_reference_paths.add(new ArrayList<>(table_path_list));
             } else {
-                ArrayList<Table> tables_pathClone = (ArrayList<Table>) tables_path.clone();
-                child_table.table.compileTablePaths(tables_pathClone, returnedTablesPaths, is_building_model);
+                ArrayList<Table> tables_path_list_copy = new ArrayList<>(table_path_list);
+                child_table.table.compileTablePaths(tables_path_list_copy, returnedTablesPaths, is_building_model);
                 /*if ((case_sensitive_sql == true && name.equals("sys_measurement_system"))
                         || (case_sensitive_sql == false && name.equalsIgnoreCase("sys_measurement_system"))){
                     name = name;
@@ -271,7 +268,7 @@ public class Table {
         for (int i = 0; i < returnedTablesPaths.size(); i++) {
             ArrayList<Table> returned_path = returnedTablesPaths.get(i);
             if (returned_path.contains(this)) {
-                paths.add(returned_path);
+                path_list.add(returned_path);
             }
         }
         

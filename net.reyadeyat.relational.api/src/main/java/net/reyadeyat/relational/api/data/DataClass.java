@@ -113,8 +113,8 @@ public class DataClass {
         this.type = this.field.getType();
         //if (this.field != null) {
         this.field.setAccessible(true);
-        List<Class> classes = getGenericClasses(this.field);
-        if (classes.size() > 1) {
+        List<Class<?>> class_list = getGenericClasses(this.field);
+        if (class_list.size() > 1) {
             throw new Exception("Multi Generic Type is not implemented yet");
         }
         Class<?> interface_implementation_class = interface_implementation.get(this.type.getName());
@@ -122,7 +122,7 @@ public class DataClass {
             this.type = interface_implementation_class;
             this.clas = interface_implementation_class;
         } else {
-            this.clas = classes.get(0);
+            this.clas = class_list.get(0);
         }
 
         if (parent_data_class == null) {
@@ -296,31 +296,31 @@ public class DataClass {
         return false;
     }
 
-    static public List<Class> getGenericClasses(Field field) {
+    static public List<Class<?>> getGenericClasses(Field field) {
 
-        ArrayList classes = new ArrayList<>();
+        ArrayList<Class<?>> class_list = new ArrayList<>();
         /*if (field.getGenericType() instanceof Class) {//Class
             if (field.getType().isArray()) {
-                classes.add((Class) field.getType().getComponentType());
+                class_list.add((Class) field.getType().getComponentType());
             } else {
-                classes.add((Class) field.getType());
+                class_list.add((Class) field.getType());
             }
         } else */
         if (field.getGenericType() instanceof ParameterizedType) {//Generic
             ParameterizedType genericType = (ParameterizedType) field.getGenericType();
             Type[] types = genericType.getActualTypeArguments();
             for (Type type : types) {
-                classes.add((Class) type);
+                class_list.add((Class) type);
             }
         } else {
             if (field.getType().isArray()) {
-                classes.add((Class) field.getType().getComponentType());
+                class_list.add((Class) field.getType().getComponentType());
             } else {
-                classes.add((Class) field.getType());
+                class_list.add((Class) field.getType());
             }
         }
 
-        return classes;
+        return class_list;
     }
 
     static public String getCompatibleType(Class clas) {
@@ -359,7 +359,7 @@ public class DataClass {
         if (clas.equals(instanceObject.getClass())) {
             throw new Exception("object class does not equals to data class");
         }
-        SequenceNumber<Integer> sequenceNumber = new SequenceNumber<Integer>(1, 1, false);
+        SequenceNumber sequenceNumber = new SequenceNumber(1, 1, false);
         DataInstance data_instance = new DataInstance(DataInstance.State.NEW, databaseName, this, null, null, instanceObject, sequenceNumber, true);
         return data_instance;
     }
@@ -417,7 +417,7 @@ public class DataClass {
         }
     }
     
-    public Object loadFromDatabase(Connection modelConnection, Integer model_id, String databaseName, DataLookup dataLookup, Object model_instance_id, LoadMethod loadMethod, SequenceNumber<Integer> sequence, ArrayList<String> selects) throws Exception {
+    public Object loadFromDatabase(Connection modelConnection, Integer model_id, String databaseName, DataLookup dataLookup, Object model_instance_id, LoadMethod loadMethod, SequenceNumber sequence, ArrayList<String> selects) throws Exception {
         Object instanceObject = null;//this.clas.getConstructor().newInstance();
         DataInstance data_instance = null;//new DataInstance(this, null, null, instanceObject, false);
         //Handle Saved Sequences
@@ -425,7 +425,8 @@ public class DataClass {
         return data_instance.instances.get(0);
     }
 
-    private DataInstance loadFromDatabase(Connection connection, Integer model_id, String databaseName, DataLookup dataLookup, Object model_instance_id, LoadMethod loadMethod, ArrayList<String> selects, DataInstance parentDataInstance, Object parentInstanceObject, Integer parentID, SequenceNumber<Integer> sequence) throws Exception {
+    @SuppressWarnings("unchecked")
+    private DataInstance loadFromDatabase(Connection connection, Integer model_id, String databaseName, DataLookup dataLookup, Object model_instance_id, LoadMethod loadMethod, ArrayList<String> selects, DataInstance parentDataInstance, Object parentInstanceObject, Integer parentID, SequenceNumber sequence) throws Exception {
         if (loadMethod != LoadMethod.JSON && loadMethod != LoadMethod.REFLECTION) {
             throw new Exception("Load Method '" + loadMethod + "' is not implemented");
         }
@@ -482,6 +483,7 @@ public class DataClass {
                 Integer parent_id = (Integer) record.get("parent_id");
                 String json_object = (String) record.get("json_object");
                 Gson gson = new GsonBuilder().excludeFieldsWithModifiers(Modifier.TRANSIENT).create();
+                @SuppressWarnings("unchecked")
                 Object instanceObject = gson.fromJson(json_object, this.clas);
                 /*modelInstance = gsonN.fromJson(json_object, modelClass);
                 model.setInstance(modelInstance);

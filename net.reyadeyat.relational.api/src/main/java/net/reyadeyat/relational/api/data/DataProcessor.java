@@ -59,6 +59,7 @@ public class DataProcessor<Model> {
     
     final static public ZonedDateTimeAdapter zonedDateTimeAdapter = new ZonedDateTimeAdapter();
     
+    @SuppressWarnings("unchecked")
     public DataProcessor(Class data_model_class, Class model_class, JDBCSource model_jdbc_source, ModelDefinition model_definition, DataLookup data_lookup, HashMap<String, Class> interface_implementation) throws Exception {
         this.data_model_class = data_model_class;
         this.model_class = model_class;
@@ -124,7 +125,7 @@ public class DataProcessor<Model> {
         appendable.append("\n");
 
         //DataInstance data_instance = dataModelDataInstanceMap.get(data_model);
-        SequenceNumber<Integer> sequenceNumber = new SequenceNumber<Integer>(0, 1, false);
+        SequenceNumber sequenceNumber = new SequenceNumber(0, 1, false);
         DataInstance data_instance = new DataInstance(DataInstance.State.NEW, data_model.getModelDefinition().modeled_database_name, this.data_class, null, null, data_model.getInstance(), sequenceNumber, true);
         data_instance.toString(appendable);
     }
@@ -299,7 +300,7 @@ public class DataProcessor<Model> {
 
                     Model instanceObject = data_model.getInstance();
                     //Set InstanceID to Root Object in model sequence
-                    SequenceNumber<Integer> sequenceNumber = new SequenceNumber<Integer>(sequence_initial_value, sequence_increment_value, false);
+                    SequenceNumber sequenceNumber = new SequenceNumber(sequence_initial_value, sequence_increment_value, false);
                     sequenceNumber.initSequence(this.data_class.clas, instance_last_value);
 
                     //Prpeare DataInstance
@@ -445,9 +446,10 @@ public class DataProcessor<Model> {
         return data_model;
     }
     
+    @SuppressWarnings("unchecked")
     public DataModel<Model> loadModelFromDatabase(Integer model_id, Integer model_instance_id, DataClass.LoadMethod loadMethod) throws Exception {
         String select_model_sql = "SELECT `model`.`model_id` AS `model_id`, `model_instance_sequence_type_id`, `model_instance_sequence_last_value`, `sequence_type`.`sequence_type_name`, `sequence_type`.`sequence_type`, `sequence_type`.`sequence_type_ordered_chars`, `sequence_type`.`sequence_type_chars_width`, `sequence_type`.`sequence_type_padding_char`, `sequence_type`.`sequence_type_rewind`, `sequence_type`.`sequence_type_initial_value`, `sequence_type`.`sequence_type_increment_value` FROM `model`.`model` INNER JOIN `model`.`sequence_type` ON `model`.`model_instance_sequence_type_id`=`sequence_type`.`sequence_type_id` WHERE `model`.`model_id`=?";
-        SequenceNumber<Integer> sequenceNumber = null;
+        SequenceNumber sequenceNumber = null;
         try (Connection data_model_connection = model_jdbc_source.getConnection(false)) {
             try (PreparedStatement data_stmt = data_model_connection.prepareStatement(select_model_sql)) {
                 data_stmt.setInt(1, model_id);
@@ -463,7 +465,7 @@ public class DataProcessor<Model> {
                         throw new Exception("Sequence Type must be 'Integer' type");
                     }
 
-                    sequenceNumber = new SequenceNumber<Integer>(sequence_initial_value, sequence_increment_value, false);
+                    sequenceNumber = new SequenceNumber(sequence_initial_value, sequence_increment_value, false);
 
                     //Initialize Model Sequence state
                     String select_model_sequences_sql = "SELECT `model_class_path`, `model_instance_sequence_last_value` FROM `model`.`model_sequence` WHERE `model_id`=? AND `model_instance_id`=?";
@@ -493,7 +495,7 @@ public class DataProcessor<Model> {
                 
                 //try (Connection data_model_connection = data_model_source.getConnection(false)) {
                     Object instanceObject = this.data_class.loadFromDatabase(data_model_connection, model_id, model_jdbc_source.getDatabaseName(), this.data_lookup, model_instance_id, loadMethod, sequenceNumber, selects);
-
+                    @SuppressWarnings("unchecked")
                     DataModel<Model> data_model = (DataModel<Model>) this.data_model_class.getConstructor(model_class, ModelDefinition.class).newInstance(null, model_definition);
                     Method methodGetDeclaredField = this.data_model_class.getDeclaredMethod("getDeclaredField");
                     Field modelDeclaredField = (Field) methodGetDeclaredField.invoke(this.data_model);
