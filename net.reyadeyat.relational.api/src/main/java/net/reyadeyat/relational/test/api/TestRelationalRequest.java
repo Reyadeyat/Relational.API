@@ -250,88 +250,88 @@ public class TestRelationalRequest extends RelationalRequest {
 			        "table": "table_a_x",
 			        "response": "tree",
 			        "select": [
-			          "id",
-			          "name_ar",
-			          "name_en",
-			          "date",
-			          "time",
-			          "timestamp",
-			          "boolean"
+			          "id_a_x",
+			          "name_ar_a_x",
+			          "name_en_a_x",
+			          "date_a_x",
+			          "time_a_x",
+			          "timestamp_a_x",
+			          "boolean_a_x"
 			        ],
 			        "where": {
-			          "clause": "id>?",
+			          "clause": "id_a_x>?",
 			          "values": [
 			            0
 			          ]
 			        },
 			        "order_by": [
-			          "id"
+			          "id_a_x"
 			        ],
 			        "children": [
 			            {
 			                "table": "table_a_a_x",
 			                "response": "tree",
 			                "select": [
-			                    "id",
-			                    "name_ar",
-			                    "name_en",
-			                    "date",
-			                    "time",
-			                    "timestamp",
-			                    "boolean"
+			                    "id_a_a_x",
+			                    "name_ar_a_a_x",
+			                    "name_en_a_a_x",
+			                    "date_a_a_x",
+			                    "time_a_a_x",
+			                    "timestamp_a_a_x",
+			                    "boolean_a_a_x"
 			                ],
 			                "where": {
-			                    "clause": "id>?",
+			                    "clause": "id_a_a_x>?",
 			                    "values": [
 			                        0
 			                    ]
 			                },
 			                "order_by": [
-			                    "id"
+			                    "id_a_a_x"
 			                ]
 			            },
 			            {
 			                "table": "table_a_b_x",
 			                "response": "tree",
 			                "select": [
-			                    "id",
-			                    "name_ar",
-			                    "name_en",
-			                    "date",
-			                    "time",
-			                    "timestamp",
-			                    "boolean"
+			                    "id_a_b_x",
+			                    "name_ar_a_b_x",
+			                    "name_en_a_b_x",
+			                    "date_a_b_x",
+			                    "time_a_b_x",
+			                    "timestamp_a_b_x",
+			                    "boolean_a_b_x"
 			                ],
 			                "where": {
-			                    "clause": "id>?",
+			                    "clause": "id_a_b_x>?",
 			                    "values": [
 			                        0
 			                    ]
 			                },
 			                "order_by": [
-			                    "id"
+			                    "id_a_b_x"
 			                ],
 			                "children": [
 			                    {
 			                        "table": "table_a_b_a_x",
 			                        "response": "tree",
 			                        "select": [
-			                            "id",
-			                            "name_ar",
-			                            "name_en",
-			                            "date",
-			                            "time",
-			                            "timestamp",
-			                            "boolean"
+			                            "id_a_b_a_x",
+			                            "name_ar_a_b_a_x",
+			                            "name_en_a_b_a_x",
+			                            "date_a_b_a_x",
+			                            "time_a_b_a_x",
+			                            "timestamp_a_b_a_x",
+			                            "boolean_a_b_a_x"
 			                        ],
 			                        "where": {
-			                            "clause": "id>?",
+			                            "clause": "id_a_b_a_x>?",
 			                            "values": [
 			                                0
 			                            ]
 			                        },
 			                        "order_by": [
-			                            "id"
+			                            "id_a_b_a_x"
 			                        ]
 			                    }
 			                ]
@@ -340,22 +340,22 @@ public class TestRelationalRequest extends RelationalRequest {
 			                "table": "table_a_c_x",
 			                "response": "tree",
 			                "select": [
-			                    "id",
-			                    "name_ar",
-			                    "name_en",
-			                    "date",
-			                    "time",
-			                    "timestamp",
-			                    "boolean"
+			                    "id_a_c_x",
+			                    "name_ar_a_c_x",
+			                    "name_en_a_c_x",
+			                    "date_a_c_x",
+			                    "time_a_c_x",
+			                    "timestamp_a_c_x",
+			                    "boolean_a_c_x"
 			                ],
 			                "where": {
-			                    "clause": "id>?",
+			                    "clause": "id_a_c_x>?",
 			                    "values": [
 			                        0
 			                    ]
 			                },
 			                "order_by": [
-			                    "id"
+			                    "id_a_c_x"
 			                ]
 			            }
 			        ]
@@ -376,26 +376,26 @@ public class TestRelationalRequest extends RelationalRequest {
 			        "table_name": "table_a",
 			        "table_alias": "table_a_x",
 			        "fields": [
-			            {"name": "id", "alias": "id", "group_by": false},
-			            {"name": "name_ar", "alias": "name_ar", "group_by": false},
-			            {"name": "name_en", "alias": "name_en", "group_by": false},
-			            {"name": "date", "alias": "date", "group_by": false},
-			            {"name": "time", "alias": "time", "group_by": false},
-			            {"name": "timestamp", "alias": "timestamp", "group_by": false},
-			            {"name": "boolean", "alias": "boolean", "group_by": false}
+			            {"name": "id", "alias": "id_a_x", "group_by": false},
+			            {"name": "name_ar", "alias": "name_ar_a_x", "group_by": false},
+			            {"name": "name_en", "alias": "name_en_a_x", "group_by": false},
+			            {"name": "date", "alias": "date_a_x", "group_by": false},
+			            {"name": "time", "alias": "time_a_x", "group_by": false},
+			            {"name": "timestamp", "alias": "timestamp_a_x", "group_by": false},
+			            {"name": "boolean", "alias": "boolean_a_x", "group_by": false}
 			        ],
 			        "children": [
 			            {
 			                "table_name": "table_a_a",
 			                "table_alias": "table_a_a_x",
 			                "fields": [
-			                    {"name": "id", "alias": "id", "group_by": false},
-			                    {"name": "name_ar", "alias": "name_ar", "group_by": false},
-			                    {"name": "name_en", "alias": "name_en", "group_by": false},
-			                    {"name": "date", "alias": "date", "group_by": false},
-			                    {"name": "time", "alias": "time", "group_by": false},
-			                    {"name": "timestamp", "alias": "timestamp", "group_by": false},
-			                    {"name": "boolean", "alias": "boolean", "group_by": false}
+			                    {"name": "id", "alias": "id_a_a_x", "group_by": false},
+			                    {"name": "name_ar", "alias": "name_ar_a_a_x", "group_by": false},
+			                    {"name": "name_en", "alias": "name_en_a_a_x", "group_by": false},
+			                    {"name": "date", "alias": "date_a_a_x", "group_by": false},
+			                    {"name": "time", "alias": "time_a_a_x", "group_by": false},
+			                    {"name": "timestamp", "alias_a_a_x": "timestamp", "group_by": false},
+			                    {"name": "boolean", "alias_a_a_x": "boolean", "group_by": false}
 			                ],
 			                "children": []
 			            },
@@ -403,26 +403,26 @@ public class TestRelationalRequest extends RelationalRequest {
 			                "table_name": "table_a_b",
 			                "table_alias": "table_a_b_x",
 			                "fields": [
-			                    {"name": "id", "alias": "id", "group_by": false},
-			                    {"name": "name_ar", "alias": "name_ar", "group_by": false},
-			                    {"name": "name_en", "alias": "name_en", "group_by": false},
-			                    {"name": "date", "alias": "date", "group_by": false},
-			                    {"name": "time", "alias": "time", "group_by": false},
-			                    {"name": "timestamp", "alias": "timestamp", "group_by": false},
-			                    {"name": "boolean", "alias": "boolean", "group_by": false}
+			                    {"name": "id", "alias": "id_a_b_x", "group_by": false},
+			                    {"name": "name_ar", "alias": "name_ar_a_b_x", "group_by": false},
+			                    {"name": "name_en", "alias": "name_en_a_b_x", "group_by": false},
+			                    {"name": "date", "alias": "date_a_b_x", "group_by": false},
+			                    {"name": "time", "alias": "time_a_b_x", "group_by": false},
+			                    {"name": "timestamp", "alias": "timestamp_a_b_x", "group_by": false},
+			                    {"name": "boolean", "alias": "boolean_a_b_x", "group_by": false}
 			                ],
 			                "children": [
 			                    {
 			                        "table_name": "table_a_b_a",
 			                        "table_alias": "table_a_b_a_x",
 			                        "fields": [
-			                            {"name": "id", "alias": "id", "group_by": false},
-			                            {"name": "name_ar", "alias": "name_ar", "group_by": false},
-			                            {"name": "name_en", "alias": "name_en", "group_by": false},
-			                            {"name": "date", "alias": "date", "group_by": false},
-			                            {"name": "time", "alias": "time", "group_by": false},
-			                            {"name": "timestamp", "alias": "timestamp", "group_by": false},
-			                            {"name": "boolean", "alias": "boolean", "group_by": false}
+			                            {"name": "id", "alias": "id_a_b_a_x", "group_by": false},
+			                            {"name": "name_ar", "alias": "name_ar_a_b_a_x", "group_by": false},
+			                            {"name": "name_en", "alias": "name_en_a_b_a_x", "group_by": false},
+			                            {"name": "date", "alias": "date_a_b_a_x", "group_by": false},
+			                            {"name": "time", "alias": "time_a_b_a_x", "group_by": false},
+			                            {"name": "timestamp", "alias": "timestamp_a_b_a_x", "group_by": false},
+			                            {"name": "boolean", "alias": "boolean_a_b_a_x", "group_by": false}
 			                        ],
 			                        "children": []
 			                    }
@@ -432,13 +432,13 @@ public class TestRelationalRequest extends RelationalRequest {
 			                "table_name": "table_a_c",
 			                "table_alias": "table_a_c_x",
 			                "fields": [
-			                    {"name": "id", "alias": "id", "group_by": false},
-			                    {"name": "name_ar", "alias": "name_ar", "group_by": false},
-			                    {"name": "name_en", "alias": "name_en", "group_by": false},
-			                    {"name": "date", "alias": "date", "group_by": false},
-			                    {"name": "time", "alias": "time", "group_by": false},
-			                    {"name": "timestamp", "alias": "timestamp", "group_by": false},
-			                    {"name": "boolean", "alias": "boolean", "group_by": false}
+			                    {"name": "id", "alias": "id_a_c_x", "group_by": false},
+			                    {"name": "name_ar", "alias": "name_ar_a_c_x", "group_by": false},
+			                    {"name": "name_en", "alias": "name_en_a_c_x", "group_by": false},
+			                    {"name": "date", "alias": "date_a_c_x", "group_by": false},
+			                    {"name": "time", "alias": "time_a_c_x", "group_by": false},
+			                    {"name": "timestamp", "alias": "timestamp_a_c_x", "group_by": false},
+			                    {"name": "boolean", "alias": "boolean_a_c_x", "group_by": false}
 			                ],
 			                "children": []
 			            }

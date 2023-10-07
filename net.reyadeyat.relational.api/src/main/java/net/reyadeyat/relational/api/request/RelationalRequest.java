@@ -76,7 +76,7 @@ public abstract class RelationalRequest implements RecordHandler {
             Table.loadDataModel(request_definition.secret_key, model_jdbc_source, data_jdbc_source, request_definition.model_id, interface_implementation, error_list);
             JsonUtil.throwJsonExceptionOnError("Table service definition has errors:", error_list);
             table = new Table(request_definition.data_datasource_name, request_definition.data_database_name, request_definition.model_id, null, request_definition.request_table, error_list);
-            JsonUtil.throwJsonExceptionOnError("Table service definition has errors:", error_list);
+            JsonUtil.throwJsonExceptionOnError("Table initialize has errors:", error_list);
         } catch (Exception ex) {
             Logger.getLogger(this.getClass().getName()).log(Level.SEVERE, "Error: defineServlet '"+request_definition.service_name+"'", ex);
             throw ex;

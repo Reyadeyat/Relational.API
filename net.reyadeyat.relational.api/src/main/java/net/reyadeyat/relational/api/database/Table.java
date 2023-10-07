@@ -67,7 +67,10 @@ public class Table {
     private String data_datasource_name;
     private String data_database_name;
     private RequestTable request_table;
-    private HashMap<String, Field> field_map;
+    private HashMap<String, Field> field_name_map;
+    private HashMap<String, Field> field_alias_map;
+    private HashMap<String, String> field_name_alias;
+    private HashMap<String, String> field_alias_name;
     private ArrayList<Field> field_list;
     private String select_where_condition;
     private ArrayList<Field> select_where_condition_field_list;
@@ -132,7 +135,10 @@ public class Table {
         this.data_database_name = data_database_name;
         this.data_datasource_name = data_datasource_name;
         this.request_table = request_table;
-        field_map = new HashMap<String, Field>();
+        field_name_map = new HashMap<String, Field>();
+        field_alias_map = new HashMap<String, Field>();
+        field_name_alias = new HashMap<>();
+        field_alias_name = new HashMap<>();
         hasPrimaryKeyAI = null;
         hasPrimaryKeyMI = null;
         field_list = new ArrayList<Field>();
@@ -478,7 +484,7 @@ public class Table {
     }
     
     public void postInit(JsonArray error_list) {
-        this.field_list = new ArrayList<Field>(field_map.values());
+        this.field_list = new ArrayList<Field>(field_name_map.values());
         Collections.sort(this.field_list);
         if (joinKeys != null) {
             Set<String> joinKeysSet = joinKeys.keySet();
@@ -511,8 +517,11 @@ public class Table {
         return this;
     }
     
-    public Field getField(String alias) {
-        return field_map.get(alias);
+    public Field getNamedField(String name) {
+        return field_name_map.get(name);
+    }
+    public Field getAliasedField(String alias) {
+        return field_alias_map.get(alias);
     }
     
     public ArrayList<Field> getFields() {
@@ -520,7 +529,7 @@ public class Table {
     }
     
     public HashMap<String, Field> getFieldMap() {
-        return field_map;
+        return field_name_map;
     }
     
     private void checkDuplicity(Field field, JsonArray table_error_list) {
@@ -543,7 +552,10 @@ public class Table {
         }
         checkDuplicity(field, table_error_list);
         field_list.add(field);
-        field_map.put(field_alias, field);
+        field_name_map.put(field_name, field);
+        field_alias_map.put(field_alias, field);
+        field_name_alias.put(field_name, field_alias);
+        field_alias_name.put(field_alias, field_name);
         return field;
     }
     
@@ -555,7 +567,7 @@ public class Table {
         this.select_where_condition = select_where_condition;
         this.select_where_condition_field_list = new ArrayList<Field>();
         for (String fieldName : field_list) {
-            Field field = field_map.get(fieldName);
+            Field field = field_name_map.get(fieldName);
             this.select_where_condition_field_list.add(field);
         }
     }
@@ -576,7 +588,7 @@ public class Table {
         this.updateWhereCondition = updateWhereCondition;
         this.updateWhereConditionFields = new ArrayList<Field>();
         for (String fieldName : field_list) {
-            Field field = field_map.get(fieldName);
+            Field field = field_name_map.get(fieldName);
             this.updateWhereConditionFields.add(field);
         }
     }
@@ -597,11 +609,11 @@ public class Table {
     }
     
     public void addForeignField(String key, String table_field_alias, String foreign_table_name, String foreign_table_alias, String foreign_field_alias, JsonArray table_error_list) {
-        if (field_map.get(table_field_alias) == null) {
+        if (field_name_map.get(table_field_alias) == null) {
             table_error_list.add("Field alias '" + table_field_alias + "' is not exist in table '" + request_table.table_alias + "'");
             return;
         }
-        Field field = field_map.get(table_field_alias);
+        Field field = field_name_map.get(table_field_alias);
         addForeignKey(key, foreign_table_name, foreign_table_alias);
         ForeignKey foreignKey = foreignKeys.get(key);
         foreignKey.addForeignField(field, foreign_field_alias);
@@ -615,11 +627,11 @@ public class Table {
     }
     
     public void addDependentField(String key, String dependent_table, String field_alias, String dependent_field_alias, JsonArray table_error_list) {
-        if (field_map.get(field_alias) == null) {
+        if (field_name_map.get(field_alias) == null) {
             table_error_list.add("Field alias '" + field_alias + "' is not exist in table '" + request_table.table_name + "'");
             return;
         }
-        Field field = field_map.get(field_alias);
+        Field field = field_name_map.get(field_alias);
         addDependentKey(key, dependent_table);
         DependentKey dependentKey = dependentKeys.get(key);
         dependentKey.addDependentField(field, dependent_field_alias);
@@ -629,23 +641,19 @@ public class Table {
         join_sql_list.add(join_sql);
     }
     
-    private void addJoinKey(String key, String join_table, JoinKey.JoinType join_type) {
+    private void addJoinKey(String key, String join_table, String join_table_alias, JoinKey.JoinType join_type) {
         if (joinKeys.get(key) == null) {
-            joinKeys.put(key, new JoinKey(key, data_database_name, request_table.table_name, join_table, join_type));
+            joinKeys.put(key, new JoinKey(key, data_database_name, request_table.table_name, request_table.table_alias, join_table, join_table_alias, join_type));
         }
     }
     
-    public void addJoinField(String key, String join_table, String field_alias, String join_field_alias, JsonArray table_error_list) {
-        addJoinField(key, join_table, field_alias, join_field_alias, JoinKey.JoinType.INNER_JOIN, table_error_list);
-    }
-    
-    public void addJoinField(String key, String join_table, String field_alias, String join_field_alias, JoinKey.JoinType join_type, JsonArray table_error_list) {
-        if (field_map.get(field_alias) == null) {
+    public void addJoinField(String key, String join_table_name, String join_table_alias, String field_alias, String join_field_alias, JoinKey.JoinType join_type, JsonArray table_error_list) {
+        if (field_alias_map.get(field_alias) == null) {
             table_error_list.add("Field alias '" + field_alias + "' is not exist in table '" + request_table.table_name + "'");
             return;
         }
-        Field field = field_map.get(field_alias);
-        addJoinKey(key, join_table, join_type);
+        Field field = field_alias_map.get(field_alias);
+        addJoinKey(key, join_table_name, join_table_alias, join_type);
         JoinKey joinKey = joinKeys.get(key);
         joinKey.addJoinField(field, join_field_alias);
     }
@@ -658,8 +666,8 @@ public class Table {
         StringBuilder fks = new StringBuilder();
         ArrayList<String> joinKeySet = new ArrayList<String>(joinKeys.keySet());
         for (int i = 0; i < joinKeySet.size(); i++) {
-            String joinField = joinKeySet.get(i);
-            JoinKey joinKey = joinKeys.get(joinField);
+            String join_field = joinKeySet.get(i);
+            JoinKey joinKey = joinKeys.get(join_field);
             fks.append(joinKey.getJoinStatement());
         }
         for (String free_join_sql : join_sql_list) {
@@ -824,14 +832,6 @@ public class Table {
         return this.safe_update;
     }
 
-    protected void addJoinKey(String key, String field_alias, String joinTable, String joinField, JsonArray table_error_list) {
-        addJoinField(key, joinTable, field_alias, joinField, table_error_list);
-    }
-    
-    protected void addJoinKey(String key, String field_alias, String joinTable, String joinField, JoinKey.JoinType join_type, JsonArray table_error_list) {
-        addJoinField(key, joinTable, field_alias, joinField, join_type, table_error_list);
-    }
-
     protected void addForeignKey(String key, String table_field_alias, String foreign_table_name, String foreign_table_alias, String foreign_field_alias, JsonArray table_error_list) {
         addForeignField(key, table_field_alias, foreign_table_name, foreign_table_alias, foreign_field_alias, table_error_list);
     }
@@ -844,8 +844,12 @@ public class Table {
         return this;
     }
 
-    protected Object getFieldObject(String alias, String string) throws Exception {
-        return getField(alias).getFieldObject(string);
+    protected Object getNamedFieldObject(String field_name, String string) throws Exception {
+        return getNamedField(field_name).getFieldObject(string);
+    }
+    
+    protected Object getAliasedFieldObject(String field_name, String string) throws Exception {
+        return getAliasedField(field_name).getFieldObject(string);
     }
 
     public Boolean validateInsertUniqueness(Connection con, JsonObject json, JsonArray error_list) throws Exception {
@@ -1257,12 +1261,12 @@ public class Table {
         return !record_processor.hasErrors();
     }
 
-    protected boolean areValidUpdateFieldsValues(RecordProcessor record_processor, Map<String, Field> field_map, JsonArray recordset, List<String> conditional_field_list, ArrayList<Field> field_list, JsonArray error_list) throws Exception {
+    protected boolean areValidUpdateFieldsValues(RecordProcessor record_processor, Map<String, Field> field_name_map, JsonArray recordset, List<String> conditional_field_list, ArrayList<Field> field_list, JsonArray error_list) throws Exception {
         StringBuilder error = new StringBuilder();
         for (int i = 0; i < recordset.size(); i++) {
             JsonObject record = recordset.get(i).getAsJsonObject();
             for (String fieldName : record.keySet()) {
-                Field f = field_map.get(fieldName);
+                Field f = field_name_map.get(fieldName);
                 if (f != null && f.isPrimaryKey() == false && f.isAllowedTo(Field.UPDATE) == false) {
                     record_processor.addError("Field '" + fieldName + "' is not allowed in update operation");
                 } else if (f == null && conditional_field_list != null && conditional_field_list.contains(fieldName) == false) {
@@ -1277,7 +1281,7 @@ public class Table {
                     record_processor.addError(error.toString() + ", check record[" + (i + 1) + "]");
                 }
             }
-            for (Field f : field_map.values()) {
+            for (Field f : field_name_map.values()) {
                 String field_alias = f.getAlias();
                 if (record.has(field_alias) == true) {
                     continue;
@@ -1774,7 +1778,7 @@ public class Table {
                 } else {
                     order = '+';
                 }
-                Field f = getField(orderByFieldName);
+                Field f = getAliasedField(orderByFieldName);
                 if (f == null) {
                     record_processor.addError("Field '" + record_processor.request.order_by_list.get(i) + "' is not a valid field name");
                 } else {
@@ -1792,7 +1796,7 @@ public class Table {
     protected String getFieldsGroupBy(RecordProcessor record_processor) {
         StringBuilder csv = new StringBuilder();
         for (int i = 0; i < record_processor.request.group_by_list.size(); i++) {
-            Field f = getField(record_processor.request.group_by_list.get(i));
+            Field f = getAliasedField(record_processor.request.group_by_list.get(i));
             if (f == null) {
                 record_processor.addError("Field '" + record_processor.request.group_by_list.get(i) + "' is not a valid field name");
             } else if (select_statement_groupby.contains(f) == false) {
@@ -1970,43 +1974,43 @@ public class Table {
     
     public void processSelectedRecord(RecordProcessor record_processor, ResultSet resultset, JsonObject record_object) throws Exception {
         for (int i = 0; i < record_processor.request.select_list.size(); i++) {
-            String alias = record_processor.request.select_list.get(i);
-            Field f = getField(alias);
+            String field_alias = record_processor.request.select_list.get(i);
+            Field f = getAliasedField(field_alias);
             if (f.isIgnoredFor(Field.SELECT)) {
                 continue;
             }
             //jrecord.addProperty(s[i], f.getFieldString(resultset.getObject(f.getAlias())));
             Object fieldObject = resultset.getObject(f.getAlias());
             if (fieldObject == null) {
-                record_object.add(alias, JsonNull.INSTANCE);
+                record_object.add(field_alias, JsonNull.INSTANCE);
             } else if (f.isNumeric() == true) {
-                record_object.addProperty(alias, (Number) fieldObject);
+                record_object.addProperty(field_alias, (Number) fieldObject);
             } else if (f.isBoolean() == true) {
-                record_object.addProperty(alias, f.parseBoolean(fieldObject));
+                record_object.addProperty(field_alias, f.parseBoolean(fieldObject));
             } else {
-                record_object.addProperty(alias, f.getFieldString(resultset.getObject(f.getAlias())));
+                record_object.addProperty(field_alias, f.getFieldString(resultset.getObject(f.getAlias())));
             }
         }
     }
     
     public void processSelectedObjectRecord(RecordProcessor record_processor, ResultSet resultset, JsonObject record_object, List<ServiceField> service_field_list) throws Exception {
         for (int i = 0; i < record_processor.request.select_list.size(); i++) {
-            String alias = record_processor.request.select_list.get(i);
-            Field f = getField(alias);
+            String field_alias = record_processor.request.select_list.get(i);
+            Field f = getAliasedField(field_alias);
             if (f.isIgnoredFor(Field.SELECT)) {
                 continue;
             }
             //Object fieldObject = resultset.getObject(f.getAlias());
             Object fieldObject = f.getPostProcessedValue(Field.SELECT, resultset.getObject(f.getAlias()), record_processor.error_list);
             if (fieldObject == null) {
-                record_object.add(alias, JsonNull.INSTANCE);
+                record_object.add(field_alias, JsonNull.INSTANCE);
             } else if (f.isNumeric() == true) {
-                record_object.addProperty(alias, (Number) fieldObject);
+                record_object.addProperty(field_alias, (Number) fieldObject);
             } else if (f.isBoolean() == true) {
-                record_object.addProperty(alias, f.parseBoolean(fieldObject));
+                record_object.addProperty(field_alias, f.parseBoolean(fieldObject));
             } else {
                 //jrecord.addProperty(alias, f.getFieldString(resultset.getObject(f.getAlias())));
-                record_object.addProperty(alias, f.getFieldString(fieldObject));
+                record_object.addProperty(field_alias, f.getFieldString(fieldObject));
             }
         }
         for (int i = 0; i < service_field_list.size(); i++) {
@@ -2026,8 +2030,8 @@ public class Table {
     
     public void processSelectedArrayRecord(RecordProcessor record_processor, ResultSet resultset, JsonArray record_list, List<ServiceField> service_field_list) throws Exception {
         for (int i = 0; i < record_processor.request.select_list.size(); i++) {
-            String alias = record_processor.request.select_list.get(i);
-            Field f = getField(alias);
+            String field_alias = record_processor.request.select_list.get(i);
+            Field f = getAliasedField(field_alias);
             if (f.isIgnoredFor(Field.SELECT)) {
                 continue;
             }
@@ -2150,7 +2154,7 @@ public class Table {
             return;
         }
         
-        /*field_map.get();
+        /*field_name_map.get();
         getPrimaryKey;
         getForeginKey to Parent*/
         Map<String, Object> record_stack_frame = new HashMap<>();
@@ -2167,11 +2171,11 @@ public class Table {
         StringBuilder sql = new StringBuilder(insert_set_statement);
         JsonObject set = json.get("set").getAsJsonObject();
         Set<String> keys = set.keySet();
-        for (String field : keys) {
-            Field f = getField(field);
-            String value = set.get(field).getAsString();
-            Integer index = sql.indexOf("?" + field);
-            sql.delete(index, index + field.length() + 1);
+        for (String field_alias : keys) {
+            Field f = getAliasedField(field_alias);
+            String value = set.get(field_alias).getAsString();
+            Integer index = sql.indexOf("?" + field_alias);
+            sql.delete(index, index + field_alias.length() + 1);
             sql.insert(index, f.getQuotable(value));
         }
         return sql.toString();
@@ -2382,7 +2386,7 @@ public class Table {
             if (uf.size() == 0) {
                 Boolean nonPrimaryKeysExists = false;
                 for (String fn : jsonObject.keySet()) {
-                    Field f = getField(fn);
+                    Field f = getAliasedField(fn);
                     if (primary_keys != null && primary_keys.contains(fn) == true) {
                         //ignore
                         //error_list.add("Field '" + fn + "' is a primary key and is not allowed for update");
@@ -2512,18 +2516,18 @@ public class Table {
                 return null;
             }
             if (uf.size() == 0) {
-                for (String alias : jsonObject.keySet()) {
-                    Field f = getField(alias);
+                for (String field_alias : jsonObject.keySet()) {
+                    Field f = getAliasedField(field_alias);
                     /*if (primary_keys != null && primary_keys.contains(fn) == true) {
                         error_list.add("Field '" + fn + "' is a primary key and is not allowed for delete");
                     } else */
-                    if (f == null && ff != null && ff.contains(alias) == false) {
-                        record_processor.addError("Field '" + alias + "' is unknowen to where field_list");
-                    } else if (f == null && ff != null && ff.contains(alias) == true) {
+                    if (f == null && ff != null && ff.contains(field_alias) == false) {
+                        record_processor.addError("Field '" + field_alias + "' is unknowen to where field_list");
+                    } else if (f == null && ff != null && ff.contains(field_alias) == true) {
                         /*uf.add(f);
                         uu.append(f.getSQLName()).append("=?, ");*/
                     } else if (f == null) {
-                        record_processor.addError("Field '" + alias + "' is not a valid field name");
+                        record_processor.addError("Field '" + field_alias + "' is not a valid field name");
                     } else {
                         uf.add(f);
                         //uu.append(f.getSQLName()).append("=?, ");
@@ -2671,9 +2675,14 @@ public class Table {
                 //Add Aliases to the joints
                 net.reyadeyat.relational.api.model.ForeignKey foreign_key = foreign_key_list.get(foreign_key_counter);
                 for (ForeignKeyField foreign_key_field : foreign_key.foreign_key_field_list) {
-                    RequestField request_field = request_table.parent_request_table.request_field_map.get(foreign_key_field.name);
-                    addForeignKey("FK_"+foreign_key.name, request_field.field_name, request_table.parent_request_table.table_name, request_table.parent_request_table.table_alias, request_field.field_alias, table_error_list);
-                    addJoinKey("JK_"+foreign_key.name, foreign_key.table.name, JoinKey.JoinType.INNER_JOIN);
+                    if (foreign_key.referenced_key_table_name.equals(request_table.parent_request_table.table_name) == false) {
+                        throw new Exception("request_table.parent_request_table.table_name '"+request_table.parent_request_table.table_name+"' is not equal to foreign_key.table.name");
+                    }
+                    RequestField foreign_request_field = request_table.parent_request_table.request_field_map.get(parent_table.field_name_alias.get(foreign_key_field.name));
+                    String foreign_table_alias = request_table.parent_request_table.table_alias;
+                    addForeignKey("FK_"+foreign_key.name, foreign_request_field.field_alias, request_table.parent_request_table.table_name, request_table.parent_request_table.table_alias, foreign_request_field.field_alias, table_error_list);
+                    addJoinKey("JK_"+foreign_key.name, request_table.parent_request_table.table_name, foreign_table_alias, JoinKey.JoinType.INNER_JOIN);
+                    addJoinField("JK_"+foreign_key.name, foreign_key.table.name, foreign_table_alias, field_name_alias.get(foreign_key_field.name), foreign_request_field.field_alias, JoinKey.JoinType.INNER_JOIN, table_error_list);
                     /*for (int field_counter = 0; field_counter < foreign_key.foreign_key_field_list.size(); field_counter++) {
                         ForeignKeyField foreign_key_field = foreign_key.foreign_key_field_list.get(field_counter);
                         /////addJoinField("JK_"+foreign_key.name, foreign_key.table.name, String field_alias, String join_field_alias, table_error_list);
@@ -2681,7 +2690,7 @@ public class Table {
                     }*/
                     //addForeignKey("FK"+foreign_key_counter, request_table.table_name);
                     //addJoinKey("JK"+foreign_key_counter, request_table.table_name, JoinKey.JoinType.INNER_JOIN);
-                    //net.reyadeyat.relational.api.model.Field table_field = database_table.field_map.get(request_field.field_name);
+                    //net.reyadeyat.relational.api.model.Field table_field = database_table.field_name_map.get(request_field.field_name);
                     //addJoinField(String key, String join_table, String field_alias, String join_field_alias, JsonArray table_error_list);
                     //addForeignField(String key, String foreign_table, String field_alias, String foreign_field_alias, JsonArray table_error_list)
                     //addDependentKey("DK1", "project_id", "pm_task", "project_id");
