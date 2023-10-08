@@ -21,17 +21,8 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.reflect.TypeToken;
 import com.google.gson.stream.JsonWriter;
-import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.FileWriter;
-import java.io.IOException;
-import java.io.OutputStreamWriter;
-import java.io.PipedReader;
-import java.io.PipedWriter;
-import java.io.StringReader;
-import java.io.StringWriter;
-import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -48,8 +39,6 @@ import net.reyadeyat.relational.api.request.Request;
 import net.reyadeyat.relational.api.request.RequestDefinition;
 import net.reyadeyat.relational.security.SecuredPipedReader;
 import net.reyadeyat.relational.security.SecuredPipedWriter;
-import net.reyadeyat.relational.security.SecuredReader;
-import net.reyadeyat.relational.security.SecuredWriter;
 import net.reyadeyat.relational.security.Security;
 import net.reyadeyat.relational.security.SecurityAES;
 
@@ -100,10 +89,10 @@ public class TestRelationalRequest extends RelationalRequest {
                     | SECURITY_FLAG_RETURN_DESCRIPTIVE_RESPONSE_MESSAGE | SECURITY_FLAG_RETURN_GENERATED_ID;
             JsonArray log_list = new JsonArray();
             JsonArray error_list = new JsonArray();
-            RequestDefinition request_definition = gson.fromJson(request_definition_json_text, RequestDefinition.class);
+            RequestDefinition request_definition = gson.fromJson(service_definition_json_text, RequestDefinition.class);
             request_definition.init();
 
-            List<Request> request_list = gson.fromJson(json_request_text, new TypeToken<List<Request>>() {}.getType());
+            List<Request> request_list = gson.fromJson(service_request_json_text, new TypeToken<List<Request>>() {}.getType());
             HashMap<String, Class> interface_implementation = new HashMap<>();
             interface_implementation.put("net.reyadeyat.relational.api.model.TableDataStructures", UserDefinedTableDataStructures.class);
 
@@ -244,7 +233,7 @@ public class TestRelationalRequest extends RelationalRequest {
 
     private static String data_database = "parental";
 
-    private static String json_request_text = """
+    private static String service_request_json_text = """
 			[
 			    {
 			        "table": "table_a_x",
@@ -363,7 +352,7 @@ public class TestRelationalRequest extends RelationalRequest {
 			]
 			""";
 
-    private static String request_definition_json_text = """
+    private static String service_definition_json_text = """
 			{
 			    "service_name": "parental_service",
 			    "model_id": "500",
@@ -394,8 +383,8 @@ public class TestRelationalRequest extends RelationalRequest {
 			                    {"name": "name_en", "alias": "name_en_a_a_x", "group_by": false},
 			                    {"name": "date", "alias": "date_a_a_x", "group_by": false},
 			                    {"name": "time", "alias": "time_a_a_x", "group_by": false},
-			                    {"name": "timestamp", "alias_a_a_x": "timestamp", "group_by": false},
-			                    {"name": "boolean", "alias_a_a_x": "boolean", "group_by": false}
+			                    {"name": "timestamp", "alias": "timestamp_a_a_x", "group_by": false},
+			                    {"name": "boolean", "alias": "boolean_a_a_x", "group_by": false}
 			                ],
 			                "children": []
 			            },
