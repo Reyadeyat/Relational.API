@@ -178,34 +178,32 @@ public class RecordProcessor {
     }
     
     public void printErrors(Gson gson) throws Exception {
-        beginObject();
         name("Record Processing Errors");
         beginArray();
-        printErrors(gson, response_output_writer);
+        printChildErrorList(gson);
         endArray();
-        endObject();
         flush();
     }
     
-    private void printErrors(Gson gson, JsonWriter writer) throws Exception {
-        writer.beginObject();
-        writer.name("table");
-        writer.value(request.table_alias);
-        writer.name("erorrs");
-        gson.toJson(error_list, writer);
-        writer.endObject();
+    private void printChildErrorList(Gson gson) throws Exception {
+        beginObject();
+        name("table");
+        value(request.table_alias);
+        name("erorrs");
+        writeJsonElement(gson, error_list);
+        endObject();
         if (child_list == null || child_list.size() == 0) {
             return;
         }
-        writer.beginObject();
-        writer.name("children");
-        writer.beginArray();
+        beginObject();
+        name("children");
+        beginArray();
         for (int i = 0; i < child_list.size(); i++) {
             RecordProcessor child_record_processor = child_list.get(i);
-            child_record_processor.printErrors(gson, writer);
+            child_record_processor.printChildErrorList(gson);
         }
-        writer.endArray();
-        writer.endObject();
+        endArray();
+        endObject();
         
     }
     
@@ -215,6 +213,7 @@ public class RecordProcessor {
     
     public void writeJsonElement(Gson gson, JsonElement json_element) throws Exception {
         gson.toJson(json_element, response_output_writer);
+        system_out(json_element);
     }
     
     public JsonArray extractJsonObjectKeyList(JsonObject json_object) throws Exception {

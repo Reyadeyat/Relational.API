@@ -35,20 +35,18 @@ public class JoinKey {
     private String key;
     private String database_name;
     private String primary_table;
+    private String primary_table_alias;
     private String join_table;
     private String join_table_alias;
     private JoinType join_type;
     private HashMap<Field, String> joinFields;//Join Field, Field
     private String join_statement;
     
-    public JoinKey(String key, String database_name, String primary_table, String join_table, JoinType join_type) {
-        this(key, database_name, primary_table, join_table, null, join_type);
-    }
-    
-    public JoinKey(String key, String database_name, String primary_table, String join_table, String join_table_alias, JoinType join_type) {
+    public JoinKey(String key, String database_name, String primary_table, String primary_table_alias, String join_table, String join_table_alias, JoinType join_type) {
         this.key = key;
         this.database_name = database_name;
         this.primary_table = primary_table;
+        this.primary_table_alias = primary_table_alias;
         this.join_table = join_table;
         this.join_table_alias = join_table_alias;
         this.join_type = join_type;
@@ -71,15 +69,16 @@ public class JoinKey {
         StringBuilder sb = new StringBuilder();
         ArrayList<Field> field_list = new ArrayList<>(joinFields.keySet());
         Collections.sort(field_list);
-        if (join_table_alias == null) {
-            sb.append(join_type == JoinType.INNER_JOIN ? " INNER JOIN " : join_type == JoinType.LEFT_JOIN ? " LEFT JOIN " : "RIGHT JOIN").append("`").append(database_name).append("`.`").append(join_table).append("` ON ");
-        } else {
-            sb.append(join_type == JoinType.INNER_JOIN ? " INNER JOIN " : join_type == JoinType.LEFT_JOIN ? " LEFT JOIN " : "RIGHT JOIN").append("`").append(database_name).append("`.`").append(join_table).append("` AS `").append(join_table_alias).append("` ON ");
+        sb.append(join_type == JoinType.INNER_JOIN ? " INNER JOIN " : join_type == JoinType.LEFT_JOIN ? " LEFT JOIN " : "RIGHT JOIN").append("`").append(database_name).append("`.`").append(join_table);
+        if (join_table_alias != null) {
+            sb.append("` AS `").append(join_table_alias);
+            
         }
+        sb.append("` ON ");
         for (int i = 0; i < field_list.size(); i++) {
             Field field = field_list.get(i);
             String joinFieldName = joinFields.get(field);
-            sb.append("`").append(join_table_alias == null ? join_table : join_table_alias).append("`.`").append(joinFieldName).append("`=`").append(primary_table).append("`.`").append(field.getName()).append("`").append(i+1 == field_list.size() ? "" : " AND ");
+            sb.append("`").append(join_table_alias == null ? join_table : join_table_alias).append("`.`").append(joinFieldName).append("`=`").append(primary_table_alias == null ? primary_table : primary_table_alias).append("`.`").append(field.getName()).append("`").append(i+1 == field_list.size() ? "" : " AND ");
         }
         join_statement = sb.toString();
     }
