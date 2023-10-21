@@ -528,8 +528,12 @@ public class Table {
         return field_list;
     }
     
-    public HashMap<String, Field> getFieldMap() {
+    public HashMap<String, Field> getNamedFieldMap() {
         return field_name_map;
+    }
+    
+    public HashMap<String, Field> getAliasedFieldMap() {
+        return field_alias_map;
     }
     
     private void checkDuplicity(Field field, JsonArray table_error_list) {
@@ -609,11 +613,11 @@ public class Table {
     }
     
     public void addForeignField(String key, String table_field_alias, String foreign_table_name, String foreign_table_alias, String foreign_field_alias, JsonArray table_error_list) {
-        if (field_name_map.get(table_field_alias) == null) {
+        if (field_alias_map.get(table_field_alias) == null) {
             table_error_list.add("Field alias '" + table_field_alias + "' is not exist in table '" + request_table.table_alias + "'");
             return;
         }
-        Field field = field_name_map.get(table_field_alias);
+        Field field = field_alias_map.get(table_field_alias);
         addForeignKey(key, foreign_table_name, foreign_table_alias);
         ForeignKey foreignKey = foreignKeys.get(key);
         foreignKey.addForeignField(field, foreign_field_alias);
@@ -627,11 +631,11 @@ public class Table {
     }
     
     public void addDependentField(String key, String dependent_table, String field_alias, String dependent_field_alias, JsonArray table_error_list) {
-        if (field_name_map.get(field_alias) == null) {
+        if (field_alias_map.get(field_alias) == null) {
             table_error_list.add("Field alias '" + field_alias + "' is not exist in table '" + request_table.table_name + "'");
             return;
         }
-        Field field = field_name_map.get(field_alias);
+        Field field = field_alias_map.get(field_alias);
         addDependentKey(key, dependent_table);
         DependentKey dependentKey = dependentKeys.get(key);
         dependentKey.addDependentField(field, dependent_field_alias);
@@ -647,15 +651,15 @@ public class Table {
         }
     }
     
-    public void addJoinField(String key, String join_table_name, String join_table_alias, String field_alias, String join_field_alias, JoinKey.JoinType join_type, JsonArray table_error_list) {
-        if (field_alias_map.get(field_alias) == null) {
+    public void addJoinField(String key, String join_table_name, String join_table_alias, String field_alias, String join_field_name, JoinKey.JoinType join_type, JsonArray table_error_list) {
+        if (field_name_map.get(field_alias) == null) {
             table_error_list.add("Field alias '" + field_alias + "' is not exist in table '" + request_table.table_name + "'");
             return;
         }
-        Field field = field_alias_map.get(field_alias);
+        Field field = field_name_map.get(field_alias);
         addJoinKey(key, join_table_name, join_table_alias, join_type);
         JoinKey joinKey = joinKeys.get(key);
-        joinKey.addJoinField(field, join_field_alias);
+        joinKey.addJoinField(field, join_field_name);
     }
     
     private void prepareJoin() {
@@ -1223,7 +1227,7 @@ public class Table {
 
     protected boolean areValidSelectFields(RecordProcessor record_processor, List<ServiceField> serviceFields, Map<String, Field> record, List<Field> field_list) {
         List<String> field = record_processor.request.select_list;
-        for (int i = 0; i < field.size(); i++) {
+        /*for (int i = 0; i < field.size(); i++) {
             Field f = record.get(field.get(i));
             if (f != null && f.isAllowedTo(Field.SELECT) == false) {
                 record_processor.addError("Field '" + field.get(i) + "' is not allowed in select operation");
@@ -1236,7 +1240,7 @@ public class Table {
                     record_processor.addError("Field '" + field.get(i) + "' is not a valid field name");
                 }
             }
-        }
+        }*/
         //Check Mandatory Fields
         for (int i = 0; i < select_fields.size(); i++) {
             Field f = select_fields.get(i);
@@ -1858,7 +1862,7 @@ public class Table {
 
         StringBuilder query = new StringBuilder(select_statement);
 
-        if (areValidSelectFields(record_processor, record_processor.query.service_field_list, getFieldMap(), select_fields) == false) {
+        if (areValidSelectFields(record_processor, record_processor.query.service_field_list, getNamedFieldMap(), select_fields) == false) {
             record_processor.addError("ERROR: validateSelectStatement.areValidSelectFields");
             return;
         }
@@ -1868,7 +1872,7 @@ public class Table {
             return;
         }
 
-        if (isValidClause(record_processor, Field.SELECT, record_processor.request.where.clause, getFieldMap(), record_processor.query.where_field_list, record_processor.request.where.values, where_clause, having_clause, record_processor.query.where_argument_list, record_processor.query.having_argument_list) == false) {
+        if (isValidClause(record_processor, Field.SELECT, record_processor.request.where.clause, getAliasedFieldMap(), record_processor.query.where_field_list, record_processor.request.where.values, where_clause, having_clause, record_processor.query.where_argument_list, record_processor.query.having_argument_list) == false) {
             record_processor.addError("ERROR: validateSelectStatement.isValidClause");
             return;
         }
@@ -2356,12 +2360,12 @@ public class Table {
 
         StringBuilder query = new StringBuilder(update_statement);
 
-        if (areValidUpdateFieldsValues(record_processor, getFieldMap(), v, ff, update_fields, record_processor.error_list) == false) {
+        if (areValidUpdateFieldsValues(record_processor, getNamedFieldMap(), v, ff, update_fields, record_processor.error_list) == false) {
             record_processor.addError("ERROR: validateUpdateWhereStatement.areValidUpdateFieldsValues");
             return null;
         }
 
-        if (c == null || c.length() == 0 || (ff == null && vv == null) || isValidClause(record_processor, Field.UPDATE, c, getFieldMap(), wf, vv, ww, hh, wa, ha) == false) {
+        if (c == null || c.length() == 0 || (ff == null && vv == null) || isValidClause(record_processor, Field.UPDATE, c, getNamedFieldMap(), wf, vv, ww, hh, wa, ha) == false) {
             record_processor.addError("ERROR: validateUpdateWhereStatement.isValidClause");
             return null;
         }
@@ -2494,7 +2498,7 @@ public class Table {
 
         StringBuilder query = new StringBuilder(delete_statement);
 
-        if (c == null || c.length() == 0 || (ff == null && vv == null) || isValidClause(record_processor, Field.INSERT, c, getFieldMap(), wf, vv, ww, hh, wa, ha) == false) {
+        if (c == null || c.length() == 0 || (ff == null && vv == null) || isValidClause(record_processor, Field.INSERT, c, getNamedFieldMap(), wf, vv, ww, hh, wa, ha) == false) {
             record_processor.addError("ERROR: validateDeleteWhereStatement.validateDeleteWhereStatement.isValidClause");
             return null;
         }
@@ -2678,11 +2682,12 @@ public class Table {
                     if (foreign_key.referenced_key_table_name.equals(request_table.parent_request_table.table_name) == false) {
                         throw new Exception("request_table.parent_request_table.table_name '"+request_table.parent_request_table.table_name+"' is not equal to foreign_key.table.name");
                     }
-                    RequestField foreign_request_field = request_table.parent_request_table.request_field_map.get(parent_table.field_name_alias.get(foreign_key_field.name));
+                    RequestField foreign_request_field = request_table.parent_request_table.request_field_alias_map.get(parent_table.field_name_alias.get(foreign_key_field.name));
                     String foreign_table_alias = request_table.parent_request_table.table_alias;
-                    addForeignKey("FK_"+foreign_key.name, foreign_request_field.field_alias, request_table.parent_request_table.table_name, request_table.parent_request_table.table_alias, foreign_request_field.field_alias, table_error_list);
+                    RequestField request_field = request_table.request_field_name_map.get(foreign_key_field.name);
+                    addForeignKey("FK_"+foreign_key.name, request_field.field_alias, request_table.parent_request_table.table_name, request_table.parent_request_table.table_alias, foreign_request_field.field_alias, table_error_list);
                     addJoinKey("JK_"+foreign_key.name, request_table.parent_request_table.table_name, foreign_table_alias, JoinKey.JoinType.INNER_JOIN);
-                    addJoinField("JK_"+foreign_key.name, foreign_key.table.name, foreign_table_alias, field_name_alias.get(foreign_key_field.name), foreign_request_field.field_alias, JoinKey.JoinType.INNER_JOIN, table_error_list);
+                    addJoinField("JK_"+foreign_key.name, foreign_key.table.name, foreign_table_alias, foreign_key_field.name, foreign_request_field.field_name, JoinKey.JoinType.INNER_JOIN, table_error_list);
                     /*for (int field_counter = 0; field_counter < foreign_key.foreign_key_field_list.size(); field_counter++) {
                         ForeignKeyField foreign_key_field = foreign_key.foreign_key_field_list.get(field_counter);
                         /////addJoinField("JK_"+foreign_key.name, foreign_key.table.name, String field_alias, String join_field_alias, table_error_list);

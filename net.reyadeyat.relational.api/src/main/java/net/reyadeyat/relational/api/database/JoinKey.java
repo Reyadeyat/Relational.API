@@ -78,7 +78,7 @@ public class JoinKey {
         for (int i = 0; i < field_list.size(); i++) {
             Field field = field_list.get(i);
             String joinFieldName = joinFields.get(field);
-            sb.append("`").append(join_table_alias == null ? join_table : join_table_alias).append("`.`").append(joinFieldName).append("`=`").append(primary_table_alias == null ? primary_table : primary_table_alias).append("`.`").append(field.getAlias()).append("`").append(i+1 == field_list.size() ? "" : " AND ");
+            sb.append("`").append(join_table_alias == null ? join_table : join_table_alias).append("`.`").append(joinFieldName).append("`=`").append(primary_table_alias == null ? primary_table : primary_table_alias).append("`.`").append(field.getName()).append("`").append(i+1 == field_list.size() ? "" : " AND ");
         }
         join_statement = sb.toString();
     }

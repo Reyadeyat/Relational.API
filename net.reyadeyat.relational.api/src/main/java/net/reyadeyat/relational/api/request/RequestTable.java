@@ -39,7 +39,8 @@ public class RequestTable {
     public List<String> transaction_type_list;
     @SerializedName("fields")
     public List<RequestField> request_field_list;
-    public Map<String, RequestField> request_field_map;
+    public Map<String, RequestField> request_field_alias_map;
+    public Map<String, RequestField> request_field_name_map;
     @SerializedName("children")
     public List<RequestTable> child_request_table_list;
     public Map<String, RequestTable> child_request_table_map;
@@ -49,10 +50,12 @@ public class RequestTable {
         if (transaction_type_list == null) {
             transaction_type_list = parent_transaction_type_list;
         }
-        if (request_field_list != null && request_field_map == null) {
-            request_field_map = new HashMap<>();
+        if (request_field_list != null) {
+            request_field_name_map = new HashMap<>();
+            request_field_alias_map = new HashMap<>();
             for(RequestField request_field : request_field_list) {
-                request_field_map.put(request_field.field_alias, request_field);
+                request_field_name_map.put(request_field.field_name, request_field);
+                request_field_alias_map.put(request_field.field_alias, request_field);
             }
         }
         if (child_request_table_list != null && child_request_table_map == null) {
