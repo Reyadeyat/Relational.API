@@ -69,6 +69,15 @@ public class SecurityAES implements Security {
         
     }
     
+    public SecurityAES(Cipher cipher, Boolean encrypt) throws Exception {
+        this(encrypt ? cipher : null, !encrypt ? cipher : null);
+    }
+    
+    public SecurityAES(Cipher encrypt_cipher, Cipher decrypt_cipher) throws Exception {
+        this.encrypt_cipher = encrypt_cipher;
+        this.decrypt_cipher = decrypt_cipher;
+    }
+    
     @Override
     public String encrypt_text(String plain_text) throws Exception {
         byte[] encrypted_text_bytes = encrypt_cipher.doFinal(plain_text.getBytes("UTF-8"));

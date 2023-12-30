@@ -23,13 +23,11 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonArray;
 import com.google.gson.stream.JsonReader;
-import net.reyadeyat.relational.api.database.RecordHandler;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.io.OutputStream;
 import java.io.PrintWriter;
-import java.io.Writer;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -37,22 +35,18 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import net.reyadeyat.relational.api.data.DataClass;
 import net.reyadeyat.relational.api.data.DataLookup;
 import net.reyadeyat.relational.api.data.DataProcessor;
 import net.reyadeyat.relational.api.data.ModelDefinition;
 import net.reyadeyat.relational.api.database.ModelHandler;
 import net.reyadeyat.relational.api.jdbc.JDBCSource;
-import net.reyadeyat.relational.api.json.JsonResultset;
 import net.reyadeyat.relational.api.model.Enterprise;
 import net.reyadeyat.relational.api.model.EnterpriseModel;
 import net.reyadeyat.relational.api.model.MetadataMiner;
+import net.reyadeyat.relational.api.model.TableInterfaceImplementationDataStructures;
 import net.reyadeyat.relational.api.request.Response;
-import net.reyadeyat.relational.api.model.TableDataStructures;
 
 /**
  * 
@@ -111,12 +105,12 @@ public abstract class ModelingRequest implements ModelHandler {
         return json_request.getAsJsonObject();
     }
 
-    public void serviceTransaction(Integer security_flag, InputStream json_request_stream, OutputStream response_output_stream, Connection jdbc_connection, TableDataStructures table_data_structures, HashMap<String, Class> interface_implementation, JsonArray log_list, JsonArray error_list) throws Exception {
+    public void serviceTransaction(Integer security_flag, InputStream json_request_stream, OutputStream response_output_stream, Connection jdbc_connection, TableInterfaceImplementationDataStructures table_interface_implementation_data_structures, Map<String, Class> interface_implementation, JsonArray log_list, JsonArray error_list) throws Exception {
         JsonObject service_transaction_request = serviceContent(json_request_stream, response_output_stream);
-        serviceTransaction(security_flag, service_transaction_request, response_output_stream, jdbc_connection, table_data_structures, interface_implementation, log_list, error_list);
+        serviceTransaction(security_flag, service_transaction_request, response_output_stream, jdbc_connection, table_interface_implementation_data_structures, interface_implementation, log_list, error_list);
     }
     
-    public Response serviceTransaction(Integer security_flag, JsonObject service_transaction_request, OutputStream response_output_stream, Connection jdbc_connection, TableDataStructures table_data_structures, HashMap<String, Class> interface_implementation, JsonArray log_list, JsonArray error_list) throws Exception {
+    public Response serviceTransaction(Integer security_flag, JsonObject service_transaction_request, OutputStream response_output_stream, Connection jdbc_connection, TableInterfaceImplementationDataStructures table_interface_implementation_data_structures, Map<String, Class> interface_implementation, JsonArray log_list, JsonArray error_list) throws Exception {
         this.security_flag = security_flag;
         if (service_transaction_request == null) {
             error_list.add("Bad Request, Non JSON received => null !");
@@ -162,7 +156,7 @@ public abstract class ModelingRequest implements ModelHandler {
             generating_time_elements = new JsonArray();
             //PrintWriter writer = new PrintWriter(Writer.nullWriter());
             PrintWriter writer = new PrintWriter(response_output_stream);
-            model_id = databaseMetadata.generateModel(writer, generating_time_elements, table_data_structures);
+            model_id = databaseMetadata.generateModel(writer, generating_time_elements, table_interface_implementation_data_structures);
         } else if (transaction.equalsIgnoreCase("print")) {
             Integer print_style = JsonUtil.getJsonInteger(service_transaction_request, "print_style", false);
             Integer model_instance_id = 1;

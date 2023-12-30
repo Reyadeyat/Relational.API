@@ -20,19 +20,10 @@ package net.reyadeyat.relational.api.model;
 import net.reyadeyat.relational.api.data.DataLookup;
 import net.reyadeyat.relational.api.annotation.DontJsonAnnotation;
 import java.util.ArrayList;
-import net.reyadeyat.relational.api.json.JsonUtil;
-import net.reyadeyat.relational.api.util.StringUtil;
-import com.google.gson.Gson;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
 import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.TreeMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * 
@@ -49,7 +40,7 @@ public class Table {
     public Integer rows;
     
     @DontJsonAnnotation
-    transient public TableDataStructures table_data_structures;
+    transient public TableInterfaceImplementationDataStructures table_interface_implementation_data_structures;
     
     public ArrayList<Field> field_list;
     public ArrayList<PrimaryKey> primary_key_list;
@@ -81,13 +72,13 @@ public class Table {
     }
     
     /**no-arg default constructor for jaxb marshalling*/
-    public Table(TableDataStructures table_data_structures) {
+    public Table(TableInterfaceImplementationDataStructures table_interface_implementation_data_structures) {
         this();
-        this.table_data_structures = table_data_structures;
+        this.table_interface_implementation_data_structures = table_interface_implementation_data_structures;
     }
     
-    public Table(String name, Boolean case_sensitive_sql, Integer rows, DataLookup data_lookup, TableDataStructures table_data_structures) {
-        this(table_data_structures);
+    public Table(String name, Boolean case_sensitive_sql, Integer rows, DataLookup data_lookup, TableInterfaceImplementationDataStructures table_interface_implementation_data_structures) {
+        this(table_interface_implementation_data_structures);
         this.name = name;
         this.rows = rows;
         this.case_sensitive_sql = case_sensitive_sql;
@@ -134,7 +125,7 @@ public class Table {
     }
     
     public void generateModelDataStructures() throws Exception {
-        this.table_data_structures.generateModelDataStructures(this);
+        this.table_interface_implementation_data_structures.generateModelDataStructures(this);
     }
     
     public boolean isFieldPrimaryKey(String field_name) {
@@ -292,7 +283,7 @@ public class Table {
     }
     
     private static transient String nl = "\n";
-    
+    /*
     //To-Do
     //Foreign List onChange
     //fillForm with selected icons
@@ -571,4 +562,5 @@ public class Table {
 "			{{$TABLE_NAME_record.$FOREIGN_TABLE_NAME.$FOREIGN_TABLE_NAME_name_i18[lang]}}\n" +
 "		</mat-cell>\n" +
 "	</ng-container>\n";//$TYPESCRIPT_TABLE_FOREIGN_FIELD_HTML_I18_CONTROL
+    */
 }

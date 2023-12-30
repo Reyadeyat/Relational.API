@@ -94,7 +94,7 @@ public class TestRelationalRequest extends RelationalRequest {
 
             List<Request> request_list = gson.fromJson(service_request_json_text, new TypeToken<List<Request>>() {}.getType());
             HashMap<String, Class> interface_implementation = new HashMap<>();
-            interface_implementation.put("net.reyadeyat.relational.api.model.TableDataStructures", UserDefinedTableDataStructures.class);
+            interface_implementation.put("net.reyadeyat.relational.api.model.TableDataStructures", UserDefinedTableInterfaceImplementationDataStructures.class);
 
             TestRelationalRequest relational_request = new TestRelationalRequest(request_definition, interface_implementation);
             relational_request.serviceTransaction(security_flag, request_list, response_output_writer, jdbc_connection, log_list, error_list);
@@ -442,7 +442,7 @@ public class TestRelationalRequest extends RelationalRequest {
     private static String model_version = "0.0.0.0001";
 
     private static JDBCSource model_jdbc_source = new JDBCSource() {
-        private static String model_database_server = "localhost:33060";
+        private static String model_database_server = "127.0.0.1:33060";
         private static String model_database_user_name = "remote";
         private static String model_database_password = "123456";
         private static String model_database_schema = "model";
@@ -512,7 +512,7 @@ public class TestRelationalRequest extends RelationalRequest {
     };
 
     private static JDBCSource data_jdbc_source = new JDBCSource() {
-        private static final String data_database_server = "localhost:33060";
+        private static final String data_database_server = "127.0.0.1:33060";
         private static final String data_database_user_name = "remote";
         private static final String data_database_password = "123456";
         private static final String data_database_schema = data_database;

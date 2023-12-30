@@ -27,6 +27,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.TreeMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -35,7 +36,7 @@ import net.reyadeyat.relational.api.jdbc.JDBCSource;
 import net.reyadeyat.relational.api.json.JsonUtil;
 import net.reyadeyat.relational.api.modeler.ModelingRequest;
 import net.reyadeyat.relational.api.request.Response;
-import net.reyadeyat.relational.api.model.TableDataStructures;
+import net.reyadeyat.relational.api.model.TableInterfaceImplementationDataStructures;
 
 /**
  *
@@ -99,21 +100,23 @@ public class TestModelingRequest extends ModelingRequest {
             JsonArray error_list = new JsonArray();
             TestModelingRequest modeling_request = new TestModelingRequest();
             
-            TableDataStructures table_data_structures = new UserDefinedTableDataStructures();
-            HashMap<String, Class> interface_implementation = new HashMap<String, Class>();
-            interface_implementation.put("net.reyadeyat.relational.api.model.TableDataStructures", UserDefinedTableDataStructures.class);
+            //List of external classes implements model members annotated with @DontJsonAnnotation
+            Map<String, Class> interface_implementation = new HashMap<String, Class>();
+            interface_implementation.put("net.reyadeyat.relational.api.model.TableDataStructures", UserDefinedTableInterfaceImplementationDataStructures.class);
+            
+            TableInterfaceImplementationDataStructures table_interface_implementation_data_structures = new UserDefinedTableInterfaceImplementationDataStructures();
             
             //Delete Model Request
             JsonObject model_service_delete_json = gson.fromJson(model_service_delete_request_json_text, JsonObject.class);
-            Response delete_response = modeling_request.serviceTransaction(security_flag, model_service_delete_json, response_output_stream, jdbc_connection, table_data_structures, interface_implementation, log_list, error_list);
+            Response delete_response = modeling_request.serviceTransaction(security_flag, model_service_delete_json, response_output_stream, jdbc_connection, table_interface_implementation_data_structures, interface_implementation, log_list, error_list);
             
             //Build Model Request
             JsonObject model_service_build_json = gson.fromJson(model_service_build_request_json_text, JsonObject.class);
-            Response build_response = modeling_request.serviceTransaction(security_flag, model_service_build_json, response_output_stream, jdbc_connection, table_data_structures, interface_implementation, log_list, error_list);
+            Response build_response = modeling_request.serviceTransaction(security_flag, model_service_build_json, response_output_stream, jdbc_connection, table_interface_implementation_data_structures, interface_implementation, log_list, error_list);
             
             //Print Model Request
             JsonObject model_service_print_json = gson.fromJson(model_service_print_request_json_text, JsonObject.class);
-            Response print_response = modeling_request.serviceTransaction(security_flag, model_service_print_json, response_output_stream, jdbc_connection, table_data_structures, interface_implementation, log_list, error_list);
+            Response print_response = modeling_request.serviceTransaction(security_flag, model_service_print_json, response_output_stream, jdbc_connection, table_interface_implementation_data_structures, interface_implementation, log_list, error_list);
             
             //String reposnse_string = new String(response_output_stream.toByteArray(), StandardCharsets.UTF_8);
             //Logger.getLogger(TestModelingRequest.class.getName()).log(Level.INFO, reposnse_string);
@@ -182,7 +185,7 @@ public class TestModelingRequest extends ModelingRequest {
         "model_instance_sequence_last_value": "0",
         "model_class_path": "net.reyadeyat.relational.api.model.Enterprise",
         "model_data_lookup_category": "MySQL Data Type",
-        "modeled_database_url": "jdbc:mysql://localhost:33060/parental",
+        "modeled_database_url": "jdbc:mysql://127.0.0.1:33060/parental",
         "modeled_database_url_user_name": "remote",
         "modeled_database_url_user_password": "123456",
         "modeled_database_schem": "",
@@ -190,7 +193,7 @@ public class TestModelingRequest extends ModelingRequest {
         "modeled_database_field_open_quote": "`",
         "modeled_database_field_close_quote": "`",
                                                                   
-        "modeled_table_data_structures_class": "net.reyadeyat.relational.test.api.UserDefinedTableDataStructures",
+        "modeled_table_interface_implementation_data_structures_class": "net.reyadeyat.relational.test.api.UserDefinedTableDataStructures",
                                                                   
         "table_tree": [
             {
@@ -238,7 +241,7 @@ public class TestModelingRequest extends ModelingRequest {
         "model_instance_sequence_last_value": "0",
         "model_class_path": "net.reyadeyat.relational.api.model.Enterprise",
         "model_data_lookup_category": "MySQL Data Type",
-        "modeled_database_url": "jdbc:mysql://localhost:33060/parental",
+        "modeled_database_url": "jdbc:mysql://127.0.0.1:33060/parental",
         "modeled_database_url_user_name": "remote",
         "modeled_database_url_user_password": "123456",
         "modeled_database_schem": "",
@@ -246,7 +249,7 @@ public class TestModelingRequest extends ModelingRequest {
         "modeled_database_field_open_quote": "`",
         "modeled_database_field_close_quote": "`",
                                                                   
-        "modeled_table_data_structures_class": "net.reyadeyat.relational.test.api.UserDefinedTableDataStructures",
+        "modeled_table_interface_implementation_data_structures_class": "net.reyadeyat.relational.test.api.UserDefinedTableDataStructures",
                                                                   
         "table_tree": [
             {
@@ -293,7 +296,7 @@ public class TestModelingRequest extends ModelingRequest {
         "model_instance_sequence_last_value": "0",
         "model_class_path": "net.reyadeyat.relational.api.model.Enterprise",
         "model_data_lookup_category": "MySQL Data Type",
-        "modeled_database_url": "jdbc:mysql://localhost:33060/parental",
+        "modeled_database_url": "jdbc:mysql://127.0.0.1:33060/parental",
         "modeled_database_url_user_name": "remote",
         "modeled_database_url_user_password": "123456",
         "modeled_database_schem": "",
@@ -301,7 +304,7 @@ public class TestModelingRequest extends ModelingRequest {
         "modeled_database_field_open_quote": "`",
         "modeled_database_field_close_quote": "`",
 
-        "modeled_table_data_structures_class": "net.reyadeyat.relational.test.api.UserDefinedTableDataStructures"
+        "modeled_table_interface_implementation_data_structures_class": "net.reyadeyat.relational.test.api.UserDefinedTableDataStructures"
     }
     """.formatted(data_database, data_database, data_database, data_database, data_database);
     
@@ -311,7 +314,7 @@ public class TestModelingRequest extends ModelingRequest {
     private static String model_version = "0.0.0.0001";
 
     private static JDBCSource data_jdbc_source = new JDBCSource() {
-        private static final String data_database_server = "localhost:33060";
+        private static final String data_database_server = "127.0.0.1:33060";
         private static final String data_database_user_name = "remote";
         private static final String data_database_password = "123456";
         private static final String data_database_schema = data_database;
@@ -379,7 +382,7 @@ public class TestModelingRequest extends ModelingRequest {
     };
     
     private static JDBCSource model_jdbc_source = new JDBCSource() {
-        private static String model_database_server = "localhost:33060";
+        private static String model_database_server = "127.0.0.1:33060";
         private static String model_database_user_name = "remote";
         private static String model_database_password = "123456";
         private static String model_database_schema = "model";
