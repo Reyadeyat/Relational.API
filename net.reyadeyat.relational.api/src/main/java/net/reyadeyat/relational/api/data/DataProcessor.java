@@ -32,6 +32,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -54,13 +55,13 @@ public class DataProcessor<Model> {
     ModelDefinition model_definition;
     DataLookup data_lookup;
     DataClass data_class;
-    HashMap<DataModel<Model>, DataInstance> dataModelDataInstanceMap;
-    HashMap<String, Class> interface_implementation;
+    Map<DataModel<Model>, DataInstance> dataModelDataInstanceMap;
+    Map<String, Class> interface_implementation;
     
     final static public ZonedDateTimeAdapter zonedDateTimeAdapter = new ZonedDateTimeAdapter();
     
     @SuppressWarnings("unchecked")
-    public DataProcessor(Class data_model_class, Class model_class, JDBCSource model_jdbc_source, ModelDefinition model_definition, DataLookup data_lookup, HashMap<String, Class> interface_implementation) throws Exception {
+    public DataProcessor(Class data_model_class, Class model_class, JDBCSource model_jdbc_source, ModelDefinition model_definition, DataLookup data_lookup, Map<String, Class> interface_implementation) throws Exception {
         this.data_model_class = data_model_class;
         this.model_class = model_class;
         this.model_jdbc_source = model_jdbc_source;

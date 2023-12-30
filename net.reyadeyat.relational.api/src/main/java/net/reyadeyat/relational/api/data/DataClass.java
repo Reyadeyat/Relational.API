@@ -83,10 +83,10 @@ public class DataClass {
     
     DataLookup data_lookup;
     Boolean has_interface_implementation;
-    HashMap<String, Class> interface_implementation;
+    Map<String, Class> interface_implementation;
     
     
-    public DataClass(DataClass parent_data_class, Field field, DataLookup data_lookup, HashMap<String, Class> interface_implementation) throws Exception {
+    public DataClass(DataClass parent_data_class, Field field, DataLookup data_lookup, Map<String, Class> interface_implementation) throws Exception {
         /*if (data_class == null) {
             throw new Exception("DataClass cannot be null");
         }

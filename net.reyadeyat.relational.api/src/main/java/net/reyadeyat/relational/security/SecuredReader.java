@@ -32,7 +32,7 @@ public class SecuredReader extends Reader {
     private String separator;
     private StringBuilder buffer;
     
-    public SecuredReader(Reader reader, Writer piped_writer, Security secutiry, String separator) throws Exception {
+    public SecuredReader(Reader reader, Security secutiry, String separator) throws Exception {
         if (this.reader == null) {
             throw new Exception("reader is null");
         }

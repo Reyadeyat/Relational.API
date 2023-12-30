@@ -42,6 +42,7 @@ import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
@@ -65,26 +66,26 @@ public class MetadataMiner {
     private JDBCSource model_jdbc_source;
     private JDBCSource data_jdbc_source;
     private ModelDefinition model_definition;
-    private String secret_key;
-    private HashMap<String, Class> interface_implementation;
-    private ArrayList<String> table_list;
+    private String model_secret_key;
+    private Map<String, Class> interface_implementation;
+    private List<String> table_list;
     
     private static String nl = "\n";
     private static String section_separator = "\n-------------------------------------------------------------------------------\n";
     private static String data_separator = "  -------------------------  ";
 
-    public MetadataMiner(Integer model_id, String java_package_name, JDBCSource model_jdbc_source, JDBCSource data_jdbc_source, ArrayList<String> table_list, ModelDefinition model_definition, String secret_key, HashMap<String, Class> interface_implementation) throws Exception {
+    public MetadataMiner(Integer model_id, String java_package_name, JDBCSource model_jdbc_source, JDBCSource data_jdbc_source, List<String> table_list, ModelDefinition model_definition, String model_secret_key, Map<String, Class> interface_implementation) throws Exception {
         this.model_id = model_id == null ? -1 : model_id;
         this.java_package_name = java_package_name;
         this.model_jdbc_source = model_jdbc_source;
         this.data_jdbc_source = data_jdbc_source;
         this.table_list = table_list;
         this.model_definition = model_definition;
-        this.secret_key = secret_key;
+        this.model_secret_key = model_secret_key;
         this.interface_implementation = interface_implementation;
     }
     
-    public Integer generateModel(PrintWriter writer, JsonArray generating_time_elements, TableDataStructures table_data_structures) throws Exception {
+    public Integer generateModel(PrintWriter writer, JsonArray generating_time_elements, TableInterfaceImplementationDataStructures table_interface_implementation_data_structures) throws Exception {
         ArrayList<String> models = new ArrayList<String>(Arrays.asList(new String[]{data_jdbc_source.getDatabaseName()}));
         long t1, t2;
         Boolean write_output = true;
@@ -211,7 +212,7 @@ public class MetadataMiner {
                     } catch (Exception ex) {
                         throw ex;
                     }*/
-                    Table table = new Table(tableName, case_sensitive_sql, rows, data_lookup, table_data_structures);
+                    Table table = new Table(tableName, case_sensitive_sql, rows, data_lookup, table_interface_implementation_data_structures);
                     tModelDatabase.addTable(table);
                     //writer.appendln("Table [" + tableName + "]");
                 }
@@ -534,7 +535,7 @@ public class MetadataMiner {
         
         t1 = System.nanoTime();
         
-        model_id = dataProcessor.generateModel(data_jdbc_source, model_id, instance_sequence_type_id, instance_sequence_last_value, secret_key, table_data_structures.getClass().getName());
+        model_id = dataProcessor.generateModel(data_jdbc_source, model_id, instance_sequence_type_id, instance_sequence_last_value, model_secret_key, table_interface_implementation_data_structures.getClass().getName());
         t2 = System.nanoTime();
         generating_time_elements.add("04- Create Model ID [" + model_id + "] Data Class in Database = " + TimeUnit.MILLISECONDS.convert(t2 - t1, TimeUnit.NANOSECONDS) + " ms");
         
@@ -635,9 +636,9 @@ public class MetadataMiner {
             delete_sql = "DELETE FROM `model`.`child_table_list` WHERE `model_id`=?";
             deleteDataModel(model_database_connection, delete_sql, model_definition.model_id);
 
-            //String table_data_structures_name = model_definition.modeled_table_data_structures_class.substring(model_definition.modeled_table_data_structures_class.lastIndexOf(".")+1, model_definition.modeled_table_data_structures_class.length()-1);
-            String table_data_structures_name = "table_data_structures";
-            delete_sql = "DELETE FROM `model`.`"+table_data_structures_name+"` WHERE `model_id`=?";
+            //String table_interface_implementation_data_structures_name = model_definition.modeled_table_interface_implementation_data_structures_class.substring(model_definition.modeled_table_interface_implementation_data_structures_class.lastIndexOf(".")+1, model_definition.modeled_table_interface_implementation_data_structures_class.length()-1);
+            String table_interface_implementation_data_structures_name = "table_interface_implementation_data_structures";
+            delete_sql = "DELETE FROM `model`.`"+table_interface_implementation_data_structures_name+"` WHERE `model_id`=?";
             deleteDataModel(model_database_connection, delete_sql, model_definition.model_id);
 
             delete_sql = "DELETE FROM `model`.`table_list` WHERE `model_id`=?";
@@ -680,9 +681,9 @@ public class MetadataMiner {
             delete_sql = "DELETE FROM `model`.`child_table_list` WHERE `model_id`=? AND `model_instance_id`=?";
             deleteDataModelInstance(model_database_connection, delete_sql, model_definition.model_id, instance_id);
 
-            //String table_data_structures_name = model_definition.modeled_table_data_structures_class.substring(model_definition.modeled_table_data_structures_class.lastIndexOf(".")+1, model_definition.modeled_table_data_structures_class.length()-1);
-            String table_data_structures_name = "table_data_structures";
-            delete_sql = "DELETE FROM `model`.`"+table_data_structures_name+"` WHERE `model_id`=? AND `model_instance_id`=?";
+            //String table_interface_implementation_data_structures_name = model_definition.modeled_table_interface_implementation_data_structures_class.substring(model_definition.modeled_table_interface_implementation_data_structures_class.lastIndexOf(".")+1, model_definition.modeled_table_interface_implementation_data_structures_class.length()-1);
+            String table_interface_implementation_data_structures_name = "table_interface_implementation_data_structures";
+            delete_sql = "DELETE FROM `model`.`"+table_interface_implementation_data_structures_name+"` WHERE `model_id`=? AND `model_instance_id`=?";
             deleteDataModelInstance(model_database_connection, delete_sql, model_definition.model_id, instance_id);
 
             delete_sql = "DELETE FROM `model`.`table_list` WHERE `model_id`=? AND `model_instance_id`=?";
@@ -736,7 +737,7 @@ public class MetadataMiner {
     }
     
     public static void printModelDataStructures(JDBCSource model_jdbc_source, Integer model_id, Integer model_instance_id, PrintWriter writer, Integer print_styel) throws Exception {
-        String select_model_instance = "SELECT `table_data_structures`.* FROM `model`.`table_list` INNER JOIN `model`.`table_data_structures` ON `table_list`.`model_id`=`table_data_structures`.`model_id` AND `table_list`.`model_instance_id`=`table_data_structures`.`model_instance_id` AND `table_list`.`child_id`=`table_data_structures`.`parent_id` WHERE `table_list`.`model_id` = ? AND `table_list`.`model_instance_id` = ?";
+        String select_model_instance = "SELECT `table_interface_implementation_data_structures`.* FROM `model`.`table_list` INNER JOIN `model`.`table_interface_implementation_data_structures` ON `table_list`.`model_id`=`table_interface_implementation_data_structures`.`model_id` AND `table_list`.`model_instance_id`=`table_interface_implementation_data_structures`.`model_instance_id` AND `table_list`.`child_id`=`table_interface_implementation_data_structures`.`parent_id` WHERE `table_list`.`model_id` = ? AND `table_list`.`model_instance_id` = ?";
         ArrayList<DataStructure> data_structure_list = null;
         try ( Connection model_database_connection = model_jdbc_source.getConnection(false)) {
             try ( PreparedStatement select_model_instance_stmt = model_database_connection.prepareStatement(select_model_instance)) {

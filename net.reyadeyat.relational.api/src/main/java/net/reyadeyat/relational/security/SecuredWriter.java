@@ -19,6 +19,8 @@ package net.reyadeyat.relational.security;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.Writer;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  *
@@ -30,21 +32,33 @@ public class SecuredWriter extends Writer {
     private Writer writer;
     private Security secutiry;
     private String separator;
+    private Logger logger;
+    private Level log_level;
     
-    public SecuredWriter(Writer writer, Reader piped_reader, Security secutiry, String separator) throws Exception {
-        if (this.writer == null) {
-            throw new Exception("writer is null");
-        }
+    public SecuredWriter(Writer writer, Security secutiry, String separator) throws Exception {
+        this(writer, secutiry, separator, null, null);
+    }
+    
+    public SecuredWriter(Writer writer, Security secutiry, String separator, Logger logger, Level log_level) throws Exception {
         this.writer = writer;
         this.secutiry = secutiry;
         this.separator = separator;
+        this.logger = logger;
+        this.log_level = log_level;
+        if (this.writer == null) {
+            throw new Exception("writer is null");
+        }
     }
 
     @Override
     public void write(char[] plain_buffer, int offset, int length) throws IOException {
         try {
-            char[] encrypted_buffer = (this.secutiry.encrypt_text(new String(plain_buffer, offset, length))+separator).toCharArray();
+            String encrypted_message = new String(plain_buffer, offset, length);
+            char[] encrypted_buffer = (this.secutiry.encrypt_text(encrypted_message)+separator).toCharArray();
             writer.write(encrypted_buffer, 0, encrypted_buffer.length);
+            if (logger != null) {
+                logger.log(log_level, encrypted_message);
+            }
         } catch (Exception ex) {
             throw new IOException(ex);
         }

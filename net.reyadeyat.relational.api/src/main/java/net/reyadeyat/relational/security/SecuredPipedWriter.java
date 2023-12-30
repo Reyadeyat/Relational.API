@@ -33,21 +33,24 @@ public class SecuredPipedWriter extends Writer {
     private String separator;
     
     /**Writer only*/
-    public SecuredPipedWriter(Writer writer, Security secutiry, String separator) {
+    public SecuredPipedWriter(Writer writer, Security secutiry, String separator) throws Exception {
         this(writer, null, secutiry, separator);
     }
     
     /**Pipe Writer to Reader*/
-    public SecuredPipedWriter(Reader piped_reader, Security secutiry, String separator) {
+    public SecuredPipedWriter(Reader piped_reader, Security secutiry, String separator) throws Exception {
         this(null, piped_reader, secutiry, separator);
     }
     
     /**Writer and Piped Writer to Reader*/
-    public SecuredPipedWriter(Writer writer, Reader piped_reader, Security secutiry, String separator) {
+    public SecuredPipedWriter(Writer writer, Reader piped_reader, Security secutiry, String separator) throws Exception {
         this.writer = writer;
         this.piped_reader = piped_reader;
         this.secutiry = secutiry;
         this.separator = separator;
+        if (this.writer == null) {
+            throw new Exception("writer is null");
+        }
     }
 
     @Override

@@ -592,6 +592,8 @@ public class Field implements Cloneable, Comparable<Field> {
             return getSqlTime((java.sql.Time) field_value);
         } else if (field_value instanceof Timestamp) {
             return getSqlTimestamp((java.sql.Timestamp) field_value);
+        } else if (field_value instanceof java.time.LocalDateTime) {
+            return getSqlTimestamp(Timestamp.valueOf((java.time.LocalDateTime) field_value));
         }
 
         throw new Exception("getFieldString passed unhandeled instance of type => " + field_value.getClass().getName());
