@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>net.reyadeyat</groupId>
     <artifactId>net.reyadeyat.relational.api</artifactId>
-    <version>2023.12.31</version>
+    <version>2024.01.14</version>
     <packaging>jar</packaging>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -18,7 +18,7 @@
     
     <licenses>
         <license>
-            <name>BSD 3-Clause License - Copyright (c) 2023, Reyadeyat</name>
+            <name>BSD 3-Clause License - Copyright (c) 2023 - 2024, Reyadeyat</name>
             <url>https://reyadeyat.net/NLP.LICENSE</url>
         </license>
     </licenses>
@@ -79,6 +79,7 @@
     
     <build>
         <plugins>
+            <!--
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -90,6 +91,7 @@
                     </compilerArgs>
                 </configuration>
             </plugin>
+            -->
             <!-- test -->
             <!--
             <plugin>

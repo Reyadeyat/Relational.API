@@ -54,9 +54,9 @@ import net.reyadeyat.relational.security.SecurityAES;
  */
 public class TestRelationalRequest extends RelationalRequest {
 
-    public TestRelationalRequest(RequestDefinition request_definition, HashMap<String, Class> interface_implementation)
+    public TestRelationalRequest(RequestDefinition request_definition, HashMap<String, Class> interface_implementation, Integer security_flag)
             throws Exception {
-        super(request_definition, interface_implementation);
+        super(request_definition, interface_implementation, security_flag);
     }
 
     /**
@@ -85,8 +85,7 @@ public class TestRelationalRequest extends RelationalRequest {
             JsonWriter response_output_writer = new JsonWriter(secured_writer);
             
             Gson gson = JsonUtil.gson();
-            Integer security_flag = SECURITY_FLAG_ASSERT_VALID_FIELD_NAMES
-                    | SECURITY_FLAG_RETURN_DESCRIPTIVE_RESPONSE_MESSAGE | SECURITY_FLAG_RETURN_GENERATED_ID;
+            Integer security_flag = SECURITY_FLAG_RETURN_NOTHING | SECURITY_FLAG_FOREING_KEY_MUST_LINK_TO_PRIMARY_KEY | SECURITY_FLAG_ASSERT_VALID_FIELD_NAMES | SECURITY_FLAG_RETURN_DESCRIPTIVE_RESPONSE_MESSAGE | SECURITY_FLAG_RETURN_GENERATED_ID;
             JsonArray log_list = new JsonArray();
             JsonArray error_list = new JsonArray();
             RequestDefinition request_definition = gson.fromJson(service_definition_json_text, RequestDefinition.class);
@@ -96,7 +95,7 @@ public class TestRelationalRequest extends RelationalRequest {
             HashMap<String, Class> interface_implementation = new HashMap<>();
             interface_implementation.put("net.reyadeyat.relational.api.model.TableDataStructures", UserDefinedTableInterfaceImplementationDataStructures.class);
 
-            TestRelationalRequest relational_request = new TestRelationalRequest(request_definition, interface_implementation);
+            TestRelationalRequest relational_request = new TestRelationalRequest(request_definition, interface_implementation, security_flag);
             relational_request.serviceTransaction(security_flag, request_list, response_output_writer, jdbc_connection, log_list, error_list);
             
             plain_reader_pipe.flush();

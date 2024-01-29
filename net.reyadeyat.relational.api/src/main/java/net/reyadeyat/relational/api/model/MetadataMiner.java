@@ -69,12 +69,13 @@ public class MetadataMiner {
     private String model_secret_key;
     private Map<String, Class> interface_implementation;
     private List<String> table_list;
+    private Boolean foreing_key_must_link_to_primary_key;
     
     private static String nl = "\n";
     private static String section_separator = "\n-------------------------------------------------------------------------------\n";
     private static String data_separator = "  -------------------------  ";
 
-    public MetadataMiner(Integer model_id, String java_package_name, JDBCSource model_jdbc_source, JDBCSource data_jdbc_source, List<String> table_list, ModelDefinition model_definition, String model_secret_key, Map<String, Class> interface_implementation) throws Exception {
+    public MetadataMiner(Integer model_id, String java_package_name, JDBCSource model_jdbc_source, JDBCSource data_jdbc_source, List<String> table_list, ModelDefinition model_definition, String model_secret_key, Map<String, Class> interface_implementation, Boolean foreing_key_must_link_to_primary_key) throws Exception {
         this.model_id = model_id == null ? -1 : model_id;
         this.java_package_name = java_package_name;
         this.model_jdbc_source = model_jdbc_source;
@@ -83,6 +84,7 @@ public class MetadataMiner {
         this.model_definition = model_definition;
         this.model_secret_key = model_secret_key;
         this.interface_implementation = interface_implementation;
+        this.foreing_key_must_link_to_primary_key = foreing_key_must_link_to_primary_key;
     }
     
     public Integer generateModel(PrintWriter writer, JsonArray generating_time_elements, TableInterfaceImplementationDataStructures table_interface_implementation_data_structures) throws Exception {
@@ -521,7 +523,7 @@ public class MetadataMiner {
         String model_description = data_jdbc_source.getDatabaseName() + " - Database Enterprise Model";
         
         t1 = System.nanoTime();
-        DataProcessor<Enterprise> dataProcessor = new DataProcessor<Enterprise>(EnterpriseModel.class, Enterprise.class, model_jdbc_source, model_definition, data_lookup, interface_implementation);
+        DataProcessor<Enterprise> dataProcessor = new DataProcessor<Enterprise>(EnterpriseModel.class, Enterprise.class, model_jdbc_source, model_definition, data_lookup, interface_implementation, foreing_key_must_link_to_primary_key);
         //SchemaClass dataClass = dataProcessor.getSchemaClass();
         //t2 = System.nanoTime();
         //generating_time_elements.add("Schema Class Walk = " + TimeUnit.MILLISECONDS.convert(t2 - t1, TimeUnit.NANOSECONDS) + " ms");
@@ -535,7 +537,7 @@ public class MetadataMiner {
         
         t1 = System.nanoTime();
         
-        model_id = dataProcessor.generateModel(data_jdbc_source, model_id, instance_sequence_type_id, instance_sequence_last_value, model_secret_key, table_interface_implementation_data_structures.getClass().getName());
+        model_id = dataProcessor.generateModel(model_jdbc_source, data_jdbc_source, model_id, instance_sequence_type_id, instance_sequence_last_value, model_secret_key, table_interface_implementation_data_structures.getClass().getName());
         t2 = System.nanoTime();
         generating_time_elements.add("04- Create Model ID [" + model_id + "] Data Class in Database = " + TimeUnit.MILLISECONDS.convert(t2 - t1, TimeUnit.NANOSECONDS) + " ms");
         
@@ -574,7 +576,7 @@ public class MetadataMiner {
         String timeText = "";
         writer.append("Loaded Models").append("\n");
         t1 = System.nanoTime();
-        DataProcessor<Enterprise> dataProcessor = new DataProcessor<Enterprise>(EnterpriseModel.class, Enterprise.class, model_jdbc_source, model_definition, data_lookup, interface_implementation);
+        DataProcessor<Enterprise> dataProcessor = new DataProcessor<Enterprise>(EnterpriseModel.class, Enterprise.class, model_jdbc_source, model_definition, data_lookup, interface_implementation, foreing_key_must_link_to_primary_key);
         ArrayList<Integer> model_instance_ids = dataProcessor.selectModelInstanceIDsFromDatabase(model_definition.modeled_database_name);
         t2 = System.nanoTime();
         StringBuilder ids = new StringBuilder();

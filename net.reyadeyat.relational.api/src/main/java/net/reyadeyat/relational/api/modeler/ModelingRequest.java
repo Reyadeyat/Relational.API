@@ -33,7 +33,6 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import net.reyadeyat.relational.api.data.DataClass;
@@ -47,6 +46,7 @@ import net.reyadeyat.relational.api.model.EnterpriseModel;
 import net.reyadeyat.relational.api.model.MetadataMiner;
 import net.reyadeyat.relational.api.model.TableInterfaceImplementationDataStructures;
 import net.reyadeyat.relational.api.request.Response;
+import net.reyadeyat.relational.api.util.NothingWriter;
 
 /**
  * 
@@ -72,6 +72,8 @@ public abstract class ModelingRequest implements ModelHandler {
     static final public Integer SECURITY_FLAG_RETURN_GENERATED_ID = 32;
     static final public Integer SECURITY_FLAG_RETURN_GENERATED_ID_ENCRYPTED = 64;
     static final public Integer SECURITY_FLAG_RETURN_RESPONSE_ENCRYPTED = 128;
+    static final public Integer SECURITY_FLAG_RETURN_NOTHING = 256;
+    static final public Integer SECURITY_FLAG_FOREING_KEY_MUST_LINK_TO_PRIMARY_KEY = 512;
     
     private ArrayList<String> transaction_type;
     private String valid_transaction_type;
@@ -152,10 +154,10 @@ public abstract class ModelingRequest implements ModelHandler {
         } else if (transaction.equalsIgnoreCase("build")) {
             MetadataMiner.deleteDataModel(model_jdbc_source, model_definition);
             ArrayList<String> table_list = new ArrayList<>();
-            MetadataMiner databaseMetadata = new MetadataMiner(model_id, java_package_name, model_jdbc_source, data_jdbc_source, table_list, model_definition, secret_key, interface_implementation);
+            MetadataMiner databaseMetadata = new MetadataMiner(model_id, java_package_name, model_jdbc_source, data_jdbc_source, table_list, model_definition, secret_key, interface_implementation, (this.security_flag & SECURITY_FLAG_FOREING_KEY_MUST_LINK_TO_PRIMARY_KEY) != 0);
             generating_time_elements = new JsonArray();
             //PrintWriter writer = new PrintWriter(Writer.nullWriter());
-            PrintWriter writer = new PrintWriter(response_output_stream);
+            PrintWriter writer = (this.security_flag & ModelingRequest.SECURITY_FLAG_RETURN_NOTHING) == 0 ? new PrintWriter(response_output_stream) : new PrintWriter(new NothingWriter());
             model_id = databaseMetadata.generateModel(writer, generating_time_elements, table_interface_implementation_data_structures);
         } else if (transaction.equalsIgnoreCase("print")) {
             Integer print_style = JsonUtil.getJsonInteger(service_transaction_request, "print_style", false);
@@ -185,7 +187,7 @@ public abstract class ModelingRequest implements ModelHandler {
                 throw new Exception("Data Lookup is null!");
             }
             
-            DataProcessor<Enterprise> dataProcessor = new DataProcessor<Enterprise>(EnterpriseModel.class, Enterprise.class, model_jdbc_source, model_definition, data_lookup, interface_implementation);
+            DataProcessor<Enterprise> dataProcessor = new DataProcessor<Enterprise>(EnterpriseModel.class, Enterprise.class, model_jdbc_source, model_definition, data_lookup, interface_implementation, (this.security_flag & SECURITY_FLAG_FOREING_KEY_MUST_LINK_TO_PRIMARY_KEY) != 0);
             EnterpriseModel<Enterprise> enterprise_model = (EnterpriseModel<Enterprise>) dataProcessor.loadModelFromDatabase(model_id, model_instance_id, loadMethod);
             PrintWriter writer = new PrintWriter(response_output_stream);
             writer.println("----------- START Database Model ------------");

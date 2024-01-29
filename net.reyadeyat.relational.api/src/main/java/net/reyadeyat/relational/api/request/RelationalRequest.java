@@ -65,15 +65,18 @@ public abstract class RelationalRequest implements RecordHandler {
     static final public Integer SECURITY_FLAG_RETURN_GENERATED_ID = 32;
     static final public Integer SECURITY_FLAG_RETURN_GENERATED_ID_ENCRYPTED = 64;
     static final public Integer SECURITY_FLAG_RETURN_RESPONSE_ENCRYPTED = 128;
+    static final public Integer SECURITY_FLAG_RETURN_NOTHING = 256;
+    static final public Integer SECURITY_FLAG_FOREING_KEY_MUST_LINK_TO_PRIMARY_KEY = 512;
     
-    public RelationalRequest(RequestDefinition request_definition, HashMap<String, Class> interface_implementation) throws Exception {
+    public RelationalRequest(RequestDefinition request_definition, HashMap<String, Class> interface_implementation, Integer security_flag) throws Exception {
         this.request_definition = request_definition;
+        this.security_flag = security_flag;
         try {
             //this.data_database_name = data_database_name;
             JDBCSource model_jdbc_source = getJDBCSource(request_definition.model_datasource_name);
             JDBCSource data_jdbc_source = getJDBCSource(request_definition.data_datasource_name);
             JsonArray error_list = new JsonArray();
-            Table.loadDataModel(request_definition.secret_key, model_jdbc_source, data_jdbc_source, request_definition.model_id, interface_implementation, error_list);
+            Table.loadDataModel(request_definition.secret_key, model_jdbc_source, data_jdbc_source, request_definition.model_id, interface_implementation, error_list, (this.security_flag & SECURITY_FLAG_FOREING_KEY_MUST_LINK_TO_PRIMARY_KEY) != 0);
             JsonUtil.throwJsonExceptionOnError("Table service definition has errors:", error_list);
             table = new Table(request_definition.data_datasource_name, request_definition.data_database_name, request_definition.model_id, null, request_definition.request_table, error_list);
             JsonUtil.throwJsonExceptionOnError("Table initialize has errors:", error_list);

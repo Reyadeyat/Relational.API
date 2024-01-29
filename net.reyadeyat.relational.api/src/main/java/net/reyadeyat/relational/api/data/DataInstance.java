@@ -90,7 +90,7 @@ public class DataInstance {
             }));
     
     @SuppressWarnings("unchecked")
-    public DataInstance(State state, String database_name, DataClass data_class, DataInstance parent_data_instance, Object parentInstanceObject, Object instance_object, SequenceNumber sequence_number, Boolean traverse) throws Exception {
+    public DataInstance(State state, String database_name, DataClass data_class, DataInstance parent_data_instance, Object parentInstanceObject, Object instance_object, SequenceNumber sequence_number, Boolean traverse, Boolean foreing_key_must_link_to_primary_key) throws Exception {
         this.state = state;
         this.database_name = database_name;
         this.data_class = data_class;
@@ -126,7 +126,7 @@ public class DataInstance {
                         if (foreign_key.referenced_key_field_list.size() > 0) {
                             referenced_key_field_list_strb.delete(referenced_key_field_list_strb.length()-1, referenced_key_field_list_strb.length());
                         }
-                        if (is_primary_key == false) {
+                        if (is_primary_key == false && foreing_key_must_link_to_primary_key == true) {
                             throw new Exception("Database Foreign Key Constraint sufferes integgrity check failure Table.[Field List] `"+foreign_key.foreign_key_table_name+"`.["+foreign_key_field_list_strb.toString()+"] has Foreing Key '"+foreign_key.name+"' linked to a none Primary Key Table.[Field List] `"+foreign_key.referenced_key_table_name+"`.["+referenced_key_field_list_strb.toString()+"], please fix this issue first !!!");
                         }
                     }
@@ -183,7 +183,7 @@ public class DataInstance {
             
             for (DataClass newDataClass : this.data_class.member_list) {
                 Object newInstanceObject = newDataClass.field.get(instance);
-                DataInstance newDataInstance = new DataInstance(this.state, this.database_name, newDataClass, this, instance, newInstanceObject, this.sequence_number, true);
+                DataInstance newDataInstance = new DataInstance(this.state, this.database_name, newDataClass, this, instance, newInstanceObject, this.sequence_number, true, foreing_key_must_link_to_primary_key);
                 membersList.add(newDataInstance);
                 membersMap.put(newDataInstance.data_class.name, newDataInstance);
                 if (newDataInstance.data_class.isTable) {//Table
@@ -246,7 +246,7 @@ public class DataInstance {
         this.addMemeber(instance, membersList, tablesList, fieldsList, membersMap, tablesMap, fieldsMap);
     }
     
-    public void addChildInstanceObject(State childState, DataClass newDataClass, Object parentInstanceObject, Object newInstanceObject, SequenceNumber sequence_number, Boolean traverse) throws Exception {
+    public void addChildInstanceObject(State childState, DataClass newDataClass, Object parentInstanceObject, Object newInstanceObject, SequenceNumber sequence_number, Boolean traverse, Boolean foreing_key_must_link_to_primary_key) throws Exception {
         ArrayList<DataInstance> membersList = this.member_list_map.get(parentInstanceObject);
         ArrayList<DataInstance> tablesList = this.table_list_map.get(parentInstanceObject);
         ArrayList<DataInstance> fieldsList = this.field_list_map.get(parentInstanceObject);
@@ -255,7 +255,7 @@ public class DataInstance {
         HashMap<String, DataInstance> tablesMap = this.table_instance_list_map.get(parentInstanceObject);
         HashMap<String, DataInstance> fieldsMap = this.field_instance_list_map.get(parentInstanceObject);
         
-        DataInstance newDataInstance = new DataInstance(childState, this.database_name, newDataClass, this, parentInstanceObject, newInstanceObject, sequence_number, traverse);
+        DataInstance newDataInstance = new DataInstance(childState, this.database_name, newDataClass, this, parentInstanceObject, newInstanceObject, sequence_number, traverse, foreing_key_must_link_to_primary_key);
         membersList.add(newDataInstance);
         membersMap.put(newDataInstance.data_class.name, newDataInstance);
         if (newDataInstance.data_class.isTable) {//Table
@@ -465,7 +465,7 @@ public class DataInstance {
         }
 
         StringBuilder sql = new StringBuilder();
-        String instance_objectJSON = gson.toJson(instance_object).replaceAll("\"", "\"\"");
+        String instance_objectJSON = gson.toJson(instance_object);
         sql.append("INSERT INTO `").append(database_name).append("`.`").append(data_instance.data_class.declared_name).append("`");
         sql.append("(`model_id`,`model_instance_id`,`child_id`,`parent_id`,`declared_field_name`,`class_name`,`json_object`,");
         for (DataInstance fieldDataInstance : data_instance.field_list_map.get(instance_object)) {

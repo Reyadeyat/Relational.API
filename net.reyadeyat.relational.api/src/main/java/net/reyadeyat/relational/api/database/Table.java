@@ -2604,7 +2604,7 @@ public class Table {
      * @throws java.lang.Exception
      */
     
-    public static void loadDataModel(String secret_key, JDBCSource model_jdbc_source, JDBCSource data_jdbc_source, Integer model_id, HashMap<String, Class> interface_implementation, JsonArray error_list) throws Exception {
+    public static void loadDataModel(String secret_key, JDBCSource model_jdbc_source, JDBCSource data_jdbc_source, Integer model_id, HashMap<String, Class> interface_implementation, JsonArray error_list, Boolean foreing_key_must_link_to_primary_key) throws Exception {
         Integer model_instance_id = 1;
         DataClass.LoadMethod loadMethod = DataClass.LoadMethod.REFLECTION;
         DataLookup data_lookup = null;
@@ -2648,7 +2648,7 @@ public class Table {
             throw exception;
         }
         if (data_model_definition != null) {
-            DataProcessor<Enterprise> dataProcessor = new DataProcessor<Enterprise>(EnterpriseModel.class, Enterprise.class, model_jdbc_source, data_model_definition, data_lookup, interface_implementation);
+            DataProcessor<Enterprise> dataProcessor = new DataProcessor<Enterprise>(EnterpriseModel.class, Enterprise.class, model_jdbc_source, data_model_definition, data_lookup, interface_implementation, foreing_key_must_link_to_primary_key);
             EnterpriseModel<Enterprise> enterprise_model = (EnterpriseModel<Enterprise>) dataProcessor.loadModelFromDatabase(model_id, model_instance_id, loadMethod);
             enterprise_model.getInstance().init();
             data_model_map.put(model_id, enterprise_model);

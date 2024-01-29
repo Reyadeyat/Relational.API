@@ -15,7 +15,10 @@
  * limitations under the License.
  */
 
-package net.reyadeyat.relational.api.model;
+package net.reyadeyat.relational.api.util;
+
+import java.io.IOException;
+import java.io.Writer;
 
 /**
  * 
@@ -25,23 +28,23 @@ package net.reyadeyat.relational.api.model;
  * @author Mohammad Nabil Mostafa
  * <a href="mailto:code@reyadeyat.net">code@reyadeyat.net</a>
  * 
- * @since 2023.01.01
+ * @since 2024.01.15
  */
-public class ReferencedKeyField {
-    public String name;
-    
-    transient public Boolean is_primary_key_field;
-    transient public Boolean case_sensitive_sql;
-    transient public ForeignKey foreign_key;
-    
-    /**no-arg default constructor for jaxb marshalling*/
-    public ReferencedKeyField() {
-        this.is_primary_key_field = false;
+public class NothingWriter extends Writer {
+
+    @Override
+    public void write(char[] cbuf, int off, int len) throws IOException {
+        
+    }
+
+    @Override
+    public void flush() throws IOException {
+        
+    }
+
+    @Override
+    public void close() throws IOException {
+
     }
     
-    public ReferencedKeyField(String name, Boolean case_sensitive_sql, Boolean is_primary_key_field) {
-        this.name = name;
-        this.case_sensitive_sql = case_sensitive_sql;
-        this.is_primary_key_field = is_primary_key_field;
-    }
 }

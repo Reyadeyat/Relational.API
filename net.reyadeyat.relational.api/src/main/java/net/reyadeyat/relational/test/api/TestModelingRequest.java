@@ -22,6 +22,7 @@ import com.google.gson.JsonObject;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -49,6 +50,11 @@ import net.reyadeyat.relational.api.model.TableInterfaceImplementationDataStruct
  * @since 2023.07.01
  */
 public class TestModelingRequest extends ModelingRequest {
+    
+    /*
+    SELECT DISTINCT JSON_EXTRACT(json_object, '$.data_type_name') AS data_type_name
+FROM model.field_list;
+    */
     
     public TestModelingRequest() throws Exception {
         super();
@@ -89,20 +95,19 @@ public class TestModelingRequest extends ModelingRequest {
         }
         
         try (Connection jdbc_connection = data_jdbc_source.getConnection(true)) {
-            Integer security_flag = SECURITY_FLAG_ASSERT_VALID_FIELD_NAMES | SECURITY_FLAG_RETURN_DESCRIPTIVE_RESPONSE_MESSAGE | SECURITY_FLAG_RETURN_GENERATED_ID;
+            Integer security_flag = SECURITY_FLAG_RETURN_NOTHING | /*SECURITY_FLAG_FOREING_KEY_MUST_LINK_TO_PRIMARY_KEY |*/ SECURITY_FLAG_ASSERT_VALID_FIELD_NAMES | SECURITY_FLAG_RETURN_DESCRIPTIVE_RESPONSE_MESSAGE | SECURITY_FLAG_RETURN_GENERATED_ID;
             Gson gson = JsonUtil.gson();
             //JsonObject model_transaction_request = gson.fromJson(model_transaction_request_json_text, JsonObject.class);
             JsonArray log_list = new JsonArray();
             
-            ByteArrayOutputStream response_output_stream = new ByteArrayOutputStream();
-            //FileOutputStream response_output_stream = new FileOutputStream(new File("/linux/reyadeyat/projects/open-source/Relational.API/modeling.sql"));
+            OutputStream response_output_stream = args.length == 0 || args[0] == null ? new ByteArrayOutputStream() : new FileOutputStream(new File(args[0]));
             
             JsonArray error_list = new JsonArray();
             TestModelingRequest modeling_request = new TestModelingRequest();
             
             //List of external classes implements model members annotated with @DontJsonAnnotation
             Map<String, Class> interface_implementation = new HashMap<String, Class>();
-            interface_implementation.put("net.reyadeyat.relational.api.model.TableDataStructures", UserDefinedTableInterfaceImplementationDataStructures.class);
+            interface_implementation.put("net.reyadeyat.relational.api.model.TableInterfaceImplementationDataStructures", UserDefinedTableInterfaceImplementationDataStructures.class);
             
             TableInterfaceImplementationDataStructures table_interface_implementation_data_structures = new UserDefinedTableInterfaceImplementationDataStructures();
             
@@ -118,8 +123,11 @@ public class TestModelingRequest extends ModelingRequest {
             JsonObject model_service_print_json = gson.fromJson(model_service_print_request_json_text, JsonObject.class);
             Response print_response = modeling_request.serviceTransaction(security_flag, model_service_print_json, response_output_stream, jdbc_connection, table_interface_implementation_data_structures, interface_implementation, log_list, error_list);
             
-            //String reposnse_string = new String(response_output_stream.toByteArray(), StandardCharsets.UTF_8);
-            //Logger.getLogger(TestModelingRequest.class.getName()).log(Level.INFO, reposnse_string);
+            if (args.length == 0 || args[0] == null) {
+                String reposnse_string = new String(((ByteArrayOutputStream) response_output_stream).toByteArray(), StandardCharsets.UTF_8);
+                Logger.getLogger(TestModelingRequest.class.getName()).log(Level.INFO, reposnse_string);
+            }
+            response_output_stream.close();
         } catch (Exception ex) {
             Logger.getLogger(TestModelingRequest.class.getName()).log(Level.SEVERE, ex.getMessage(), ex);
         }
@@ -166,6 +174,14 @@ public class TestModelingRequest extends ModelingRequest {
     }
     
     private static String data_database = "parental";
+    private static String data_database_server = "127.0.0.1:33060";
+    private static String data_database_user = "remote";
+    private static String data_database_password = "123456";
+    
+    private static String model_database = "model";
+    private static String model_database_server = "127.0.0.1:33060";
+    private static String model_database_user = "remote";
+    private static String model_database_password = "123456";
     
     private static String model_service_build_request_json_text = """
     {
@@ -173,12 +189,12 @@ public class TestModelingRequest extends ModelingRequest {
         "service_name": "parental_service",
         "default_datasource_name": "%s",
         "database_name": "%s",
-        "model_id": "500",
+        "model_id": "600",
         "model_datasource_name": "model",
         "data_datasource_name": "%s",
         "secret_key": "1234567890",
                                                                   
-        "model_id": 500,
+        "model_id": 600,
         "model_instance_sequence_type_id": 1,
         "model_name": "parental",
         "model_version": 0.0.000001",
@@ -229,12 +245,12 @@ public class TestModelingRequest extends ModelingRequest {
         "service_name": "parental_service",
         "default_datasource_name": "%s",
         "database_name": "%s",
-        "model_id": "500",
+        "model_id": "600",
         "model_datasource_name": "model",
         "data_datasource_name": "%s",
         "secret_key": "1234567890",
                                                                   
-        "model_id": 500,
+        "model_id": 600,
         "model_instance_sequence_type_id": 1,
         "model_name": "%s",
         "model_version": 0.0.000001",
@@ -289,7 +305,7 @@ public class TestModelingRequest extends ModelingRequest {
         "data_datasource_name": "%s",
         "secret_key": "1234567890",
                                                                    
-        "model_id": 500,
+        "model_id": 600,
         "model_instance_sequence_type_id": 1,
         "model_name": "%s",
         "model_version": 0.0.000001",
@@ -314,10 +330,10 @@ public class TestModelingRequest extends ModelingRequest {
     private static String model_version = "0.0.0.0001";
 
     private static JDBCSource data_jdbc_source = new JDBCSource() {
-        private static final String data_database_server = "127.0.0.1:33060";
-        private static final String data_database_user_name = "remote";
-        private static final String data_database_password = "123456";
-        private static final String data_database_schema = data_database;
+        private static final String data_database_server = TestModelingRequest.data_database_server;
+        private static final String data_database_user = TestModelingRequest.data_database_user;
+        private static final String data_database_password = TestModelingRequest.data_database_password;
+        private static final String data_database_schema = TestModelingRequest.data_database;
         private static final String database_schema = "";
         private static final String mysql_database_field_open_quote = "`";
         private static final String mysql_database_field_close_quote = "`";
@@ -330,14 +346,14 @@ public class TestModelingRequest extends ModelingRequest {
         @Override
         public Connection getConnection(Boolean auto_commit) throws Exception {
             //CREATE DATABASE `data` CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
-            Connection database_connection = DriverManager.getConnection("jdbc:mysql://" + data_database_server + "/" + data_database_schema, data_database_user_name, data_database_password);
+            Connection database_connection = DriverManager.getConnection("jdbc:mysql://" + data_database_server + "/" + data_database_schema, data_database_user, data_database_password);
             database_connection.setAutoCommit(auto_commit);
             return database_connection;
         }
 
         @Override
         public String getUserName() throws Exception {
-            return data_database_user_name;
+            return data_database_user;
         }
 
         @Override
@@ -382,10 +398,10 @@ public class TestModelingRequest extends ModelingRequest {
     };
     
     private static JDBCSource model_jdbc_source = new JDBCSource() {
-        private static String model_database_server = "127.0.0.1:33060";
-        private static String model_database_user_name = "remote";
-        private static String model_database_password = "123456";
-        private static String model_database_schema = "model";
+        private static String model_database_server = TestModelingRequest.model_database_server;
+        private static String model_database_user = TestModelingRequest.model_database_user;
+        private static String model_database_password = TestModelingRequest.model_database_password;
+        private static String model_database_schema = TestModelingRequest.model_database;
         private static final String database_schema = "";
         private static final String mysql_database_field_open_quote = "`";
         private static final String mysql_database_field_close_quote = "`";
@@ -398,14 +414,14 @@ public class TestModelingRequest extends ModelingRequest {
         @Override
         public Connection getConnection(Boolean auto_commit) throws Exception {
             //CREATE DATABASE `data` CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
-            Connection database_connection = DriverManager.getConnection("jdbc:mysql://" + model_database_server + "/" + model_database_schema, model_database_user_name, model_database_password);
+            Connection database_connection = DriverManager.getConnection("jdbc:mysql://" + model_database_server + "/" + model_database_schema, model_database_user, model_database_password);
             database_connection.setAutoCommit(auto_commit);
             return database_connection;
         }
 
         @Override
         public String getUserName() throws Exception {
-            return model_database_user_name;
+            return model_database_user;
         }
 
         @Override

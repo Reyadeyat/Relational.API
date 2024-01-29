@@ -57,17 +57,19 @@ public class DataProcessor<Model> {
     DataClass data_class;
     Map<DataModel<Model>, DataInstance> dataModelDataInstanceMap;
     Map<String, Class> interface_implementation;
+    Boolean foreing_key_must_link_to_primary_key;
     
     final static public ZonedDateTimeAdapter zonedDateTimeAdapter = new ZonedDateTimeAdapter();
     
     @SuppressWarnings("unchecked")
-    public DataProcessor(Class data_model_class, Class model_class, JDBCSource model_jdbc_source, ModelDefinition model_definition, DataLookup data_lookup, Map<String, Class> interface_implementation) throws Exception {
+    public DataProcessor(Class data_model_class, Class model_class, JDBCSource model_jdbc_source, ModelDefinition model_definition, DataLookup data_lookup, Map<String, Class> interface_implementation, Boolean foreing_key_must_link_to_primary_key) throws Exception {
         this.data_model_class = data_model_class;
         this.model_class = model_class;
         this.model_jdbc_source = model_jdbc_source;
         this.model_definition = model_definition;
         this.data_lookup = data_lookup;
         this.interface_implementation = interface_implementation;
+        this.foreing_key_must_link_to_primary_key = foreing_key_must_link_to_primary_key;
 
         Boolean foundDataModelInterface = false;
         for (Class intrface : this.data_model_class.getInterfaces()) {
@@ -84,7 +86,7 @@ public class DataProcessor<Model> {
         if (model_class.getCanonicalName().equals(modelDeclaredField.getType().getCanonicalName()) == false) {
             throw new Exception("data_model_class '" + data_model_class.getCanonicalName() + "' declared model field '" + modelDeclaredField.getName() + "' is of type class '" + modelDeclaredField.getType().getCanonicalName() + "' that is not same as model_class '" + model_class.getCanonicalName() + "'");
         }
-        this.data_class = new DataClass(null, modelDeclaredField, this.data_lookup, this.interface_implementation);
+        this.data_class = new DataClass(null, modelDeclaredField, this.data_lookup, this.interface_implementation, this.foreing_key_must_link_to_primary_key);
         
         dataModelDataInstanceMap = new HashMap<DataModel<Model>, DataInstance>();
     }
@@ -127,7 +129,7 @@ public class DataProcessor<Model> {
 
         //DataInstance data_instance = dataModelDataInstanceMap.get(data_model);
         SequenceNumber sequenceNumber = new SequenceNumber(0, 1, false);
-        DataInstance data_instance = new DataInstance(DataInstance.State.NEW, data_model.getModelDefinition().modeled_database_name, this.data_class, null, null, data_model.getInstance(), sequenceNumber, true);
+        DataInstance data_instance = new DataInstance(DataInstance.State.NEW, data_model.getModelDefinition().modeled_database_name, this.data_class, null, null, data_model.getInstance(), sequenceNumber, true, foreing_key_must_link_to_primary_key);
         data_instance.toString(appendable);
     }
     
@@ -191,12 +193,12 @@ public class DataProcessor<Model> {
         return modelInstanceIds;
     }
     
-    public Integer generateModel(JDBCSource data_jdbc_source, Integer model_id, Integer instance_sequence_type_id, String instance_sequence_last_value, String secret_key, String modeled_table_data_structures_class) throws Exception {
+    public Integer generateModel(JDBCSource model_jdbc_source, JDBCSource data_jdbc_source, Integer model_id, Integer instance_sequence_type_id, String instance_sequence_last_value, String secret_key, String modeled_table_data_structures_class) throws Exception {
         //String model_name = this.data_model.getName();
         
         ArrayList<String> creates = new ArrayList<String>();
         ArrayList<String> dataClasses = new ArrayList<String>();
-        try (Connection data_model_connection = data_jdbc_source.getConnection(false)) {
+        try (Connection data_model_connection = model_jdbc_source.getConnection(false)) {
             data_class.createDatabaseSchema(data_model_connection, model_jdbc_source.getDatabaseName(), data_class, dataClasses, creates);
             //try (Connection data_model_connection = data_model_source.getConnection(false)) {
                 String insert_model_sql = "INSERT INTO `model`.`model`(`model_id`, `model_instance_sequence_type_id`, `model_instance_sequence_last_value`, `model_name`, `model_version`, `model_class_path`, `model_data_lookup_category`, `modeled_database_url`, `modeled_database_url_user_name`, `modeled_database_url_user_password`, `modeled_database_schem`, `modeled_database_name`, `modeled_database_field_open_quote`, `modeled_database_field_close_quote`, `modeled_table_data_structures_class`) VALUES (?,?,?,?,?,?,?,?,?,TO_BASE64(AES_ENCRYPT(?, '"+secret_key+"')),?,?,?,?,?)";
@@ -211,7 +213,7 @@ public class DataProcessor<Model> {
                     data_stmt.setObject(8, data_jdbc_source.getURL());
                     data_stmt.setObject(9, data_jdbc_source.getUserName());
                     data_stmt.setObject(10, data_jdbc_source.getUserPassword());
-                    data_stmt.setObject(11, data_jdbc_source.getDatabaseSchema() == null ? "" : data_jdbc_source.getDatabaseSchema());
+                    data_stmt.setObject(11, data_jdbc_source.getDatabaseSchema() == null ? "" : model_jdbc_source.getDatabaseSchema());
                     data_stmt.setObject(12, data_jdbc_source.getDatabaseName());
                     data_stmt.setObject(13, data_jdbc_source.getDatabaseOpenQuote());
                     data_stmt.setObject(14, data_jdbc_source.getDatabaseCloseQuote());
@@ -305,7 +307,7 @@ public class DataProcessor<Model> {
                     sequenceNumber.initSequence(this.data_class.clas, instance_last_value);
 
                     //Prpeare DataInstance
-                    DataInstance data_instance = new DataInstance(DataInstance.State.NEW, model_jdbc_source.getDatabaseName(), this.data_class, null, null, instanceObject, sequenceNumber, true);
+                    DataInstance data_instance = new DataInstance(DataInstance.State.NEW, model_jdbc_source.getDatabaseName(), this.data_class, null, null, instanceObject, sequenceNumber, true, foreing_key_must_link_to_primary_key);
                     instanceID = sequenceNumber.getSequenceState(this.data_class.clas);
 
                     String update_model_sql = "UPDATE `model`.`model` SET `model_instance_sequence_last_value` = ? WHERE `model_id` = ?";

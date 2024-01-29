@@ -84,9 +84,10 @@ public class DataClass {
     DataLookup data_lookup;
     Boolean has_interface_implementation;
     Map<String, Class> interface_implementation;
+    Boolean foreing_key_must_link_to_primary_key;
     
     
-    public DataClass(DataClass parent_data_class, Field field, DataLookup data_lookup, Map<String, Class> interface_implementation) throws Exception {
+    public DataClass(DataClass parent_data_class, Field field, DataLookup data_lookup, Map<String, Class> interface_implementation, Boolean foreing_key_must_link_to_primary_key) throws Exception {
         /*if (data_class == null) {
             throw new Exception("DataClass cannot be null");
         }
@@ -101,6 +102,7 @@ public class DataClass {
             declared_name = declared_name;
         }*/
         this.parent_data_class = parent_data_class;
+        this.foreing_key_must_link_to_primary_key = foreing_key_must_link_to_primary_key;
         
         this.member_list = new ArrayList<>();
         this.table_list = new ArrayList<>();
@@ -167,7 +169,7 @@ public class DataClass {
             for (Field newDatafield : field_list) {
                 //////field.setAccessible(true); // grant access to (protected) field
                 //DataClass newDataClass = dataClassWalker(this, nfield);
-                DataClass newDataClass = new DataClass(this, newDatafield, this.data_lookup, this.interface_implementation);
+                DataClass newDataClass = new DataClass(this, newDatafield, this.data_lookup, this.interface_implementation, this.foreing_key_must_link_to_primary_key);
                 this.member_list.add(newDataClass);
                 this.member_list_map.put(newDataClass.name, newDataClass);
                 if (newDataClass.isTable) {//Table
@@ -182,7 +184,7 @@ public class DataClass {
     }
 
     private void getFields(Class clas, List<Field> field_list) {
-        if (clas.getSuperclass().getName().equalsIgnoreCase("java.lang.Object") == false) {
+        if (clas.getSuperclass() != null && clas.getSuperclass().getName().equalsIgnoreCase("java.lang.Object") == false) {
             getFields(clas.getSuperclass(), field_list);
         }
         Field[] declaredfields = clas.getDeclaredFields();
@@ -360,7 +362,7 @@ public class DataClass {
             throw new Exception("object class does not equals to data class");
         }
         SequenceNumber sequenceNumber = new SequenceNumber(1, 1, false);
-        DataInstance data_instance = new DataInstance(DataInstance.State.NEW, databaseName, this, null, null, instanceObject, sequenceNumber, true);
+        DataInstance data_instance = new DataInstance(DataInstance.State.NEW, databaseName, this, null, null, instanceObject, sequenceNumber, true, foreing_key_must_link_to_primary_key);
         return data_instance;
     }
 
@@ -488,18 +490,26 @@ public class DataClass {
                 /*modelInstance = gsonN.fromJson(json_object, modelClass);
                 model.setInstance(modelInstance);
                 model.prepareInstance();*/
-                newDataInstance = new DataInstance(DataInstance.State.LOADED, databaseName, this, parentDataInstance, parentInstanceObject, instanceObject, sequence, true);
+                newDataInstance = new DataInstance(DataInstance.State.LOADED, databaseName, this, parentDataInstance, parentInstanceObject, instanceObject, sequence, true, foreing_key_must_link_to_primary_key);
             }
         } else if (loadMethod == LoadMethod.REFLECTION) {
-            Object instance_object = this.type.getConstructor().newInstance();
+            Object instance_object = null;
+            //if (this.type.getCanonicalName().equals("net.reyadeyat.relational.api.model.TableInterfaceImplementationDataStructures") == true) {
+            /*if (has_interface_implementation == true) {
+                instance_object = this.type.getConstructor().newInstance();
+            } else {
+                instance_object = this.type.getConstructor().newInstance();
+            }*/
+            instance_object = this.type.getConstructor().newInstance();
+            
             if (parentInstanceObject != null) {
                 this.field.set(parentInstanceObject, instance_object);
             }
             DataInstance recordDataInstance = null;
             if (parentInstanceObject == null) {//parent
-                recordDataInstance = new DataInstance(DataInstance.State.LOADED, databaseName, this, parentDataInstance, parentInstanceObject, this.clas.getConstructor().newInstance(), sequence, false);
+                recordDataInstance = new DataInstance(DataInstance.State.LOADED, databaseName, this, parentDataInstance, parentInstanceObject, this.clas.getConstructor().newInstance(), sequence, false, foreing_key_must_link_to_primary_key);
             } else {
-                recordDataInstance = new DataInstance(DataInstance.State.LOADED, databaseName, this, parentDataInstance, parentInstanceObject, instance_object, sequence, false);
+                recordDataInstance = new DataInstance(DataInstance.State.LOADED, databaseName, this, parentDataInstance, parentInstanceObject, instance_object, sequence, false, foreing_key_must_link_to_primary_key);
             }
             recordDataInstance.parent_id = parentID;
             //Load Instances into list
@@ -538,7 +548,7 @@ public class DataClass {
                         fieldInstanceObject = record.get(fieldDataClass.declared_name);
                         fieldDataClass.field.set(recordInstanceObject, fieldInstanceObject);
                     }
-                    recordDataInstance.addChildInstanceObject(DataInstance.State.LOADED, fieldDataClass, recordInstanceObject, fieldInstanceObject, sequence, false);
+                    recordDataInstance.addChildInstanceObject(DataInstance.State.LOADED, fieldDataClass, recordInstanceObject, fieldInstanceObject, sequence, false, foreing_key_must_link_to_primary_key);
                 }
                 for (int x = 0; x < table_list.size(); x++) {
                     DataClass subRecordDataClass = table_list.get(x);
